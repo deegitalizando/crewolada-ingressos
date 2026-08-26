@@ -39,4 +39,12 @@ async function notifyOrderApproved(order, tickets) {
   }
 }
 
-module.exports = { notifyOrderApproved, normalizePhone };
+async function sendBroadcast(message) {
+  const webhookUrl = process.env.N8N_BROADCAST_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error('N8N_BROADCAST_WEBHOOK_URL nao configurada.');
+  }
+  await axios.post(webhookUrl, { mensagem: message }, { timeout: 10000 });
+}
+
+module.exports = { notifyOrderApproved, normalizePhone, sendBroadcast };

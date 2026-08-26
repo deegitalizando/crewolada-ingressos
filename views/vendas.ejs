@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Painel de Vendas - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel de Vendas</h1>
+      <form action="/vendas/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <main class="card">
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="stat-label">Arrecadado</span>
+          <span class="stat-value">R$ <%= stats.totalRevenue.toFixed(2).replace('.', ',') %></span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Ingressos vendidos</span>
+          <span class="stat-value"><%= stats.ticketsSold %></span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Pedidos pagos</span>
+          <span class="stat-value"><%= stats.paidOrders %></span>
+        </div>
+      </div>
+
+      <h3>Por lote</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Lote</th><th>Vendidos</th><th>Arrecadado</th></tr>
+          </thead>
+          <tbody>
+            <% loteBreakdown.forEach(function(l) { %>
+              <tr>
+                <td><%= l.name %></td>
+                <td><%= l.sold %></td>
+                <td>R$ <%= l.revenue.toFixed(2).replace('.', ',') %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+
+    <main class="card">
+      <h3>Disparo em massa (WhatsApp)</h3>
+      <p class="hint" style="margin-top:0">Envia uma mensagem para todos os contatos da instancia Evolution API (usa o mesmo recurso de broadcast do n8n).</p>
+      <div id="broadcast-result" class="alert" style="display:none"></div>
+      <form class="form" id="broadcast-form">
+        <label>
+          Mensagem
+          <textarea name="mensagem" rows="4" required style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;color:var(--text);font-size:15px;font-family:inherit;"></textarea>
+        </label>
+        <button type="submit" <%= broadcastConfigured ? '' : 'disabled' %>>Enviar para todos os compradores</button>
+        <% if (!broadcastConfigured) { %>
+          <p class="hint">Configure N8N_BROADCAST_WEBHOOK_URL para habilitar este envio.</p>
+        <% } %>
+      </form>
+    </main>
+
+    <main class="card">
+      <h3>Compradores</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th><th>E-mail</th><th>WhatsApp</th><th>CPF</th>
+              <th>Lote</th><th>Qtd</th><th>Total</th><th>Status</th><th>Data</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% orders.forEach(function(o) { %>
+              <tr>
+                <td><%= o.buyerName %></td>
+                <td><%= o.buyerEmail %></td>
+                <td><%= o.buyerPhone %></td>
+                <td><%= o.buyerCpf %></td>
+                <td><%= o.loteName %></td>
+                <td><%= o.quantity %></td>
+                <td>R$ <%= o.totalAmount.toFixed(2).replace('.', ',') %></td>
+                <td><%= o.status %></td>
+                <td><%= new Date(o.createdAt).toLocaleString('pt-BR') %></td>
+              </tr>
+            <% }) %>
+            <% if (orders.length === 0) { %>
+              <tr><td colspan="9" style="text-align:center">Nenhum pedido ainda.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const form = document.getElementById('broadcast-form');
+    const resultBox = document.getElementById('broadcast-result');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const mensagem = form.mensagem.value.trim();
+      if (!mensagem) return;
+      if (!confirm('Enviar esta mensagem para TODOS os compradores no WhatsApp?')) return;
+
+      const btn = form.querySelector('button');
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/vendas/broadcast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mensagem }),
+        });
+        const data = await res.json();
+        resultBox.style.display = 'block';
+        resultBox.textContent = res.ok ? 'Mensagem enviada para disparo!' : (data.error || 'Erro ao enviar.');
+      } catch (err) {
+        resultBox.style.display = 'block';
+        resultBox.textContent = 'Erro de conexao.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

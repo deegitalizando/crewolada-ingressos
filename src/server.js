@@ -10,6 +10,7 @@ const mp = require('./mercadopago');
 const { getCurrentLote } = require('./lotes');
 const { approveOrder } = require('./fulfillment');
 const { isValidCpf } = require('./cpf');
+const { sendBroadcast } = require('./n8n');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -55,6 +56,15 @@ function requireValidatorAuth(req, res, next) {
   const token = req.cookies.validator_session;
   if (token && validatorSessions.has(token)) return next();
   return res.redirect('/validador');
+}
+
+// ---- admin/sales panel auth (in-memory sessions, reset on server restart) ----
+const adminSessions = new Set();
+
+function requireAdminAuth(req, res, next) {
+  const token = req.cookies.admin_session;
+  if (token && adminSessions.has(token)) return next();
+  return res.redirect('/vendas');
 }
 
 // ---------------------------------------------------------------------
@@ -309,6 +319,78 @@ app.post('/api/validar', requireValidatorAuth, async (req, res) => {
     code: ticket.code,
     buyerName: order?.buyerName || '',
   });
+});
+
+// ---------------------------------------------------------------------
+// Painel de vendas
+// ---------------------------------------------------------------------
+
+app.get('/vendas', (req, res) => {
+  const token = req.cookies.admin_session;
+  if (!token || !adminSessions.has(token)) {
+    return res.render('vendas_login', { eventInfo, error: null });
+  }
+
+  const db = store.load();
+  const orders = Object.values(db.orders).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  const stats = { totalRevenue: 0, ticketsSold: 0, paidOrders: 0 };
+  const loteMap = {};
+
+  orders.forEach((o) => {
+    if (o.status !== 'paid') return;
+    stats.totalRevenue += o.totalAmount;
+    stats.ticketsSold += o.quantity;
+    stats.paidOrders += 1;
+
+    if (!loteMap[o.loteName]) loteMap[o.loteName] = { name: o.loteName, sold: 0, revenue: 0 };
+    loteMap[o.loteName].sold += o.quantity;
+    loteMap[o.loteName].revenue += o.totalAmount;
+  });
+
+  res.render('vendas', {
+    eventInfo,
+    stats,
+    loteBreakdown: Object.values(loteMap),
+    orders,
+    broadcastConfigured: Boolean(process.env.N8N_BROADCAST_WEBHOOK_URL),
+  });
+});
+
+app.post('/vendas/login', (req, res) => {
+  const { login, password } = req.body;
+  if (login === process.env.ADMIN_LOGIN && password === process.env.ADMIN_PASSWORD) {
+    const token = crypto.randomBytes(24).toString('hex');
+    adminSessions.add(token);
+    res.cookie('admin_session', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 12 * 60 * 60 * 1000,
+    });
+    return res.redirect('/vendas');
+  }
+  return res.status(401).render('vendas_login', { eventInfo, error: 'Login ou senha incorretos.' });
+});
+
+app.post('/vendas/logout', (req, res) => {
+  const token = req.cookies.admin_session;
+  if (token) adminSessions.delete(token);
+  res.clearCookie('admin_session');
+  res.redirect('/vendas');
+});
+
+app.post('/api/vendas/broadcast', requireAdminAuth, async (req, res) => {
+  const mensagem = String(req.body.mensagem || '').trim();
+  if (!mensagem) {
+    return res.status(400).json({ error: 'Mensagem vazia.' });
+  }
+  try {
+    await sendBroadcast(mensagem);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error('Erro ao disparar broadcast:', err.message);
+    return res.status(500).json({ error: 'Nao foi possivel enviar. Confira a configuracao do n8n.' });
+  }
 });
 
 app.listen(PORT, () => {

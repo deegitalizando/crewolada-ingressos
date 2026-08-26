@@ -4,3 +4,4 @@ data/*.json
 !data/.gitkeep
 .claude/
 crewolada-app.zip
+export-tmp/
