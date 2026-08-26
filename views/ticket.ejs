@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Ingresso <%= ticket.code %> - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm no-print">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <p class="hero-sub"><%= eventInfo.dateLabel %> &middot; <%= eventInfo.venue %></p>
+    </header>
+
+    <main class="card ticket-card">
+      <span class="status-pill <%= ticket.status === 'used' ? 'status-used' : 'status-valid' %>">
+        <%= ticket.status === 'used' ? 'Ja utilizado' : 'Valido' %>
+      </span>
+      <img class="qr" src="<%= ticket.qrCodeDataUrl %>" alt="QR code do ingresso" />
+      <p class="ticket-code"><%= ticket.code %></p>
+      <% if (order) { %>
+        <p class="hint">Titular: <%= order.buyerName %></p>
+        <% if (order.loteName) { %><p class="hint"><%= order.loteName %></p><% } %>
+      <% } %>
+      <p class="hint">Apresente este QR code na entrada.</p>
+
+      <div class="btn-row no-print">
+        <button type="button" class="btn-secondary" id="btn-imprimir">Imprimir</button>
+        <button type="button" class="btn-secondary" id="btn-compartilhar">Compartilhar</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('btn-imprimir').addEventListener('click', () => {
+      window.print();
+    });
+
+    document.getElementById('btn-compartilhar').addEventListener('click', async () => {
+      const pdfUrl = '/ingresso/<%= ticket.code %>/pdf';
+      try {
+        const response = await fetch(pdfUrl);
+        const blob = await response.blob();
+        const file = new File([blob], 'ingresso-<%= ticket.code %>.pdf', { type: 'application/pdf' });
+
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Ingresso <%= eventInfo.name %>',
+            text: 'Aqui esta meu ingresso para a <%= eventInfo.name %>!',
+          });
+          return;
+        }
+        if (navigator.share) {
+          await navigator.share({ url: window.location.href, title: 'Ingresso <%= eventInfo.name %>' });
+          return;
+        }
+        window.open(pdfUrl, '_blank');
+      } catch (err) {
+        window.open(pdfUrl, '_blank');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title><%= eventInfo.name %> - Ingressos</title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <img class="flyer" src="/img/flyer.png" alt="<%= eventInfo.name %>" />
+
+    <main class="card">
+      <% if (lote) { %>
+        <span class="lote-tag"><%= lote.name %></span>
+        <p class="price">R$ <%= lote.price.toFixed(2).replace('.', ',') %> <span>por pessoa</span></p>
+        <p class="remaining-hint"><%= lote.remaining %> ingresso<%= lote.remaining === 1 ? '' : 's' %> restante<%= lote.remaining === 1 ? '' : 's' %> neste lote</p>
+
+        <% if (error) { %>
+          <div class="alert"><%= error %></div>
+        <% } %>
+
+        <form action="/checkout/dados" method="GET" id="qty-form">
+          <input type="hidden" name="qty" id="qty-input" value="1" />
+
+          <div class="qty-row">
+            <button type="button" class="qty-btn" id="qty-minus">-</button>
+            <span class="qty-value" id="qty-value">1</span>
+            <button type="button" class="qty-btn" id="qty-plus">+</button>
+          </div>
+
+          <p class="total-row">Total: <strong id="qty-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></strong></p>
+
+          <button type="submit">Garantir meu ingresso</button>
+        </form>
+      <% } else { %>
+        <h2>Ingressos esgotados</h2>
+        <p class="hint">Todos os lotes desta festa ja foram vendidos.</p>
+      <% } %>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="/politica-de-privacidade">Politica de Privacidade</a>
+        <a href="/termos-de-uso">Termos de Uso</a>
+        <a href="/validador">Acesso da equipe / validador</a>
+      </div>
+    </footer>
+  </div>
+
+  <%- include('partials/lgpd_banner') %>
+
+  <% if (lote) { %>
+  <script>
+    const maxQty = Math.min(<%= lote.remaining %>, <%= maxQty %>);
+    const unitPrice = <%= lote.price %>;
+    const qtyInput = document.getElementById('qty-input');
+    const qtyValue = document.getElementById('qty-value');
+    const qtyTotal = document.getElementById('qty-total');
+    const minusBtn = document.getElementById('qty-minus');
+    const plusBtn = document.getElementById('qty-plus');
+    let qty = 1;
+
+    function render() {
+      qtyValue.textContent = qty;
+      qtyInput.value = qty;
+      qtyTotal.textContent = 'R$ ' + (qty * unitPrice).toFixed(2).replace('.', ',');
+      minusBtn.disabled = qty <= 1;
+      plusBtn.disabled = qty >= maxQty;
+    }
+
+    minusBtn.addEventListener('click', () => {
+      if (qty > 1) { qty -= 1; render(); }
+    });
+    plusBtn.addEventListener('click', () => {
+      if (qty < maxQty) { qty += 1; render(); }
+    });
+
+    render();
+  </script>
+  <% } %>
+</body>
+</html>

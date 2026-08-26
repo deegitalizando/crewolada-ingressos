@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Termos de Uso - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1 class="sr-only">Termos de Uso</h1>
+    </header>
+
+    <main class="card legal">
+      <h2>Termos de Uso</h2>
+      <p class="hint">Ultima atualizacao: <%= updatedAt %></p>
+
+      <p>Ao comprar um ingresso para a <strong><%= eventInfo.name %></strong> (<%= eventInfo.dateLabel %>, <%= eventInfo.venue %>) atraves deste site, voce concorda com os termos abaixo.</p>
+
+      <h3>1. Ingresso pessoal e intransferivel</h3>
+      <p>Cada ingresso e vinculado ao nome do comprador e da direito a uma unica entrada. O QR Code so pode ser validado uma vez; apos o uso, o ingresso se torna invalido.</p>
+
+      <h3>2. Lotes e precos</h3>
+      <p>Os ingressos sao vendidos em lotes, com precos progressivos conforme a quantidade de cada lote se esgota. O preco valido e sempre o exibido no momento da conclusao da compra.</p>
+
+      <h3>3. Pagamento</h3>
+      <p>Os pagamentos sao processados pelo Mercado Pago (cartao de credito ou Pix). O ingresso so e emitido apos a confirmacao do pagamento.</p>
+
+      <h3>4. Entrega do ingresso</h3>
+      <p>Apos a aprovacao do pagamento, o ingresso (QR Code em PDF) e enviado automaticamente por WhatsApp e por e-mail, alem de ficar disponivel na pagina de confirmacao do pedido.</p>
+
+      <h3>5. Cancelamentos e reembolsos</h3>
+      <p>Por se tratar de evento com data e local definidos, ingressos nao sao reembolsaveis apos a compra, exceto em caso de cancelamento do evento pela organizacao, quando o reembolso sera processado integralmente. Em caso de remarcacao de data, o ingresso permanece valido para a nova data.</p>
+
+      <h3>6. Acesso ao evento</h3>
+      <p>A entrada esta sujeita a apresentacao do QR Code (impresso ou no celular) e, quando solicitado, de documento de identificacao com foto. A organizacao pode reservar o direito de admissao conforme as normas do local.</p>
+
+      <h3>7. Alteracoes no evento</h3>
+      <p>A organizacao pode alterar horarios, atracoes ou detalhes operacionais do evento por motivos de forca maior, sem que isso gere direito a reembolso, desde que a essencia do evento seja mantida.</p>
+
+      <h3>8. Uso do site</h3>
+      <p>E proibido tentar fraudar, duplicar ou revender ingressos fora dos canais oficiais. Ingressos adquiridos de forma fraudulenta poderao ser cancelados sem aviso previo.</p>
+
+      <h3>9. Contato</h3>
+      <p>Duvidas sobre a compra ou o evento podem ser tiradas pelo WhatsApp oficial da <%= eventInfo.name %>.</p>
+
+      <p class="hint">Veja tambem nossa <a href="/politica-de-privacidade">Politica de Privacidade</a>.</p>
+      <p class="hint"><a href="/">Voltar para a pagina inicial</a></p>
+    </main>
+  </div>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Validador - Acesso</title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="Validador de ingressos" />
+      <h1>Validador de ingressos</h1>
+    </header>
+    <main class="card">
+      <% if (error) { %>
+        <div class="alert"><%= error %></div>
+      <% } %>
+      <form action="/validador/login" method="POST" class="form">
+        <label>
+          Senha da equipe
+          <input type="password" name="password" required autofocus />
+        </label>
+        <button type="submit">Entrar</button>
+      </form>
+    </main>
+  </div>
+</body>
+</html>

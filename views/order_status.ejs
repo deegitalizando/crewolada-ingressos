@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Seu pedido - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1 class="sr-only"><%= eventInfo.name %></h1>
+    </header>
+
+    <main class="card" id="status-card" data-order-id="<%= order.id %>">
+      <% if (order.status === 'paid') { %>
+        <h2>Pagamento aprovado!</h2>
+        <p class="hint">Seus ingressos tambem foram enviados no seu WhatsApp e no seu e-mail.</p>
+        <ul class="ticket-list">
+          <% tickets.forEach(function(t) { %>
+            <li><a href="/ingresso/<%= t.code %>">Ver ingresso <%= t.code %></a></li>
+          <% }) %>
+        </ul>
+      <% } else if (order.status === 'rejected') { %>
+        <h2>Pagamento nao aprovado</h2>
+        <p class="hint">Nao conseguimos confirmar esse pagamento. Tente novamente com outro cartao ou meio de pagamento.</p>
+        <a href="/"><button type="button">Tentar novamente</button></a>
+      <% } else if (order.status === 'pending' && order.pixQrCodeBase64) { %>
+        <h2>Pague com Pix para confirmar</h2>
+        <p class="hint">Escaneie o QR Code abaixo ou copie o codigo Pix. Assim que o pagamento cair, esta pagina atualiza sozinha.</p>
+        <img class="qr" src="data:image/png;base64,<%= order.pixQrCodeBase64 %>" alt="QR Code Pix" />
+        <label>
+          Pix copia e cola
+          <input type="text" readonly value="<%= order.pixQrCode %>" onclick="this.select()" />
+        </label>
+        <div class="spinner"></div>
+      <% } else if (order.status === 'pending') { %>
+        <h2>Aguardando confirmacao do pagamento...</h2>
+        <p class="hint">Isso pode levar alguns segundos. Esta pagina atualiza sozinha.</p>
+        <div class="spinner"></div>
+      <% } else { %>
+        <h2>Pedido: <%= order.status %></h2>
+      <% } %>
+    </main>
+  </div>
+
+  <% if (order.status === 'pending') { %>
+  <script>
+    const orderId = document.getElementById('status-card').dataset.orderId;
+    async function poll() {
+      try {
+        const res = await fetch(`/api/pedido/${orderId}/status`);
+        const data = await res.json();
+        if (data.status !== 'pending') {
+          window.location.reload();
+          return;
+        }
+      } catch (e) {}
+      setTimeout(poll, 3000);
+    }
+    setTimeout(poll, 3000);
+  </script>
+  <% } %>
+</body>
+</html>

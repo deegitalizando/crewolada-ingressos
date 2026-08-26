@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Politica de Privacidade - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1 class="sr-only">Politica de Privacidade</h1>
+    </header>
+
+    <main class="card legal">
+      <h2>Politica de Privacidade</h2>
+      <p class="hint">Ultima atualizacao: <%= updatedAt %></p>
+
+      <p>Esta Politica de Privacidade explica como a organizacao da <strong><%= eventInfo.name %></strong> coleta, usa, armazena e protege os dados pessoais de quem compra ingressos atraves deste site, em conformidade com a Lei Geral de Protecao de Dados (Lei 13.709/2018 - LGPD).</p>
+
+      <h3>1. Quais dados coletamos</h3>
+      <p>Ao comprar um ingresso, coletamos: nome completo, e-mail, numero de WhatsApp e CPF. Esses dados sao fornecidos diretamente por voce no momento da compra.</p>
+
+      <h3>2. Para que usamos seus dados</h3>
+      <ul>
+        <li>Processar o pagamento do ingresso junto ao Mercado Pago;</li>
+        <li>Emitir o ingresso (com QR Code) em seu nome;</li>
+        <li>Enviar a confirmacao de compra e o ingresso em PDF por WhatsApp e e-mail;</li>
+        <li>Validar o ingresso na entrada do evento;</li>
+        <li>Cumprir obrigacoes legais e fiscais relacionadas a venda.</li>
+      </ul>
+
+      <h3>3. Com quem compartilhamos</h3>
+      <p>Seus dados sao compartilhados apenas com prestadores de servico estritamente necessarios para viabilizar a compra e a entrega do ingresso:</p>
+      <ul>
+        <li><strong>Mercado Pago</strong>, para processamento do pagamento (recebe nome, e-mail e CPF);</li>
+        <li><strong>Provedor de envio de WhatsApp (Evolution API)</strong> e <strong>servico de e-mail</strong>, para envio do ingresso.</li>
+      </ul>
+      <p>Nao vendemos nem compartilhamos seus dados para fins de marketing de terceiros.</p>
+
+      <h3>4. Cookies</h3>
+      <p>O site de vendas nao utiliza cookies de rastreamento ou publicidade. A unica excecao e um cookie tecnico de sessao usado exclusivamente na area restrita da equipe do evento (<code>/validador</code>), necessario para manter o login da equipe que confere os ingressos na entrada.</p>
+
+      <h3>5. Por quanto tempo guardamos seus dados</h3>
+      <p>Os dados do seu pedido e ingresso sao mantidos pelo tempo necessario para a realizacao do evento e para cumprir obrigacoes legais (fiscais/contabeis) apos a data do evento.</p>
+
+      <h3>6. Seus direitos (LGPD)</h3>
+      <p>Voce pode, a qualquer momento, solicitar:</p>
+      <ul>
+        <li>Confirmacao de que tratamos seus dados e acesso a eles;</li>
+        <li>Correcao de dados incompletos, inexatos ou desatualizados;</li>
+        <li>Eliminacao dos dados tratados com consentimento, quando aplicavel;</li>
+        <li>Informacoes sobre com quem compartilhamos seus dados.</li>
+      </ul>
+      <p>Para exercer esses direitos, entre em contato pelo WhatsApp oficial do evento.</p>
+
+      <h3>7. Seguranca</h3>
+      <p>Adotamos medidas tecnicas razoaveis para proteger seus dados contra acesso nao autorizado, como conexao HTTPS em todo o site e senha exclusiva para a area da equipe.</p>
+
+      <h3>8. Alteracoes desta politica</h3>
+      <p>Esta politica pode ser atualizada a qualquer momento para refletir melhorias no site ou mudancas legais. A data da ultima atualizacao esta sempre indicada no topo desta pagina.</p>
+
+      <p class="hint"><a href="/">Voltar para a pagina inicial</a></p>
+    </main>
+  </div>
+</body>
+</html>

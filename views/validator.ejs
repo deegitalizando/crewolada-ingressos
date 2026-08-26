@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Validador - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Validador</h1>
+      <form action="/validador/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <main class="card">
+      <div id="reader"></div>
+
+      <div id="result" class="scan-result"></div>
+
+      <form id="manual-form" class="form manual-form">
+        <label>
+          Ou digite o codigo manualmente
+          <input type="text" id="manual-code" placeholder="CRW-XXXXXXXXXX" autocapitalize="characters" />
+        </label>
+        <button type="submit">Validar</button>
+      </form>
+    </main>
+  </div>
+
+  <script src="/js/validator.js"></script>
+</body>
+</html>

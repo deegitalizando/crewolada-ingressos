@@ -1,0 +1,25 @@
+<div class="lgpd-banner" id="lgpd-banner" style="display: none">
+  <span>
+    Usamos seus dados (nome, e-mail, WhatsApp e CPF) apenas para processar sua compra e emitir seu ingresso, conforme a
+    <a href="/politica-de-privacidade">Politica de Privacidade</a>.
+  </span>
+  <button type="button" id="lgpd-ok">Entendi</button>
+</div>
+<script>
+  (function () {
+    try {
+      if (!localStorage.getItem('lgpdAccepted')) {
+        document.getElementById('lgpd-banner').style.display = 'flex';
+      }
+    } catch (e) {}
+    var btn = document.getElementById('lgpd-ok');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        try {
+          localStorage.setItem('lgpdAccepted', '1');
+        } catch (e) {}
+        document.getElementById('lgpd-banner').style.display = 'none';
+      });
+    }
+  })();
+</script>
