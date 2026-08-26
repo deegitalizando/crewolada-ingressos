@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Mensagens - Painel de Vendas - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel de Vendas</h1>
+      <form action="/vendas/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/vendas" class="tab">Vendas</a>
+      <a href="/vendas/mensagens" class="tab active">E-mail e WhatsApp</a>
+    </nav>
+
+    <main class="card">
+      <% if (saved) { %>
+        <div class="alert" style="background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac">Salvo com sucesso.</div>
+      <% } %>
+
+      <h3>Data e hora do evento</h3>
+      <p class="hint" style="margin-top:0">Usada para calcular quando disparar os lembretes abaixo.</p>
+      <form action="/api/vendas/mensagens" method="POST" class="form" id="mensagens-form">
+        <label>
+          Inicio do evento (horario de Brasilia)
+          <input type="datetime-local" name="eventStartAt" value="<%= eventStartAtLocal %>" />
+        </label>
+
+        <h3>Confirmacao de compra (WhatsApp e e-mail)</h3>
+        <div class="template-box">
+          <label>
+            Mensagem personalizada (opcional)
+            <textarea name="compra" rows="4" placeholder="Deixe em branco para usar a mensagem padrao. Use {{nome}}, {{codigo}}, {{numeroSorteio}}, {{nomeLote}}."><%= templates.compra %></textarea>
+          </label>
+        </div>
+
+        <h3>Lembretes automaticos</h3>
+        <p class="hint" style="margin-top:0">Enviados uma unica vez para todos os compradores. Use {{nome}} na mensagem.</p>
+
+        <div class="template-box">
+          <label>
+            5 dias antes do evento
+            <% if (remindersSent.dias5) { %><span class="template-sent">ja enviado</span><% } %>
+            <textarea name="dias5" rows="3"><%= templates.dias5 %></textarea>
+          </label>
+        </div>
+        <div class="template-box">
+          <label>
+            1 dia antes do evento
+            <% if (remindersSent.dia1) { %><span class="template-sent">ja enviado</span><% } %>
+            <textarea name="dia1" rows="3"><%= templates.dia1 %></textarea>
+          </label>
+        </div>
+        <div class="template-box">
+          <label>
+            No dia do evento
+            <% if (remindersSent.diaEvento) { %><span class="template-sent">ja enviado</span><% } %>
+            <textarea name="diaEvento" rows="3"><%= templates.diaEvento %></textarea>
+          </label>
+        </div>
+        <div class="template-box">
+          <label>
+            1 hora antes do evento
+            <% if (remindersSent.hora1) { %><span class="template-sent">ja enviado</span><% } %>
+            <textarea name="hora1" rows="3"><%= templates.hora1 %></textarea>
+          </label>
+        </div>
+
+        <button type="submit">Salvar</button>
+      </form>
+    </main>
+  </div>
+</body>
+</html>

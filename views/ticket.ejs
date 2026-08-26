@@ -17,6 +17,9 @@
       </span>
       <img class="qr" src="<%= ticket.qrCodeDataUrl %>" alt="QR code do ingresso" />
       <p class="ticket-code"><%= ticket.code %></p>
+      <% if (ticket.drawNumber) { %>
+        <p class="hint">No do sorteio: <strong><%= String(ticket.drawNumber).padStart(6, '0') %></strong></p>
+      <% } %>
       <% if (order) { %>
         <p class="hint">Titular: <%= order.buyerName %></p>
         <% if (order.loteName) { %><p class="hint"><%= order.loteName %></p><% } %>

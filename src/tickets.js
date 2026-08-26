@@ -7,27 +7,35 @@ function generateTicketCode() {
   return `CRW-${random}`;
 }
 
-async function buildTicketsForOrder(order, eventInfo) {
+// Builds the ticket records (code + QR) for an order. Draw numbers are NOT
+// assigned here — they're handed out atomically by fulfillment.js via the
+// store's write queue, so two orders processed at the same time can never
+// receive the same number.
+async function buildTicketRecords(order) {
   const tickets = [];
   for (let i = 0; i < order.quantity; i += 1) {
     const code = generateTicketCode();
     const qrCodeDataUrl = await QRCode.toDataURL(code, { margin: 1, width: 320 });
     const qrCodeBase64 = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
-    const ticket = {
+    tickets.push({
       id: crypto.randomUUID(),
       orderId: order.id,
       code,
       qrCodeDataUrl,
       qrCodeBase64,
+      drawNumber: null,
       status: 'valid',
       usedAt: null,
       createdAt: new Date().toISOString(),
-    };
-    const pdfBuffer = await buildTicketPdf({ eventInfo, order, ticket });
-    ticket.pdfBase64 = pdfBuffer.toString('base64');
-    tickets.push(ticket);
+    });
   }
   return tickets;
 }
 
-module.exports = { generateTicketCode, buildTicketsForOrder };
+async function attachPdf(ticket, order, eventInfo) {
+  const pdfBuffer = await buildTicketPdf({ eventInfo, order, ticket });
+  ticket.pdfBase64 = pdfBuffer.toString('base64');
+  return ticket;
+}
+
+module.exports = { generateTicketCode, buildTicketRecords, attachPdf };

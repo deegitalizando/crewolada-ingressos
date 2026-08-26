@@ -360,6 +360,54 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   max-width: 960px;
 }
 
+.tabs-row {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.tab {
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--text-dim);
+  background: #1a1a1a;
+  border: 1px solid var(--card-border);
+}
+.tab.active {
+  color: #1a1200;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.template-box {
+  margin-bottom: 24px;
+}
+.template-box label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.template-box textarea {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: inherit;
+}
+.template-sent {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
 .stats-row {
   display: flex;
   flex-wrap: wrap;

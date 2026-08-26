@@ -21,7 +21,7 @@
 
       <div id="payment-error" class="alert" style="display: none"></div>
 
-      <div class="form">
+      <form class="form" id="dados-form">
         <label>
           Nome completo
           <input type="text" id="buyerName" required autocomplete="name" />
@@ -38,7 +38,8 @@
           CPF
           <input type="text" id="buyerCpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" />
         </label>
-      </div>
+        <button type="submit" id="continuar-btn">Continuar para o pagamento</button>
+      </form>
 
       <div id="paymentBrick_container" style="margin-top: 20px"></div>
 
@@ -69,74 +70,97 @@
       cpfInput.value = v;
     });
 
-    const mp = new MercadoPago('<%= mpPublicKey %>', { locale: 'pt-BR' });
-    const bricksBuilder = mp.bricks();
+    const dadosForm = document.getElementById('dados-form');
+    const continuarBtn = document.getElementById('continuar-btn');
+    let brickCreated = false;
 
-    bricksBuilder.create('payment', 'paymentBrick_container', {
-      initialization: {
-        amount: <%= total %>,
-      },
-      customization: {
-        paymentMethods: {
-          creditCard: 'all',
-          bankTransfer: 'all',
-        },
-        visual: {
-          style: {
-            theme: 'dark',
+    dadosForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (brickCreated) return;
+
+      const buyerName = document.getElementById('buyerName').value.trim();
+      const buyerEmail = document.getElementById('buyerEmail').value.trim();
+      const buyerPhone = document.getElementById('buyerPhone').value.trim();
+      const buyerCpf = document.getElementById('buyerCpf').value.trim();
+      const cpfDigits = buyerCpf.replace(/\D/g, '');
+
+      if (!buyerName || !buyerEmail || !buyerPhone || cpfDigits.length !== 11) {
+        showError('Preencha nome, e-mail, WhatsApp e um CPF valido (11 digitos).');
+        return;
+      }
+      errorBox.style.display = 'none';
+
+      [...dadosForm.elements].forEach((el) => (el.disabled = true));
+      brickCreated = true;
+      createBrick({ email: buyerEmail, cpfDigits });
+    });
+
+    function createBrick({ email, cpfDigits }) {
+      const mp = new MercadoPago('<%= mpPublicKey %>', { locale: 'pt-BR' });
+      const bricksBuilder = mp.bricks();
+
+      bricksBuilder.create('payment', 'paymentBrick_container', {
+        initialization: {
+          amount: <%= total %>,
+          payer: {
+            email,
+            identification: { type: 'CPF', number: cpfDigits },
           },
         },
-      },
-      callbacks: {
-        onReady: () => {},
-        onError: (error) => {
-          console.error(error);
+        customization: {
+          paymentMethods: {
+            creditCard: 'all',
+            bankTransfer: 'all',
+          },
+          visual: {
+            style: {
+              theme: 'dark',
+            },
+          },
         },
-        onSubmit: ({ formData }) => {
-          return new Promise((resolve, reject) => {
-            const buyerName = document.getElementById('buyerName').value.trim();
-            const buyerEmail = document.getElementById('buyerEmail').value.trim();
-            const buyerPhone = document.getElementById('buyerPhone').value.trim();
-            const buyerCpf = document.getElementById('buyerCpf').value.trim();
+        callbacks: {
+          onReady: () => {},
+          onError: (error) => {
+            console.error(error);
+          },
+          onSubmit: ({ formData }) => {
+            return new Promise((resolve, reject) => {
+              const buyerName = document.getElementById('buyerName').value.trim();
+              const buyerPhone = document.getElementById('buyerPhone').value.trim();
 
-            if (!buyerName || !buyerEmail || !buyerPhone || !buyerCpf) {
-              showError('Preencha nome, e-mail, WhatsApp e CPF antes de concluir o pagamento.');
-              reject();
-              return;
-            }
+              errorBox.style.display = 'none';
 
-            errorBox.style.display = 'none';
-
-            fetch('/api/pagamentos', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                quantity: <%= quantity %>,
-                buyerName,
-                buyerEmail,
-                buyerPhone,
-                buyerCpf,
-                formData,
-              }),
-            })
-              .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
-              .then(({ ok, data }) => {
-                if (!ok) {
-                  showError(data.error || 'Nao foi possivel processar o pagamento.');
-                  reject();
-                  return;
-                }
-                resolve();
-                window.location.href = data.redirectUrl;
+              fetch('/api/pagamentos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  quantity: <%= quantity %>,
+                  buyerName,
+                  buyerEmail: email,
+                  buyerPhone,
+                  buyerCpf: cpfDigits,
+                  formData,
+                }),
               })
-              .catch(() => {
-                showError('Erro de conexao. Tente novamente.');
-                reject();
-              });
-          });
+                .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+                .then(({ ok, data }) => {
+                  if (!ok) {
+                    showError(data.error || 'Nao foi possivel processar o pagamento.');
+                    reject();
+                    return;
+                  }
+                  resolve();
+                  window.location.href = data.redirectUrl;
+                })
+                .catch(() => {
+                  showError('Erro de conexao. Tente novamente.');
+                  reject();
+                });
+            });
+          },
         },
-      },
-    });
+      });
+    }
   </script>
 </body>
 </html>

@@ -6,6 +6,36 @@ function showResult(ok, message) {
   resultBox.className = `scan-result show ${ok ? 'ok' : 'bad'}`;
 }
 
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+  } catch (e) {}
+}
+
+function speakTime(isoTime) {
+  try {
+    if (!window.speechSynthesis || !isoTime) return;
+    const time = new Date(isoTime).toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    const utterance = new SpeechSynthesisUtterance(`Validado às ${time}`);
+    utterance.lang = 'pt-BR';
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {}
+}
+
 async function validateCode(code) {
   if (busy || !code) return;
   busy = true;
@@ -19,6 +49,8 @@ async function validateCode(code) {
     const ok = data.result === 'valido';
     const extra = data.buyerName ? ` (${data.buyerName})` : '';
     showResult(ok, `${data.message || ''}${extra}`);
+    playBeep();
+    speakTime(data.usedAt);
   } catch (err) {
     showResult(false, 'Erro ao validar. Tente novamente.');
   } finally {

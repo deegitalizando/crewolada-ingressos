@@ -11,6 +11,8 @@ const { getCurrentLote } = require('./lotes');
 const { approveOrder } = require('./fulfillment');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast } = require('./n8n');
+const { getTemplates } = require('./templates');
+const { startReminderScheduler } = require('./reminders');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -298,18 +300,20 @@ app.post('/api/validar', requireValidatorAuth, async (req, res) => {
   if (ticket.status === 'used') {
     return res.json({
       result: 'ja_usado',
-      message: `Ingresso ja utilizado em ${new Date(ticket.usedAt).toLocaleString('pt-BR')}.`,
+      message: `Ingresso ja utilizado em ${new Date(ticket.usedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`,
       code: ticket.code,
+      usedAt: ticket.usedAt,
     });
   }
 
   const order = db.orders[ticket.orderId];
+  const usedAt = new Date().toISOString();
 
   await store.withDb((d) => {
     const t = d.tickets[code];
     if (t && t.status !== 'used') {
       t.status = 'used';
-      t.usedAt = new Date().toISOString();
+      t.usedAt = usedAt;
     }
   });
 
@@ -318,6 +322,7 @@ app.post('/api/validar', requireValidatorAuth, async (req, res) => {
     message: 'Ingresso valido. Entrada liberada!',
     code: ticket.code,
     buyerName: order?.buyerName || '',
+    usedAt,
   });
 });
 
@@ -393,6 +398,45 @@ app.post('/api/vendas/broadcast', requireAdminAuth, async (req, res) => {
   }
 });
 
+app.get('/vendas/mensagens', requireAdminAuth, (req, res) => {
+  const db = store.load();
+  let eventStartAtLocal = '';
+  if (db.eventStartAt) {
+    const d = new Date(db.eventStartAt);
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(d);
+    const get = (type) => parts.find((p) => p.type === type).value;
+    eventStartAtLocal = `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+  }
+
+  res.render('vendas_mensagens', {
+    eventInfo,
+    templates: getTemplates(db),
+    eventStartAtLocal,
+    remindersSent: db.remindersSent || {},
+    saved: req.query.saved === '1',
+  });
+});
+
+app.post('/api/vendas/mensagens', requireAdminAuth, async (req, res) => {
+  const { compra, dias5, dia1, diaEvento, hora1, eventStartAt } = req.body;
+  await store.withDb((db) => {
+    db.messageTemplates = { compra, dias5, dia1, diaEvento, hora1 };
+    // datetime-local has no offset; treat it as Brasilia time explicitly so
+    // the reminder schedule doesn't shift with the server's own OS timezone.
+    if (eventStartAt) db.eventStartAt = new Date(`${eventStartAt}:00-03:00`).toISOString();
+  });
+  res.redirect('/vendas/mensagens?saved=1');
+});
+
 app.listen(PORT, () => {
   console.log(`Crewolada rodando em http://localhost:${PORT}`);
+  startReminderScheduler();
 });

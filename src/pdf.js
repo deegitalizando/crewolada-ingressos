@@ -56,7 +56,18 @@ function buildTicketPdf({ eventInfo, order, ticket }) {
       .fontSize(14)
       .text(ticket.code, 24, 418, { width: 272, align: 'center' });
 
-    doc.moveTo(40, 450).lineTo(280, 450).strokeColor(GOLD).lineWidth(1).stroke();
+    if (ticket.drawNumber) {
+      doc
+        .fillColor('#ffffff')
+        .font('Helvetica-Bold')
+        .fontSize(11)
+        .text(`No do sorteio: ${String(ticket.drawNumber).padStart(6, '0')}`, 24, 438, {
+          width: 272,
+          align: 'center',
+        });
+    }
+
+    doc.moveTo(40, 462).lineTo(280, 462).strokeColor(GOLD).lineWidth(1).stroke();
 
     doc
       .fillColor('#cccccc')
@@ -65,7 +76,7 @@ function buildTicketPdf({ eventInfo, order, ticket }) {
       .text(
         'Apresente este QR Code na entrada do evento. Ingresso pessoal e intransferivel, valido para uma unica entrada. Guarde este arquivo ate o dia da festa.',
         30,
-        468,
+        478,
         { width: 260, align: 'center', lineGap: 3 }
       );
 

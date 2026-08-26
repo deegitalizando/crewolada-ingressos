@@ -1,4 +1,6 @@
 const axios = require('axios');
+const store = require('./store');
+const { getTemplates, renderTemplate } = require('./templates');
 
 function normalizePhone(rawPhone) {
   const digits = String(rawPhone || '').replace(/\D/g, '');
@@ -19,16 +21,29 @@ async function notifyOrderApproved(order, tickets) {
   }
 
   const whatsapp = normalizePhone(order.buyerPhone);
+  const templates = getTemplates(store.load());
 
   for (const ticket of tickets) {
+    const numeroSorteio = ticket.drawNumber ? String(ticket.drawNumber).padStart(6, '0') : '';
+    const mensagemPersonalizada = templates.compra
+      ? renderTemplate(templates.compra, {
+          nome: order.buyerName,
+          nomeLote: order.loteName,
+          codigo: ticket.code,
+          numeroSorteio,
+        })
+      : '';
+
     const payload = {
       nome: order.buyerName,
       email: order.buyerEmail,
       nomeLote: order.loteName,
       codigo: ticket.code,
+      numeroSorteio,
       whatsapp,
       pdfBase64: ticket.pdfBase64,
       fileName: `ingresso-${ticket.code}.pdf`,
+      mensagemPersonalizada,
     };
 
     try {
@@ -47,4 +62,17 @@ async function sendBroadcast(message) {
   await axios.post(webhookUrl, { mensagem: message }, { timeout: 10000 });
 }
 
-module.exports = { notifyOrderApproved, normalizePhone, sendBroadcast };
+// Sends a plain text reminder (no PDF) to a single buyer via WhatsApp + e-mail.
+async function sendReminder({ nome, whatsapp, email, mensagem }) {
+  const webhookUrl = process.env.N8N_REMINDER_WEBHOOK_URL;
+  if (!webhookUrl) {
+    throw new Error('N8N_REMINDER_WEBHOOK_URL nao configurada.');
+  }
+  await axios.post(
+    webhookUrl,
+    { nome, whatsapp: normalizePhone(whatsapp), email, mensagem },
+    { timeout: 10000 }
+  );
+}
+
+module.exports = { notifyOrderApproved, normalizePhone, sendBroadcast, sendReminder };
