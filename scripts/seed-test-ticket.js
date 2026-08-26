@@ -1,7 +1,7 @@
 require('dotenv').config();
 const crypto = require('crypto');
 const store = require('../src/store');
-const { buildTicketsForOrder } = require('../src/tickets');
+const { buildTicketRecords, attachPdf } = require('../src/tickets');
 
 const eventInfo = {
   name: process.env.EVENT_NAME || 'Crewolada',
@@ -27,7 +27,19 @@ async function main() {
     updatedAt: new Date().toISOString(),
   };
 
-  const tickets = await buildTicketsForOrder(order, eventInfo);
+  const tickets = await buildTicketRecords(order);
+
+  await store.withDb((db) => {
+    tickets.forEach((t) => {
+      db.nextDrawNumber = db.nextDrawNumber || 1;
+      t.drawNumber = db.nextDrawNumber;
+      db.nextDrawNumber += 1;
+    });
+  });
+
+  for (const t of tickets) {
+    await attachPdf(t, order, eventInfo);
+  }
 
   await store.withDb((db) => {
     db.orders[order.id] = order;

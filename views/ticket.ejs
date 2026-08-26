@@ -17,14 +17,17 @@
       </span>
       <img class="qr" src="<%= ticket.qrCodeDataUrl %>" alt="QR code do ingresso" />
       <p class="ticket-code"><%= ticket.code %></p>
-      <% if (ticket.drawNumber) { %>
-        <p class="hint">No do sorteio: <strong><%= String(ticket.drawNumber).padStart(6, '0') %></strong></p>
-      <% } %>
       <% if (order) { %>
         <p class="hint">Titular: <%= order.buyerName %></p>
-        <% if (order.loteName) { %><p class="hint"><%= order.loteName %></p><% } %>
+        <% if (order.loteName) { %>
+          <p class="hint"><%= order.loteName %><% if (order.unitPrice) { %> &middot; R$ <%= order.unitPrice.toFixed(2).replace('.', ',') %><% } %></p>
+        <% } %>
       <% } %>
-      <p class="hint">Apresente este QR code na entrada.</p>
+
+      <div class="alert" style="color:#fecaca; border-color:#ef4444; background:rgba(239,68,68,0.12); font-weight:700; text-align:center">
+        INGRESSO PESSOAL E INTRANSFERIVEL<br />
+        <span style="font-weight:400; font-size:13px">Valido para uma unica entrada. Apresente este QR code na entrada.</span>
+      </div>
 
       <div class="btn-row no-print">
         <button type="button" class="btn-secondary" id="btn-imprimir">Imprimir</button>

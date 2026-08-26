@@ -56,27 +56,33 @@ function buildTicketPdf({ eventInfo, order, ticket }) {
       .fontSize(14)
       .text(ticket.code, 24, 418, { width: 272, align: 'center' });
 
-    if (ticket.drawNumber) {
+    if (order.unitPrice) {
       doc
         .fillColor('#ffffff')
-        .font('Helvetica-Bold')
+        .font('Helvetica')
         .fontSize(11)
-        .text(`No do sorteio: ${String(ticket.drawNumber).padStart(6, '0')}`, 24, 438, {
+        .text(`${order.loteName || ''} - R$ ${Number(order.unitPrice).toFixed(2).replace('.', ',')}`, 24, 440, {
           width: 272,
           align: 'center',
         });
     }
 
-    doc.moveTo(40, 462).lineTo(280, 462).strokeColor(GOLD).lineWidth(1).stroke();
+    doc.moveTo(40, 466).lineTo(280, 466).strokeColor(GOLD).lineWidth(1).stroke();
+
+    doc
+      .fillColor('#ff6b6b')
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .text('INGRESSO PESSOAL E INTRANSFERIVEL', 24, 480, { width: 272, align: 'center' });
 
     doc
       .fillColor('#cccccc')
       .font('Helvetica')
       .fontSize(9)
       .text(
-        'Apresente este QR Code na entrada do evento. Ingresso pessoal e intransferivel, valido para uma unica entrada. Guarde este arquivo ate o dia da festa.',
+        'Valido para uma unica entrada. Apresente este QR Code na entrada do evento. Guarde este arquivo ate o dia da festa.',
         30,
-        478,
+        498,
         { width: 260, align: 'center', lineGap: 3 }
       );
 
