@@ -1,6 +1,6 @@
 const LOTES = [
   // TODO: remover este lote de teste antes da venda valer pra todo mundo.
-  { name: 'Lote Teste', quantity: 2, price: 1.0 },
+  { name: 'Lote Teste', quantity: 10, price: 1.0 },
   { name: '1o Lote', quantity: 50, price: 15.0 },
   { name: '2o Lote', quantity: 150, price: 20.0 },
   { name: '3o Lote', quantity: 800, price: 25.0 },
