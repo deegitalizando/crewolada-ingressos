@@ -1,0 +1,9 @@
+<nav class="nav">
+  <div class="brand">Busca<span>DeClientes</span></div>
+  <div class="links">
+    <a href="/" class="<%= active === 'home' ? 'active' : '' %>">Nova busca</a>
+    <a href="/leads" class="<%= active === 'leads' ? 'active' : '' %>">Leads</a>
+    <a href="/configuracoes" class="<%= active === 'config' ? 'active' : '' %>">Configuracoes</a>
+    <form method="post" action="/logout"><button class="link" type="submit">Sair</button></form>
+  </div>
+</nav>

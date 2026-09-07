@@ -1,0 +1,97 @@
+<%- include('partials/head', { title: lead.name }) %>
+<%- include('partials/nav', { active: 'leads' }) %>
+<div class="container">
+  <p><a href="/leads">&larr; voltar para leads</a></p>
+
+  <% if (enviado === 'whatsapp') { %><div class="alert success">Mensagem enviada por WhatsApp.</div><% } %>
+  <% if (enviado === 'email') { %><div class="alert success">E-mail enviado.</div><% } %>
+  <% if (erro) { %><div class="alert error">Erro ao enviar: <%= erro %></div><% } %>
+
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h1><%= lead.name %></h1>
+        <p class="muted"><%= lead.address %></p>
+        <p>
+          <span class="badge <%= lead.analysis.category %>"><%= CATEGORY_LABELS[lead.analysis.category] %></span>
+          <span class="badge status <%= lead.status %>"><%= lead.status.replace('_',' ') %></span>
+        </p>
+      </div>
+      <div>
+        <p><%= lead.phone || 'sem telefone' %></p>
+        <p><%= lead.rating ? lead.rating + ' ★ (' + lead.userRatingsTotal + ' avaliacoes)' : 'sem avaliacoes' %></p>
+        <% if (lead.website) { %><p><a href="<%= lead.website %>" target="_blank">site atual &rarr;</a></p><% } %>
+        <% if (lead.googleMapsUrl) { %><p><a href="<%= lead.googleMapsUrl %>" target="_blank">ver no Google Maps &rarr;</a></p><% } %>
+      </div>
+    </div>
+
+    <% if (lead.analysis.reasons && lead.analysis.reasons.length) { %>
+      <p><strong>Por que e um bom lead:</strong></p>
+      <ul class="reasons">
+        <% lead.analysis.reasons.forEach(function(r) { %><li><%= r %></li><% }) %>
+      </ul>
+    <% } %>
+
+    <% if (lead.email) { %><p class="muted">E-mail encontrado: <%= lead.email %></p><% } %>
+    <% if (lead.social && (lead.social.instagram || lead.social.facebook)) { %>
+      <p class="muted">
+        Redes sociais:
+        <% if (lead.social.instagram) { %><a href="<%= lead.social.instagram %>" target="_blank">Instagram</a><% } %>
+        <% if (lead.social.facebook) { %> &nbsp;<a href="<%= lead.social.facebook %>" target="_blank">Facebook</a><% } %>
+      </p>
+    <% } %>
+
+    <div class="actions-row">
+      <% if (!lead.site) { %>
+        <form method="post" action="/leads/<%= lead.id %>/gerar-site">
+          <button class="btn" type="submit">Gerar landing page</button>
+        </form>
+      <% } else { %>
+        <a class="btn secondary small" href="/leads/<%= lead.id %>/editar">Editar site</a>
+        <a class="btn secondary small" href="<%= previewLink %>" target="_blank">Abrir previa em nova aba</a>
+        <a class="btn secondary small" href="/leads/<%= lead.id %>/download">Baixar HTML</a>
+        <% if (lead.status !== 'aprovado') { %>
+          <form method="post" action="/leads/<%= lead.id %>/aprovar">
+            <button class="btn small" type="submit">Aprovar site</button>
+          </form>
+        <% } %>
+        <form method="post" action="/leads/<%= lead.id %>/descartar">
+          <button class="btn secondary small" type="submit">Descartar lead</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (lead.site) { %>
+    <div class="card">
+      <h2>Previa da landing page</h2>
+      <iframe class="preview-frame" src="<%= previewLink %>"></iframe>
+    </div>
+
+    <div class="card">
+      <h2>Enviar pelo WhatsApp</h2>
+      <form method="post" action="/leads/<%= lead.id %>/enviar-whatsapp">
+        <label>Telefone (com DDD)</label>
+        <input type="text" name="telefone" value="<%= lead.phone %>" required />
+        <label>Mensagem</label>
+        <textarea name="mensagem" rows="6"><%= whatsappPreview %></textarea>
+        <button class="btn whatsapp" type="submit">Enviar WhatsApp</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Enviar por e-mail</h2>
+      <form method="post" action="/leads/<%= lead.id %>/enviar-email">
+        <label>E-mail</label>
+        <input type="email" name="email" value="<%= lead.email || '' %>" required />
+        <label>Assunto</label>
+        <input type="text" name="assunto" value="<%= emailSubjectPreview %>" />
+        <label>Mensagem</label>
+        <textarea name="mensagem" rows="8"><%= emailBodyPreview %></textarea>
+        <button class="btn secondary" type="submit">Enviar e-mail</button>
+      </form>
+    </div>
+  <% } %>
+</div>
+</body>
+</html>

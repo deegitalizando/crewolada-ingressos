@@ -1,0 +1,34 @@
+<%- include('partials/head', { title: 'Configuracoes' }) %>
+<%- include('partials/nav', { active: 'config' }) %>
+<div class="container">
+  <h1>Configuracoes</h1>
+
+  <div class="card">
+    <h2>Status da integracao</h2>
+    <ul class="checklist">
+      <li><span class="dot <%= env.googleMaps ? 'ok' : 'off' %>"></span> Google Maps API <%= env.googleMaps ? '(configurada)' : '(faltando GOOGLE_MAPS_API_KEY)' %></li>
+      <li><span class="dot <%= env.whatsappReady ? 'ok' : 'off' %>"></span> Envio de WhatsApp via <%= env.messagingMode %> <%= env.whatsappReady ? '(configurado)' : '(faltando variaveis no .env)' %></li>
+      <li><span class="dot <%= env.smtpReady ? 'ok' : 'off' %>"></span> Envio de e-mail (SMTP) <%= env.smtpReady ? '(configurado)' : '(opcional - faltando SMTP no .env)' %></li>
+    </ul>
+    <p class="muted">Essas variaveis ficam no arquivo <code>.env</code> do servidor (veja <code>.env.example</code> e o README).</p>
+  </div>
+
+  <div class="card">
+    <h2>Mensagens padrao</h2>
+    <p class="muted">Use <code>{{nome}}</code>, <code>{{negocio}}</code> e <code>{{link}}</code> - sao substituidos automaticamente pelo nome do negocio e pelo link da previa gerada.</p>
+    <form method="post" action="/configuracoes">
+      <label>Mensagem padrao do WhatsApp</label>
+      <textarea name="whatsappTemplate" rows="6"><%= settings.whatsappTemplate %></textarea>
+
+      <label>Assunto padrao do e-mail</label>
+      <input type="text" name="emailSubject" value="<%= settings.emailSubject %>" />
+
+      <label>Mensagem padrao do e-mail</label>
+      <textarea name="emailTemplate" rows="8"><%= settings.emailTemplate %></textarea>
+
+      <button class="btn" type="submit">Salvar</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

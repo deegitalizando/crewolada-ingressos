@@ -1,0 +1,80 @@
+<%- include('partials/head', { title: 'Resultados da busca' }) %>
+<%- include('partials/nav', { active: 'home' }) %>
+<div class="container">
+  <h1><%= search.segmentLabel %> &middot; <%= search.location.query %></h1>
+  <p class="subtitle">Raio de <%= search.radiusKm %>km &middot; <%= search.location.formattedAddress %></p>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="num" id="stat-total"><%= search.totalFound %></div><div class="label">encontrados</div></div>
+    <div class="stat"><div class="num" id="stat-processed"><%= search.processedCount %></div><div class="label">analisados</div></div>
+    <div class="stat"><div class="num" id="stat-status">
+      <% if (search.status === 'processando') { %><span class="spinner"></span><% } else { %><%= search.status %><% } %>
+    </div><div class="label">status</div></div>
+  </div>
+
+  <div class="card" style="padding:0;">
+    <table>
+      <thead>
+        <tr><th>Negocio</th><th>Situacao do site</th><th>Avaliacao</th><th>Telefone</th><th></th></tr>
+      </thead>
+      <tbody id="leads-body">
+        <% leads.sort((a,b) => b.analysis.score - a.analysis.score).forEach(function(l) { %>
+          <tr>
+            <td><strong><%= l.name %></strong><br /><span class="muted"><%= l.address %></span></td>
+            <td><span class="badge <%= l.analysis.category %>"><%= CATEGORY_LABELS[l.analysis.category] %></span></td>
+            <td><%= l.rating ? l.rating + ' ★ (' + l.userRatingsTotal + ')' : '-' %></td>
+            <td><%= l.phone || '-' %></td>
+            <td><a href="/leads/<%= l.id %>">ver lead &rarr;</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (!leads.length && search.status === 'concluida') { %>
+      <p class="muted" style="padding: 20px;">Nenhum negocio encontrado nessa regiao/raio. Tente aumentar o raio ou mudar o termo de busca.</p>
+    <% } %>
+  </div>
+</div>
+<script>
+  const searchId = <%- JSON.stringify(search.id) %>;
+  const categoryLabels = <%- JSON.stringify(CATEGORY_LABELS) %>;
+
+  function badge(cls, text) {
+    return `<span class="badge ${cls}">${text}</span>`;
+  }
+
+  function renderRows(leads) {
+    const body = document.getElementById('leads-body');
+    body.innerHTML = leads
+      .sort((a, b) => b.score - a.score)
+      .map((l) => `
+        <tr>
+          <td><strong>${l.name}</strong><br /><span class="muted">${l.address || ''}</span></td>
+          <td>${badge(l.category, l.categoryLabel)}</td>
+          <td>${l.rating ? l.rating + ' ★ (' + l.userRatingsTotal + ')' : '-'}</td>
+          <td>${l.phone || '-'}</td>
+          <td><a href="/leads/${l.id}">ver lead &rarr;</a></td>
+        </tr>`)
+      .join('');
+  }
+
+  async function poll() {
+    try {
+      const res = await fetch(`/buscas/${searchId}/status.json`);
+      const data = await res.json();
+      document.getElementById('stat-total').textContent = data.totalFound;
+      document.getElementById('stat-processed').textContent = data.processedCount;
+      document.getElementById('stat-status').innerHTML =
+        data.status === 'processando' ? '<span class="spinner"></span>' : data.status;
+      if (data.leads.length) renderRows(data.leads);
+      if (data.status === 'processando') setTimeout(poll, 2500);
+    } catch (e) {
+      setTimeout(poll, 4000);
+    }
+  }
+  if (document.getElementById('stat-status').textContent.trim() === '' ||
+      <%- JSON.stringify(search.status === 'processando') %>) {
+    setTimeout(poll, 2500);
+  }
+</script>
+</body>
+</html>

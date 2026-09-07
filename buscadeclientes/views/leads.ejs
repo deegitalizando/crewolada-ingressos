@@ -1,0 +1,56 @@
+<%- include('partials/head', { title: 'Leads' }) %>
+<%- include('partials/nav', { active: 'leads' }) %>
+<div class="container">
+  <h1>Leads</h1>
+  <p class="subtitle">Todos os negocios encontrados em todas as buscas, ordenados por prioridade (quem mais precisa de um site novo aparece primeiro).</p>
+
+  <form class="filters" method="get" action="/leads">
+    <select name="categoria" onchange="this.form.submit()">
+      <option value="">Todas as situacoes de site</option>
+      <option value="sem_site" <%= filters.categoria === 'sem_site' ? 'selected' : '' %>>Sem site</option>
+      <option value="rede_social" <%= filters.categoria === 'rede_social' ? 'selected' : '' %>>So rede social</option>
+      <option value="fora_do_ar" <%= filters.categoria === 'fora_do_ar' ? 'selected' : '' %>>Site fora do ar</option>
+      <option value="desatualizado" <%= filters.categoria === 'desatualizado' ? 'selected' : '' %>>Site desatualizado</option>
+      <option value="ok" <%= filters.categoria === 'ok' ? 'selected' : '' %>>Site em dia</option>
+    </select>
+    <select name="status" onchange="this.form.submit()">
+      <option value="">Todos os status</option>
+      <option value="novo" <%= filters.status === 'novo' ? 'selected' : '' %>>Novo</option>
+      <option value="site_gerado" <%= filters.status === 'site_gerado' ? 'selected' : '' %>>Site gerado</option>
+      <option value="aprovado" <%= filters.status === 'aprovado' ? 'selected' : '' %>>Aprovado</option>
+      <option value="enviado_whatsapp" <%= filters.status === 'enviado_whatsapp' ? 'selected' : '' %>>Enviado WhatsApp</option>
+      <option value="enviado_email" <%= filters.status === 'enviado_email' ? 'selected' : '' %>>Enviado e-mail</option>
+      <option value="descartado" <%= filters.status === 'descartado' ? 'selected' : '' %>>Descartado</option>
+    </select>
+    <select name="segmento" onchange="this.form.submit()">
+      <option value="">Todos os segmentos</option>
+      <% segments.forEach(function(s) { %>
+        <option value="<%= s.key %>" <%= filters.segmento === s.key ? 'selected' : '' %>><%= s.label %></option>
+      <% }) %>
+    </select>
+  </form>
+
+  <div class="card" style="padding:0;">
+    <table>
+      <thead>
+        <tr><th>Negocio</th><th>Segmento</th><th>Situacao do site</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        <% leads.forEach(function(l) { %>
+          <tr>
+            <td><strong><%= l.name %></strong><br /><span class="muted"><%= l.address %></span></td>
+            <td><%= l.segmentLabel %></td>
+            <td><span class="badge <%= l.analysis.category %>"><%= CATEGORY_LABELS[l.analysis.category] %></span></td>
+            <td><span class="badge status <%= l.status %>"><%= l.status.replace('_', ' ') %></span></td>
+            <td><a href="/leads/<%= l.id %>">ver &rarr;</a></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% if (!leads.length) { %>
+      <p class="muted" style="padding: 20px;">Nenhum lead encontrado com esses filtros.</p>
+    <% } %>
+  </div>
+</div>
+</body>
+</html>
