@@ -7,7 +7,7 @@ const cookieParser = require('cookie-parser');
 
 const store = require('./store');
 const mp = require('./mercadopago');
-const { getCurrentLote } = require('./lotes');
+const { getLotes, getCurrentLote } = require('./lotes');
 const { approveOrder } = require('./fulfillment');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast } = require('./n8n');
@@ -51,6 +51,28 @@ function getSoldCount(db) {
   return Object.keys(db.tickets).length;
 }
 
+function formatDatetimeLocalBrasilia(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type) => parts.find((p) => p.type === type).value;
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}
+
+// datetime-local has no offset; treat it as Brasilia time explicitly so the
+// schedule doesn't shift depending on the server's own OS timezone.
+function parseDatetimeLocalAsBrasilia(datetimeLocal) {
+  return new Date(`${datetimeLocal}:00-03:00`).toISOString();
+}
+
 // ---- validator auth (in-memory sessions, reset on server restart) ----
 const validatorSessions = new Set();
 
@@ -60,13 +82,13 @@ function requireValidatorAuth(req, res, next) {
   return res.redirect('/validador');
 }
 
-// ---- admin/sales panel auth (in-memory sessions, reset on server restart) ----
+// ---- admin panel auth (in-memory sessions, reset on server restart) ----
 const adminSessions = new Set();
 
 function requireAdminAuth(req, res, next) {
   const token = req.cookies.admin_session;
   if (token && adminSessions.has(token)) return next();
-  return res.redirect('/vendas');
+  return res.redirect('/admin');
 }
 
 // ---------------------------------------------------------------------
@@ -75,7 +97,7 @@ function requireAdminAuth(req, res, next) {
 
 app.get('/', (req, res) => {
   const db = store.load();
-  const lote = getCurrentLote(getSoldCount(db));
+  const lote = getCurrentLote(getLotes(db), getSoldCount(db));
   res.render('index', { eventInfo, lote, maxQty, error: null });
 });
 
@@ -91,7 +113,7 @@ app.get('/termos-de-uso', (req, res) => {
 
 app.get('/checkout/dados', (req, res) => {
   const db = store.load();
-  const lote = getCurrentLote(getSoldCount(db));
+  const lote = getCurrentLote(getLotes(db), getSoldCount(db));
   if (!lote) return res.redirect('/');
 
   const qty = Math.min(Math.max(parseInt(req.query.qty, 10) || 1, 1), Math.min(lote.remaining, maxQty));
@@ -116,7 +138,7 @@ app.post('/api/pagamentos', async (req, res) => {
     }
 
     const db = store.load();
-    const lote = getCurrentLote(getSoldCount(db));
+    const lote = getCurrentLote(getLotes(db), getSoldCount(db));
     if (!lote) {
       return res.status(400).json({ error: 'Os ingressos deste lote se esgotaram.' });
     }
@@ -327,13 +349,17 @@ app.post('/api/validar', requireValidatorAuth, async (req, res) => {
 });
 
 // ---------------------------------------------------------------------
-// Painel de vendas
+// Painel administrativo (/admin)
 // ---------------------------------------------------------------------
 
-app.get('/vendas', (req, res) => {
+// Backward-compatible redirects from the old /vendas paths.
+app.get('/vendas', (req, res) => res.redirect('/admin'));
+app.get('/vendas/mensagens', (req, res) => res.redirect('/admin/mensagens'));
+
+app.get('/admin', (req, res) => {
   const token = req.cookies.admin_session;
   if (!token || !adminSessions.has(token)) {
-    return res.render('vendas_login', { eventInfo, error: null });
+    return res.render('admin_login', { eventInfo, error: null });
   }
 
   const db = store.load();
@@ -353,7 +379,7 @@ app.get('/vendas', (req, res) => {
     loteMap[o.loteName].revenue += o.totalAmount;
   });
 
-  res.render('vendas', {
+  res.render('admin_dashboard', {
     eventInfo,
     stats,
     loteBreakdown: Object.values(loteMap),
@@ -362,7 +388,7 @@ app.get('/vendas', (req, res) => {
   });
 });
 
-app.post('/vendas/login', (req, res) => {
+app.post('/admin/login', (req, res) => {
   const { login, password } = req.body;
   if (login === process.env.ADMIN_LOGIN && password === process.env.ADMIN_PASSWORD) {
     const token = crypto.randomBytes(24).toString('hex');
@@ -372,19 +398,19 @@ app.post('/vendas/login', (req, res) => {
       sameSite: 'lax',
       maxAge: 12 * 60 * 60 * 1000,
     });
-    return res.redirect('/vendas');
+    return res.redirect('/admin');
   }
-  return res.status(401).render('vendas_login', { eventInfo, error: 'Login ou senha incorretos.' });
+  return res.status(401).render('admin_login', { eventInfo, error: 'Login ou senha incorretos.' });
 });
 
-app.post('/vendas/logout', (req, res) => {
+app.post('/admin/logout', (req, res) => {
   const token = req.cookies.admin_session;
   if (token) adminSessions.delete(token);
   res.clearCookie('admin_session');
-  res.redirect('/vendas');
+  res.redirect('/admin');
 });
 
-app.post('/api/vendas/broadcast', requireAdminAuth, async (req, res) => {
+app.post('/api/admin/broadcast', requireAdminAuth, async (req, res) => {
   const mensagem = String(req.body.mensagem || '').trim();
   if (!mensagem) {
     return res.status(400).json({ error: 'Mensagem vazia.' });
@@ -398,42 +424,85 @@ app.post('/api/vendas/broadcast', requireAdminAuth, async (req, res) => {
   }
 });
 
-app.get('/vendas/mensagens', requireAdminAuth, (req, res) => {
+app.get('/admin/lotes', requireAdminAuth, (req, res) => {
   const db = store.load();
-  let eventStartAtLocal = '';
-  if (db.eventStartAt) {
-    const d = new Date(db.eventStartAt);
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/Sao_Paulo',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }).formatToParts(d);
-    const get = (type) => parts.find((p) => p.type === type).value;
-    eventStartAtLocal = `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+  const lotes = getLotes(db);
+  const soldCount = getSoldCount(db);
+  res.render('admin_lotes', { eventInfo, lotes, soldCount, saved: req.query.saved === '1' });
+});
+
+app.post('/api/admin/lotes', requireAdminAuth, async (req, res) => {
+  const raw = req.body.lotes || {};
+  const lotes = Object.values(raw)
+    .map((l) => ({
+      name: String(l.name || '').trim(),
+      quantity: Math.max(0, parseInt(l.quantity, 10) || 0),
+      price: Math.max(0, Number(l.price) || 0),
+    }))
+    .filter((l) => l.name && l.quantity > 0);
+
+  if (lotes.length === 0) {
+    return res.status(400).send('Cadastre pelo menos um lote valido.');
   }
 
-  res.render('vendas_mensagens', {
+  await store.withDb((db) => {
+    db.lotes = lotes;
+  });
+
+  res.redirect('/admin/lotes?saved=1');
+});
+
+app.get('/admin/mensagens', requireAdminAuth, (req, res) => {
+  const db = store.load();
+  const campaigns = (db.campaigns || []).slice().sort((a, b) => new Date(a.sendAt) - new Date(b.sendAt));
+
+  res.render('admin_mensagens', {
     eventInfo,
     templates: getTemplates(db),
-    eventStartAtLocal,
+    eventStartAtLocal: formatDatetimeLocalBrasilia(db.eventStartAt),
     remindersSent: db.remindersSent || {},
+    campaigns: campaigns.map((c) => ({ ...c, sendAtLocal: formatDatetimeLocalBrasilia(c.sendAt) })),
     saved: req.query.saved === '1',
   });
 });
 
-app.post('/api/vendas/mensagens', requireAdminAuth, async (req, res) => {
+app.post('/api/admin/mensagens', requireAdminAuth, async (req, res) => {
   const { compra, dias5, dia1, diaEvento, hora1, eventStartAt } = req.body;
   await store.withDb((db) => {
     db.messageTemplates = { compra, dias5, dia1, diaEvento, hora1 };
-    // datetime-local has no offset; treat it as Brasilia time explicitly so
-    // the reminder schedule doesn't shift with the server's own OS timezone.
-    if (eventStartAt) db.eventStartAt = new Date(`${eventStartAt}:00-03:00`).toISOString();
+    if (eventStartAt) db.eventStartAt = parseDatetimeLocalAsBrasilia(eventStartAt);
   });
-  res.redirect('/vendas/mensagens?saved=1');
+  res.redirect('/admin/mensagens?saved=1');
+});
+
+app.post('/api/admin/campanhas', requireAdminAuth, async (req, res) => {
+  const mensagem = String(req.body.mensagem || '').trim();
+  const sendAtLocal = req.body.sendAt;
+  if (!mensagem || !sendAtLocal) {
+    return res.redirect('/admin/mensagens');
+  }
+
+  const campaign = {
+    id: crypto.randomUUID(),
+    mensagem,
+    sendAt: parseDatetimeLocalAsBrasilia(sendAtLocal),
+    sent: false,
+    createdAt: new Date().toISOString(),
+  };
+
+  await store.withDb((db) => {
+    db.campaigns = db.campaigns || [];
+    db.campaigns.push(campaign);
+  });
+
+  res.redirect('/admin/mensagens?saved=1');
+});
+
+app.post('/api/admin/campanhas/:id/excluir', requireAdminAuth, async (req, res) => {
+  await store.withDb((db) => {
+    db.campaigns = (db.campaigns || []).filter((c) => c.id !== req.params.id);
+  });
+  res.redirect('/admin/mensagens?saved=1');
 });
 
 app.listen(PORT, () => {

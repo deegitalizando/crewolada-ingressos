@@ -1,22 +1,23 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <title>Painel de Vendas - <%= eventInfo.name %></title>
+  <title>Painel Admin - <%= eventInfo.name %></title>
   <%- include('partials/head') %>
 </head>
 <body>
   <div class="page page-wide">
     <header class="hero hero-sm">
       <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
-      <h1>Painel de Vendas</h1>
-      <form action="/vendas/logout" method="POST" class="logout-form">
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
         <button type="submit" class="link-btn">Sair</button>
       </form>
     </header>
 
     <nav class="tabs-row">
-      <a href="/vendas" class="tab active">Vendas</a>
-      <a href="/vendas/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/admin" class="tab active">Vendas</a>
+      <a href="/admin/lotes" class="tab">Lotes</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
     </nav>
 
     <main class="card">
@@ -71,7 +72,7 @@
     </main>
 
     <main class="card">
-      <h3>Compradores</h3>
+      <h3>Compradores / leads</h3>
       <div class="table-wrap">
         <table>
           <thead>
@@ -115,7 +116,7 @@
       const btn = form.querySelector('button');
       btn.disabled = true;
       try {
-        const res = await fetch('/api/vendas/broadcast', {
+        const res = await fetch('/api/admin/broadcast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mensagem }),

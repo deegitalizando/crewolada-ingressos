@@ -29,42 +29,63 @@ function getMilestoneDates(eventStartAt) {
   };
 }
 
+async function sendToAllPaidBuyers(db, messageTemplate) {
+  const buyers = Object.values(db.orders).filter((o) => o.status === 'paid');
+  for (const order of buyers) {
+    const mensagem = renderTemplate(messageTemplate, { nome: order.buyerName });
+    try {
+      await sendReminder({
+        nome: order.buyerName,
+        whatsapp: order.buyerPhone,
+        email: order.buyerEmail,
+        mensagem,
+      });
+    } catch (err) {
+      console.error(`Falha ao enviar mensagem para ${order.buyerEmail}:`, err.message);
+    }
+  }
+}
+
 async function checkAndSendReminders() {
   const db = store.load();
-  if (!db.eventStartAt) return;
 
-  const milestoneDates = getMilestoneDates(db.eventStartAt);
-  if (!milestoneDates) return;
+  // Fixed milestones tied to the event date.
+  if (db.eventStartAt) {
+    const milestoneDates = getMilestoneDates(db.eventStartAt);
+    if (milestoneDates) {
+      const sent = db.remindersSent || {};
+      const now = new Date();
+      const templates = getTemplates(db);
 
-  const sent = db.remindersSent || {};
-  const now = new Date();
-  const templates = getTemplates(db);
+      for (const key of MILESTONES) {
+        if (sent[key]) continue;
+        if (now < milestoneDates[key]) continue;
 
-  for (const key of MILESTONES) {
-    if (sent[key]) continue;
-    if (now < milestoneDates[key]) continue;
-
-    // Claim this milestone immediately so a slow send loop (or a second
-    // process) can't fire it twice.
-    await store.withDb((d) => {
-      d.remindersSent = d.remindersSent || {};
-      d.remindersSent[key] = true;
-    });
-
-    const buyers = Object.values(db.orders).filter((o) => o.status === 'paid');
-    for (const order of buyers) {
-      const mensagem = renderTemplate(templates[key], { nome: order.buyerName });
-      try {
-        await sendReminder({
-          nome: order.buyerName,
-          whatsapp: order.buyerPhone,
-          email: order.buyerEmail,
-          mensagem,
+        // Claim this milestone immediately so a slow send loop (or a second
+        // process) can't fire it twice.
+        await store.withDb((d) => {
+          d.remindersSent = d.remindersSent || {};
+          d.remindersSent[key] = true;
         });
-      } catch (err) {
-        console.error(`Falha ao enviar lembrete "${key}" para ${order.buyerEmail}:`, err.message);
+
+        await sendToAllPaidBuyers(db, templates[key]);
       }
     }
+  }
+
+  // Free-form scheduled campaigns created in /admin/mensagens.
+  const campaigns = db.campaigns || [];
+  const now = new Date();
+  for (const campaign of campaigns) {
+    if (campaign.sent) continue;
+    if (now < new Date(campaign.sendAt)) continue;
+
+    await store.withDb((d) => {
+      const c = (d.campaigns || []).find((x) => x.id === campaign.id);
+      if (c) c.sent = true;
+    });
+
+    await sendToAllPaidBuyers(db, campaign.mensagem);
   }
 }
 
