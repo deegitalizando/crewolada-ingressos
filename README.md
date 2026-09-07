@@ -2,8 +2,6 @@
 
 Sistema de venda de ingressos por lotes, com QR code, numeracao para sorteio, PDF do ingresso, checkout embutido via Mercado Pago, validador de entrada e painel de vendas com lembretes automaticos.
 
-> Este repositorio tambem contem, na pasta [`buscadeclientes/`](buscadeclientes/README.md), a ferramenta de prospeccao de clientes da Deegitalizando (independente deste app de ingressos, com seu proprio `package.json` e processo).
-
 ## Como rodar
 
 ```bash
