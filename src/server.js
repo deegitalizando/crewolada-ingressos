@@ -13,6 +13,18 @@ const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
 // showing "restam X ingressos" as an urgency nudge. Above that, the exact
 // count stays hidden.
 const LOW_STOCK_THRESHOLD = 49;
+
+// The exact phrase the "Receber no WhatsApp" button pre-fills — the n8n
+// workflow matches on this same text to know the buyer wants their ticket
+// resent (as opposed to a general question for the AI to answer).
+const WHATSAPP_TICKET_TRIGGER_TEXT = 'Quero receber meu ingresso da Crewolada 🎟️';
+
+function buildWhatsappTicketLink() {
+  const ddi = process.env.DEFAULT_COUNTRY_CODE || '55';
+  const rawNumber = (process.env.BUSINESS_WHATSAPP_NUMBER || '2139557816').replace(/\D/g, '');
+  const number = rawNumber.startsWith(ddi) ? rawNumber : `${ddi}${rawNumber}`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(WHATSAPP_TICKET_TRIGGER_TEXT)}`;
+}
 const { approveOrder } = require('./fulfillment');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved } = require('./n8n');
@@ -233,7 +245,7 @@ app.get('/pedido/:id', (req, res) => {
   if (!order) return res.status(404).send('Pedido nao encontrado.');
 
   const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
-  res.render('order_status', { eventInfo, order, tickets });
+  res.render('order_status', { eventInfo, order, tickets, whatsappTicketLink: buildWhatsappTicketLink() });
 });
 
 app.get('/pedido/:id/participantes', (req, res) => {
@@ -502,11 +514,49 @@ app.post('/api/admin/pedidos/:id/reenviar', requireAdminAuth, async (req, res) =
   if (tickets.length === 0) return res.status(400).json({ error: 'Nenhum ingresso encontrado para este pedido.' });
 
   try {
-    await notifyOrderApproved(order, tickets);
+    await notifyOrderApproved(order, tickets, { origin: 'reenvio' });
     return res.json({ ok: true });
   } catch (err) {
     console.error(`Erro ao reenviar pedido ${order.id}:`, err.message);
     return res.status(500).json({ error: 'Nao foi possivel reenviar. Tente novamente.' });
+  }
+});
+
+// Called by n8n when a customer messages the WhatsApp number asking for their
+// ticket. Looks up the most recent paid order for that phone number and, if
+// found, resends it (WhatsApp + e-mail) — this is a reply within a
+// conversation the customer started, so it doesn't risk the number being
+// flagged for cold-starting conversations the way the automatic post-purchase
+// send would.
+app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
+  const secret = process.env.N8N_CALLBACK_SECRET;
+  if (secret && req.headers['x-callback-secret'] !== secret) {
+    return res.status(401).json({ found: false, error: 'unauthorized' });
+  }
+
+  const phone = String(req.body.telefone || '').replace(/\D/g, '');
+  if (!phone) return res.status(400).json({ found: false });
+
+  const normalize = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+  const targetSuffix = normalize(phone);
+
+  const db = store.load();
+  const matchingOrders = Object.values(db.orders)
+    .filter((o) => o.status === 'paid' && normalize(o.buyerPhone) === targetSuffix)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  if (matchingOrders.length === 0) return res.json({ found: false });
+
+  const order = matchingOrders[0];
+  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
+  if (tickets.length === 0) return res.json({ found: false });
+
+  try {
+    await notifyOrderApproved(order, tickets, { origin: 'reenvio' });
+    return res.json({ found: true, buyerName: order.buyerName });
+  } catch (err) {
+    console.error(`Erro ao reenviar ingresso por telefone (pedido ${order.id}):`, err.message);
+    return res.status(500).json({ found: false, error: 'send_failed' });
   }
 });
 

@@ -15,10 +15,16 @@
       <% if (order.status === 'paid') { %>
         <span class="lote-tag">Compra aprovada</span>
         <h2>Parabens! Seu ingresso esta garantido 🎉</h2>
-        <p class="hint" style="margin-top:0">Tambem enviamos tudo no seu WhatsApp e no seu e-mail. Clique abaixo para ver seu ingresso:</p>
+        <p class="hint" style="margin-top:0">Ja enviamos tudo para o seu e-mail. Voce tambem pode ver o ingresso aqui embaixo, ou receber no WhatsApp clicando no botao verde.</p>
+
+        <a href="<%= whatsappTicketLink %>" target="_blank" rel="noopener" style="display:block; margin-top:16px">
+          <button type="button" style="background:#22c55e; border-color:#22c55e">📲 Receber ingresso no WhatsApp</button>
+        </a>
+        <p class="hint" style="font-size:12px">Isso abre o WhatsApp com uma mensagem pronta — e so tocar em enviar.</p>
+
         <div class="form" style="margin-top:16px">
           <% tickets.forEach(function(t, i) { %>
-            <a href="/ingresso/<%= t.code %>"><button type="button">Ver meu ingresso<%= tickets.length > 1 ? ' ' + (i + 1) : '' %></button></a>
+            <a href="/ingresso/<%= t.code %>"><button type="button" class="btn-secondary">Ver meu ingresso<%= tickets.length > 1 ? ' ' + (i + 1) : '' %></button></a>
           <% }) %>
           <% if (tickets.length > 1) { %>
             <a href="/pedido/<%= order.id %>/participantes"><button type="button" class="btn-secondary">Cadastrar participantes</button></a>

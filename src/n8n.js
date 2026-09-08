@@ -13,7 +13,15 @@ function normalizePhone(rawPhone) {
 // "Receber Ingresso Aprovado"), which sends the ticket PDF via WhatsApp
 // (Evolution API) and by e-mail (Gmail) in parallel. One HTTP call is made
 // per ticket so each buyer gets one PDF per person.
-async function notifyOrderApproved(order, tickets) {
+//
+// `origin` tells the workflow whether the automatic, business-initiated
+// WhatsApp send should fire: 'compra' (default, right after payment) skips
+// it — starting a WhatsApp conversation the buyer never messaged first is
+// exactly what gets a number rate-limited/flagged as spam. 'reenvio' (an
+// admin resend, or the buyer texting in to ask for their ticket) sends it,
+// since that's a reply within an existing conversation, not a cold start.
+// E-mail always sends either way.
+async function notifyOrderApproved(order, tickets, { origin = 'compra' } = {}) {
   const webhookUrl = process.env.N8N_WEBHOOK_URL;
   if (!webhookUrl) {
     console.warn('N8N_WEBHOOK_URL nao configurada, pulando notificacao.');
@@ -44,6 +52,7 @@ async function notifyOrderApproved(order, tickets) {
       pdfBase64: ticket.pdfBase64,
       fileName: `ingresso-${ticket.code}.pdf`,
       mensagemPersonalizada,
+      origem: origin,
     };
 
     try {
