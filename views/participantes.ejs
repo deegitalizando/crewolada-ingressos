@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Participantes do pedido - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <p class="hero-sub"><%= eventInfo.dateLabel %> &middot; <%= eventInfo.venue %></p>
+    </header>
+
+    <main class="card">
+      <h2>Quem vai usar cada ingresso?</h2>
+      <p class="hint" style="margin-top:0">
+        Seu pedido tem <%= tickets.length %> ingresso<%= tickets.length === 1 ? '' : 's' %>. Preencha o nome, e-mail e WhatsApp de cada participante
+        para termos o controle de quem vai comparecer. Voce pode voltar aqui e editar essas informacoes ate o dia do evento.
+      </p>
+
+      <% if (saved) { %>
+        <div class="alert" style="background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac">Salvo com sucesso.</div>
+      <% } %>
+
+      <form action="/api/pedido/<%= order.id %>/participantes" method="POST" class="form">
+        <% tickets.forEach(function(t, i) { %>
+          <div class="template-box">
+            <h3 style="margin-top:0">Ingresso <%= i + 1 %> &middot; <%= t.code %></h3>
+            <label>
+              Nome completo
+              <input type="text" name="participantes[<%= t.code %>][name]"
+                value="<%= t.participantName || (i === 0 ? order.buyerName : '') %>" />
+            </label>
+            <label>
+              E-mail
+              <input type="email" name="participantes[<%= t.code %>][email]"
+                value="<%= t.participantEmail || (i === 0 ? order.buyerEmail : '') %>" />
+            </label>
+            <label>
+              WhatsApp
+              <input type="text" name="participantes[<%= t.code %>][phone]"
+                value="<%= t.participantPhone || (i === 0 ? order.buyerPhone : '') %>" />
+            </label>
+          </div>
+        <% }) %>
+
+        <button type="submit">Salvar participantes</button>
+      </form>
+
+      <div class="btn-row" style="margin-top:16px">
+        <a href="/pedido/<%= order.id %>"><button type="button" class="btn-secondary">Voltar ao pedido</button></a>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

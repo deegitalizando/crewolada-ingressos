@@ -9,10 +9,19 @@
     <img class="flyer" src="/img/flyer.png" alt="<%= eventInfo.name %>" />
 
     <main class="card">
+      <% if (soldOutLotes && soldOutLotes.length > 0) { %>
+        <% soldOutLotes.forEach(function(nome) { %>
+          <div class="alert" style="background:#ef4444;border-color:#ef4444;color:#fff;font-weight:800;text-align:center;letter-spacing:0.5px;text-transform:uppercase;padding:12px;margin-bottom:16px">
+            <%= nome %> ESGOTADO
+          </div>
+        <% }) %>
+      <% } %>
       <% if (lote) { %>
         <span class="lote-tag"><%= lote.name %></span>
         <p class="price">R$ <%= lote.price.toFixed(2).replace('.', ',') %> <span>por pessoa</span></p>
-        <p class="remaining-hint"><%= lote.remaining %> ingresso<%= lote.remaining === 1 ? '' : 's' %> restante<%= lote.remaining === 1 ? '' : 's' %> neste lote</p>
+        <% if (lote.remaining <= lowStockThreshold) { %>
+          <p class="remaining-hint"><%= lote.remaining %> ingresso<%= lote.remaining === 1 ? '' : 's' %> restante<%= lote.remaining === 1 ? '' : 's' %> neste lote</p>
+        <% } %>
 
         <% if (error) { %>
           <div class="alert"><%= error %></div>

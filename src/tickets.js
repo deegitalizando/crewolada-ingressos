@@ -26,6 +26,12 @@ async function buildTicketRecords(order) {
       drawNumber: null,
       status: 'valid',
       usedAt: null,
+      // Who actually attends with this specific ticket, for orders with more
+      // than one ticket. Null until the buyer fills it in on /pedido/:id/participantes;
+      // order.buyerName/Email/Phone is used as the fallback everywhere this is displayed.
+      participantName: null,
+      participantEmail: null,
+      participantPhone: null,
       createdAt: new Date().toISOString(),
     });
   }

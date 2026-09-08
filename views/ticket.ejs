@@ -18,7 +18,7 @@
       <img class="qr" src="<%= ticket.qrCodeDataUrl %>" alt="QR code do ingresso" />
       <p class="ticket-code"><%= ticket.code %></p>
       <% if (order) { %>
-        <p class="hint">Titular: <%= order.buyerName %></p>
+        <p class="hint">Participante: <%= ticket.participantName || order.buyerName %></p>
         <% if (order.loteName) { %>
           <p class="hint"><%= order.loteName %><% if (order.unitPrice) { %> &middot; R$ <%= order.unitPrice.toFixed(2).replace('.', ',') %><% } %></p>
         <% } %>

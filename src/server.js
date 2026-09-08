@@ -7,7 +7,12 @@ const cookieParser = require('cookie-parser');
 
 const store = require('./store');
 const mp = require('./mercadopago');
-const { getLotes, getCurrentLote } = require('./lotes');
+const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
+
+// Once a lote has this many tickets or fewer left, the sales page starts
+// showing "restam X ingressos" as an urgency nudge. Above that, the exact
+// count stays hidden.
+const LOW_STOCK_THRESHOLD = 49;
 const { approveOrder } = require('./fulfillment');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast } = require('./n8n');
@@ -47,8 +52,14 @@ function describeRejection(statusDetail) {
   return REJECTION_MESSAGES[statusDetail] || 'Pagamento recusado. Tente outro cartao ou meio de pagamento.';
 }
 
+// Tickets sold under "Lote Teste" don't count toward real lote inventory —
+// those buyers keep their valid tickets, they just don't eat into the real
+// launch's 1o Lote allotment.
 function getSoldCount(db) {
-  return Object.keys(db.tickets).length;
+  return Object.values(db.tickets).filter((t) => {
+    const order = db.orders[t.orderId];
+    return !order || order.loteName !== 'Lote Teste';
+  }).length;
 }
 
 function formatDatetimeLocalBrasilia(isoString) {
@@ -97,8 +108,11 @@ function requireAdminAuth(req, res, next) {
 
 app.get('/', (req, res) => {
   const db = store.load();
-  const lote = getCurrentLote(getLotes(db), getSoldCount(db));
-  res.render('index', { eventInfo, lote, maxQty, error: null });
+  const lotes = getLotes(db);
+  const soldCount = getSoldCount(db);
+  const lote = getCurrentLote(lotes, soldCount);
+  const soldOutLotes = getSoldOutLotes(lotes, soldCount);
+  res.render('index', { eventInfo, lote, maxQty, error: null, soldOutLotes, lowStockThreshold: LOW_STOCK_THRESHOLD });
 });
 
 const LEGAL_UPDATED_AT = '26/08/2026';
@@ -202,6 +216,37 @@ app.get('/pedido/:id', (req, res) => {
 
   const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
   res.render('order_status', { eventInfo, order, tickets });
+});
+
+app.get('/pedido/:id/participantes', (req, res) => {
+  const db = store.load();
+  const order = db.orders[req.params.id];
+  if (!order || order.status !== 'paid') return res.status(404).send('Pedido nao encontrado.');
+
+  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
+  res.render('participantes', { eventInfo, order, tickets, saved: req.query.saved === '1' });
+});
+
+app.post('/api/pedido/:id/participantes', async (req, res) => {
+  const db = store.load();
+  const order = db.orders[req.params.id];
+  if (!order) return res.status(404).send('Pedido nao encontrado.');
+
+  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
+  const submitted = req.body.participantes || {};
+
+  await store.withDb((d) => {
+    tickets.forEach((t) => {
+      const p = submitted[t.code];
+      const ticket = d.tickets[t.code];
+      if (!p || !ticket) return;
+      ticket.participantName = String(p.name || '').trim() || null;
+      ticket.participantEmail = String(p.email || '').trim() || null;
+      ticket.participantPhone = String(p.phone || '').trim() || null;
+    });
+  });
+
+  res.redirect(`/pedido/${order.id}/participantes?saved=1`);
 });
 
 app.get('/api/pedido/:id/status', (req, res) => {

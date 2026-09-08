@@ -33,4 +33,17 @@ function getTotalCapacity(lotes) {
   return lotes.reduce((sum, l) => sum + l.quantity, 0);
 }
 
-module.exports = { DEFAULT_LOTES, getLotes, getCurrentLote, getTotalCapacity };
+// Names of every lote that has already sold out (comes before the current
+// one in the sequence), used to show an "ESGOTADO" banner on the sales page.
+function getSoldOutLotes(lotes, soldCount) {
+  let floor = 0;
+  const soldOut = [];
+  for (const lote of lotes) {
+    const ceiling = floor + lote.quantity;
+    if (soldCount >= ceiling) soldOut.push(lote.name);
+    floor = ceiling;
+  }
+  return soldOut;
+}
+
+module.exports = { DEFAULT_LOTES, getLotes, getCurrentLote, getTotalCapacity, getSoldOutLotes };
