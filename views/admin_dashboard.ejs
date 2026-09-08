@@ -73,17 +73,22 @@
 
     <main class="card">
       <h3>Compradores / leads</h3>
+      <label style="margin-bottom:14px; display:block">
+        Buscar por nome, e-mail ou WhatsApp
+        <input type="text" id="leads-search" placeholder="Digite para filtrar..." />
+      </label>
+      <div id="reenviar-result" class="alert" style="display:none"></div>
       <div class="table-wrap">
-        <table>
+        <table id="leads-table">
           <thead>
             <tr>
               <th>Nome</th><th>E-mail</th><th>WhatsApp</th><th>CPF</th>
-              <th>Lote</th><th>Qtd</th><th>Total</th><th>Status</th><th>Data</th>
+              <th>Lote</th><th>Qtd</th><th>Total</th><th>Status</th><th>Data da compra</th><th></th>
             </tr>
           </thead>
           <tbody>
             <% orders.forEach(function(o) { %>
-              <tr>
+              <tr data-search="<%= [o.buyerName, o.buyerEmail, o.buyerPhone].join(' ').toLowerCase() %>">
                 <td><%= o.buyerName %></td>
                 <td><%= o.buyerEmail %></td>
                 <td><%= o.buyerPhone %></td>
@@ -92,11 +97,16 @@
                 <td><%= o.quantity %></td>
                 <td>R$ <%= o.totalAmount.toFixed(2).replace('.', ',') %></td>
                 <td><%= o.status %></td>
-                <td><%= new Date(o.createdAt).toLocaleString('pt-BR') %></td>
+                <td><%= o.createdAtLabel %></td>
+                <td>
+                  <% if (o.status === 'paid') { %>
+                    <button type="button" class="btn-secondary btn-reenviar" data-order-id="<%= o.id %>" style="margin-top:0; width:auto; padding:6px 12px; font-size:12px">Reenviar</button>
+                  <% } %>
+                </td>
               </tr>
             <% }) %>
             <% if (orders.length === 0) { %>
-              <tr><td colspan="9" style="text-align:center">Nenhum pedido ainda.</td></tr>
+              <tr><td colspan="10" style="text-align:center">Nenhum pedido ainda.</td></tr>
             <% } %>
           </tbody>
         </table>
@@ -130,6 +140,45 @@
       } finally {
         btn.disabled = false;
       }
+    });
+
+    document.getElementById('leads-search').addEventListener('input', (e) => {
+      const term = e.target.value.trim().toLowerCase();
+      document.querySelectorAll('#leads-table tbody tr[data-search]').forEach((row) => {
+        row.hidden = term.length > 0 && !row.dataset.search.includes(term);
+      });
+    });
+
+    const reenviarResult = document.getElementById('reenviar-result');
+    document.querySelectorAll('.btn-reenviar').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Reenviar o ingresso (WhatsApp + e-mail) para este comprador?')) return;
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = 'Enviando...';
+        try {
+          const res = await fetch(`/api/admin/pedidos/${btn.dataset.orderId}/reenviar`, { method: 'POST' });
+          const data = await res.json();
+          reenviarResult.style.display = 'block';
+          if (res.ok) {
+            reenviarResult.style.background = 'rgba(34,197,94,0.15)';
+            reenviarResult.style.borderColor = '#22c55e';
+            reenviarResult.style.color = '#86efac';
+            reenviarResult.textContent = 'Ingresso reenviado com sucesso!';
+          } else {
+            reenviarResult.style.background = '';
+            reenviarResult.style.borderColor = '';
+            reenviarResult.style.color = '';
+            reenviarResult.textContent = data.error || 'Erro ao reenviar.';
+          }
+        } catch (err) {
+          reenviarResult.style.display = 'block';
+          reenviarResult.textContent = 'Erro de conexao.';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
     });
   </script>
 </body>

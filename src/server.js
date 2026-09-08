@@ -15,7 +15,7 @@ const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
 const LOW_STOCK_THRESHOLD = 49;
 const { approveOrder } = require('./fulfillment');
 const { isValidCpf } = require('./cpf');
-const { sendBroadcast } = require('./n8n');
+const { sendBroadcast, notifyOrderApproved } = require('./n8n');
 const { getTemplates } = require('./templates');
 const { startReminderScheduler } = require('./reminders');
 
@@ -82,6 +82,24 @@ function formatDatetimeLocalBrasilia(isoString) {
 // schedule doesn't shift depending on the server's own OS timezone.
 function parseDatetimeLocalAsBrasilia(datetimeLocal) {
   return new Date(`${datetimeLocal}:00-03:00`).toISOString();
+}
+
+// dd/mm/yyyy hh:mm, explicitly in Brasilia time, for display in the admin
+// panel (independent of the server's own OS timezone, usually UTC).
+function formatDatetimeBrasiliaDisplay(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const get = (type) => parts.find((p) => p.type === type).value;
+  return `${get('day')}/${get('month')}/${get('year')} ${get('hour')}:${get('minute')}`;
 }
 
 // ---- validator auth (in-memory sessions, reset on server restart) ----
@@ -424,11 +442,16 @@ app.get('/admin', (req, res) => {
     loteMap[o.loteName].revenue += o.totalAmount;
   });
 
+  const ordersWithDate = orders.map((o) => ({
+    ...o,
+    createdAtLabel: formatDatetimeBrasiliaDisplay(o.createdAt),
+  }));
+
   res.render('admin_dashboard', {
     eventInfo,
     stats,
     loteBreakdown: Object.values(loteMap),
-    orders,
+    orders: ordersWithDate,
     broadcastConfigured: Boolean(process.env.N8N_BROADCAST_WEBHOOK_URL),
   });
 });
@@ -466,6 +489,24 @@ app.post('/api/admin/broadcast', requireAdminAuth, async (req, res) => {
   } catch (err) {
     console.error('Erro ao disparar broadcast:', err.message);
     return res.status(500).json({ error: 'Nao foi possivel enviar. Confira a configuracao do n8n.' });
+  }
+});
+
+app.post('/api/admin/pedidos/:id/reenviar', requireAdminAuth, async (req, res) => {
+  const db = store.load();
+  const order = db.orders[req.params.id];
+  if (!order) return res.status(404).json({ error: 'Pedido nao encontrado.' });
+  if (order.status !== 'paid') return res.status(400).json({ error: 'Este pedido ainda nao foi pago.' });
+
+  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
+  if (tickets.length === 0) return res.status(400).json({ error: 'Nenhum ingresso encontrado para este pedido.' });
+
+  try {
+    await notifyOrderApproved(order, tickets);
+    return res.json({ ok: true });
+  } catch (err) {
+    console.error(`Erro ao reenviar pedido ${order.id}:`, err.message);
+    return res.status(500).json({ error: 'Nao foi possivel reenviar. Tente novamente.' });
   }
 });
 
