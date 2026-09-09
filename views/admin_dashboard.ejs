@@ -100,7 +100,10 @@
                 <td><%= o.createdAtLabel %></td>
                 <td>
                   <% if (o.status === 'paid') { %>
-                    <button type="button" class="btn-secondary btn-reenviar" data-order-id="<%= o.id %>" style="margin-top:0; width:auto; padding:6px 12px; font-size:12px">Reenviar</button>
+                    <div style="display:flex; gap:6px">
+                      <button type="button" class="btn-secondary btn-reenviar" data-order-id="<%= o.id %>" data-canal="email" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📧 E-mail</button>
+                      <button type="button" class="btn-secondary btn-reenviar" data-order-id="<%= o.id %>" data-canal="whatsapp" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📲 WhatsApp</button>
+                    </div>
                   <% } %>
                 </td>
               </tr>
@@ -150,21 +153,27 @@
     });
 
     const reenviarResult = document.getElementById('reenviar-result');
+    const canalLabel = { email: 'por e-mail', whatsapp: 'por WhatsApp' };
     document.querySelectorAll('.btn-reenviar').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        if (!confirm('Reenviar o ingresso (WhatsApp + e-mail) para este comprador?')) return;
+        const canal = btn.dataset.canal;
+        if (!confirm(`Reenviar o ingresso ${canalLabel[canal]} para este comprador?`)) return;
         btn.disabled = true;
         const original = btn.textContent;
         btn.textContent = 'Enviando...';
         try {
-          const res = await fetch(`/api/admin/pedidos/${btn.dataset.orderId}/reenviar`, { method: 'POST' });
+          const res = await fetch(`/api/admin/pedidos/${btn.dataset.orderId}/reenviar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ canal }),
+          });
           const data = await res.json();
           reenviarResult.style.display = 'block';
           if (res.ok) {
             reenviarResult.style.background = 'rgba(34,197,94,0.15)';
             reenviarResult.style.borderColor = '#22c55e';
             reenviarResult.style.color = '#86efac';
-            reenviarResult.textContent = 'Ingresso reenviado com sucesso!';
+            reenviarResult.textContent = `Reenviado ${canalLabel[canal]}! (isso confirma o disparo, nao a entrega no WhatsApp)`;
           } else {
             reenviarResult.style.background = '';
             reenviarResult.style.borderColor = '';

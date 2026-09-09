@@ -513,8 +513,10 @@ app.post('/api/admin/pedidos/:id/reenviar', requireAdminAuth, async (req, res) =
   const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
   if (tickets.length === 0) return res.status(400).json({ error: 'Nenhum ingresso encontrado para este pedido.' });
 
+  const canal = ['email', 'whatsapp', 'both'].includes(req.body.canal) ? req.body.canal : 'both';
+
   try {
-    await notifyOrderApproved(order, tickets, { origin: 'reenvio' });
+    await notifyOrderApproved(order, tickets, { origin: 'reenvio', channel: canal });
     return res.json({ ok: true });
   } catch (err) {
     console.error(`Erro ao reenviar pedido ${order.id}:`, err.message);

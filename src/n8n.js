@@ -20,8 +20,12 @@ function normalizePhone(rawPhone) {
 // exactly what gets a number rate-limited/flagged as spam. 'reenvio' (an
 // admin resend, or the buyer texting in to ask for their ticket) sends it,
 // since that's a reply within an existing conversation, not a cold start.
-// E-mail always sends either way.
-async function notifyOrderApproved(order, tickets, { origin = 'compra' } = {}) {
+//
+// `channel` lets a 'reenvio' pick which channel(s) actually go out —
+// 'email', 'whatsapp' or 'both' (default) — since WhatsApp delivery can be
+// unreliable and the admin may want to retry just that one channel, or
+// send only e-mail when they know WhatsApp is down.
+async function notifyOrderApproved(order, tickets, { origin = 'compra', channel = 'both' } = {}) {
   const webhookUrl = process.env.N8N_WEBHOOK_URL;
   if (!webhookUrl) {
     console.warn('N8N_WEBHOOK_URL nao configurada, pulando notificacao.');
@@ -53,6 +57,7 @@ async function notifyOrderApproved(order, tickets, { origin = 'compra' } = {}) {
       fileName: `ingresso-${ticket.code}.pdf`,
       mensagemPersonalizada,
       origem: origin,
+      canal: channel,
     };
 
     try {
