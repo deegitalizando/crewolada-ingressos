@@ -73,6 +73,7 @@
 
     <main class="card">
       <h3>Compradores / leads</h3>
+      <p class="hint" style="margin-top:0">O botao WhatsApp abre uma conversa no seu proprio WhatsApp com a mensagem e o link do ingresso ja prontos — e so tocar em enviar. E-mail e enviado direto por aqui.</p>
       <label style="margin-bottom:14px; display:block">
         Buscar por nome, e-mail ou WhatsApp
         <input type="text" id="leads-search" placeholder="Digite para filtrar..." />
@@ -102,7 +103,7 @@
                   <% if (o.status === 'paid') { %>
                     <div style="display:flex; gap:6px">
                       <button type="button" class="btn-secondary btn-reenviar" data-order-id="<%= o.id %>" data-canal="email" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📧 E-mail</button>
-                      <button type="button" class="btn-secondary btn-reenviar" data-order-id="<%= o.id %>" data-canal="whatsapp" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📲 WhatsApp</button>
+                      <a href="<%= o.whatsappResendLink %>" target="_blank" rel="noopener"><button type="button" class="btn-secondary" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📲 WhatsApp</button></a>
                     </div>
                   <% } %>
                 </td>
@@ -153,11 +154,9 @@
     });
 
     const reenviarResult = document.getElementById('reenviar-result');
-    const canalLabel = { email: 'por e-mail', whatsapp: 'por WhatsApp' };
     document.querySelectorAll('.btn-reenviar').forEach((btn) => {
       btn.addEventListener('click', async () => {
-        const canal = btn.dataset.canal;
-        if (!confirm(`Reenviar o ingresso ${canalLabel[canal]} para este comprador?`)) return;
+        if (!confirm('Reenviar o ingresso por e-mail para este comprador?')) return;
         btn.disabled = true;
         const original = btn.textContent;
         btn.textContent = 'Enviando...';
@@ -165,7 +164,7 @@
           const res = await fetch(`/api/admin/pedidos/${btn.dataset.orderId}/reenviar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ canal }),
+            body: JSON.stringify({ canal: 'email' }),
           });
           const data = await res.json();
           reenviarResult.style.display = 'block';
@@ -173,7 +172,7 @@
             reenviarResult.style.background = 'rgba(34,197,94,0.15)';
             reenviarResult.style.borderColor = '#22c55e';
             reenviarResult.style.color = '#86efac';
-            reenviarResult.textContent = `Reenviado ${canalLabel[canal]}! (isso confirma o disparo, nao a entrega no WhatsApp)`;
+            reenviarResult.textContent = 'Ingresso reenviado por e-mail!';
           } else {
             reenviarResult.style.background = '';
             reenviarResult.style.borderColor = '';

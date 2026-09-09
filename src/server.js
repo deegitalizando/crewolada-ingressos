@@ -27,7 +27,19 @@ function buildWhatsappTicketLink() {
 }
 const { approveOrder } = require('./fulfillment');
 const { isValidCpf } = require('./cpf');
-const { sendBroadcast, notifyOrderApproved } = require('./n8n');
+const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
+
+// Builds a wa.me link, pre-filled with the ticket link, that the ADMIN opens
+// in their own WhatsApp to resend a ticket by hand. This bypasses the
+// Evolution API/Baileys automation entirely (unreliable when that WhatsApp
+// session is unstable) since it's the admin's own client sending the
+// message — the admin still has to tap "send" themselves.
+function buildAdminWhatsappResendLink(order) {
+  const phone = normalizePhone(order.buyerPhone);
+  const ticketUrl = `${process.env.BASE_URL}/pedido/${order.id}`;
+  const mensagem = `Oi ${order.buyerName}! Aqui esta o link do seu ingresso da Crewolada 🎟️\n${ticketUrl}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(mensagem)}`;
+}
 const { getTemplates } = require('./templates');
 const { startReminderScheduler } = require('./reminders');
 
@@ -457,6 +469,7 @@ app.get('/admin', (req, res) => {
   const ordersWithDate = orders.map((o) => ({
     ...o,
     createdAtLabel: formatDatetimeBrasiliaDisplay(o.createdAt),
+    whatsappResendLink: buildAdminWhatsappResendLink(o),
   }));
 
   res.render('admin_dashboard', {
