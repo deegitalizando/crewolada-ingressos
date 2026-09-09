@@ -543,6 +543,10 @@ app.post('/api/admin/pedidos/:id/reenviar', requireAdminAuth, async (req, res) =
 // conversation the customer started, so it doesn't risk the number being
 // flagged for cold-starting conversations the way the automatic post-purchase
 // send would.
+//
+// Falls back to a CPF match when the phone doesn't match anything — happens
+// when the buyer messages from a different number than the one used at
+// checkout (personal vs. business WhatsApp, new chip, etc).
 app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
   const secret = process.env.N8N_CALLBACK_SECRET;
   if (secret && req.headers['x-callback-secret'] !== secret) {
@@ -550,15 +554,22 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
   }
 
   const phone = String(req.body.telefone || '').replace(/\D/g, '');
+  const cpf = String(req.body.cpf || '').replace(/\D/g, '');
   if (!phone) return res.status(400).json({ found: false });
 
-  const normalize = (p) => String(p || '').replace(/\D/g, '').slice(-10);
-  const targetSuffix = normalize(phone);
+  const normalizePhoneSuffix = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+  const targetSuffix = normalizePhoneSuffix(phone);
 
   const db = store.load();
-  const matchingOrders = Object.values(db.orders)
-    .filter((o) => o.status === 'paid' && normalize(o.buyerPhone) === targetSuffix)
+  let matchingOrders = Object.values(db.orders)
+    .filter((o) => o.status === 'paid' && normalizePhoneSuffix(o.buyerPhone) === targetSuffix)
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  if (matchingOrders.length === 0 && cpf.length === 11) {
+    matchingOrders = Object.values(db.orders)
+      .filter((o) => o.status === 'paid' && String(o.buyerCpf || '').replace(/\D/g, '') === cpf)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
 
   if (matchingOrders.length === 0) return res.json({ found: false });
 
