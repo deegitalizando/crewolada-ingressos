@@ -252,6 +252,16 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   margin-bottom: 16px;
 }
 
+.btn-ja-comprei {
+  display: block;
+  margin: 0 16px;
+  text-decoration: none;
+}
+.btn-ja-comprei button {
+  background: var(--ok);
+  color: #06210f;
+}
+
 .footer {
   text-align: center;
   padding: 0 16px;
