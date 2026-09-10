@@ -291,6 +291,53 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
   res.redirect(`/pedido/${order.id}/participantes?saved=1`);
 });
 
+// Self-service lookup: buyer types in the CPF, e-mail or WhatsApp used at
+// checkout to find their paid order(s) and get to the participant-registration
+// page, without needing the order id/link from the confirmation e-mail.
+app.get('/meus-ingressos', (req, res) => {
+  res.render('meus_ingressos', { eventInfo, error: null, matches: null, termo: '' });
+});
+
+app.post('/meus-ingressos', (req, res) => {
+  const termo = String(req.body.termo || '').trim();
+  if (!termo) {
+    return res.render('meus_ingressos', { eventInfo, error: 'Digite seu CPF, e-mail ou WhatsApp.', matches: null, termo });
+  }
+
+  const digits = termo.replace(/\D/g, '');
+  const isEmail = termo.includes('@');
+  const phoneSuffix = (p) => String(p || '').replace(/\D/g, '').slice(-10);
+
+  const db = store.load();
+  const orders = Object.values(db.orders)
+    .filter((o) => {
+      if (o.status !== 'paid') return false;
+      if (isEmail) return String(o.buyerEmail || '').trim().toLowerCase() === termo.toLowerCase();
+      if (digits.length === 11) {
+        return String(o.buyerCpf || '').replace(/\D/g, '') === digits || phoneSuffix(o.buyerPhone) === digits.slice(-10);
+      }
+      if (digits.length >= 10) return phoneSuffix(o.buyerPhone) === digits.slice(-10);
+      return false;
+    })
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  if (orders.length === 0) {
+    return res.render('meus_ingressos', {
+      eventInfo,
+      error: 'Nao encontramos nenhuma compra aprovada com esses dados. Confira se digitou certo.',
+      matches: null,
+      termo,
+    });
+  }
+
+  if (orders.length === 1) {
+    return res.redirect(`/pedido/${orders[0].id}/participantes`);
+  }
+
+  const matches = orders.map((o) => ({ ...o, createdAtLabel: formatDatetimeBrasiliaDisplay(o.createdAt) }));
+  res.render('meus_ingressos', { eventInfo, error: null, matches, termo });
+});
+
 app.get('/api/pedido/:id/status', (req, res) => {
   const db = store.load();
   const order = db.orders[req.params.id];

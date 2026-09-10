@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Meus ingressos - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1 class="sr-only"><%= eventInfo.name %></h1>
+    </header>
+
+    <main class="card">
+      <h2>Meus ingressos</h2>
+      <p class="hint" style="margin-top:0">Digite o CPF, e-mail ou WhatsApp usado na compra para ver seus ingressos e cadastrar quem vai usar cada um.</p>
+
+      <% if (error) { %>
+        <div class="alert" style="background:rgba(239,68,68,0.15);border-color:#ef4444;color:#fca5a5"><%= error %></div>
+      <% } %>
+
+      <form action="/meus-ingressos" method="POST" class="form">
+        <label>
+          CPF, e-mail ou WhatsApp
+          <input type="text" name="termo" placeholder="Digite aqui..." required value="<%= termo %>" />
+        </label>
+        <button type="submit">Buscar meus ingressos</button>
+      </form>
+
+      <% if (matches && matches.length > 0) { %>
+        <div class="template-box" style="margin-top:16px">
+          <h3 style="margin-top:0">Encontramos mais de uma compra</h3>
+          <p class="hint" style="margin-top:0">Escolha qual pedido voce quer ver:</p>
+          <div class="form">
+            <% matches.forEach(function(o) { %>
+              <a href="/pedido/<%= o.id %>/participantes">
+                <button type="button" class="btn-secondary"><%= o.loteName %> &middot; <%= o.quantity %> ingresso<%= o.quantity === 1 ? '' : 's' %> &middot; <%= o.createdAtLabel %></button>
+              </a>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+    </main>
+  </div>
+</body>
+</html>
