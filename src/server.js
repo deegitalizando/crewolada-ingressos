@@ -215,6 +215,40 @@ app.get('/ingresso/:code/pdf', (req, res) => {
 });
 
 // ---------------------------------------------------------------------
+// Busca de ingresso por CPF (usada pelo agente de atendimento no n8n)
+// ---------------------------------------------------------------------
+
+app.post('/api/ingressos/buscar', (req, res) => {
+  const secret = process.env.INGRESSOS_LOOKUP_SECRET;
+  if (!secret) return res.status(503).json({ error: 'not_configured' });
+  if (req.get('x-api-key') !== secret) return res.status(401).json({ error: 'unauthorized' });
+
+  const cpf = String(req.body.cpf || '').replace(/\D/g, '');
+  if (!isValidCpf(cpf)) return res.status(400).json({ error: 'cpf_invalido' });
+
+  const db = store.load();
+  const orders = Object.values(db.orders).filter((o) => o.buyerCpf === cpf && o.status === 'paid');
+  if (orders.length === 0) return res.json({ found: false });
+
+  const tickets = [];
+  for (const order of orders) {
+    Object.values(db.tickets)
+      .filter((t) => t.orderId === order.id && t.pdfBase64)
+      .forEach((ticket) => {
+        tickets.push({
+          codigo: ticket.code,
+          numeroSorteio: ticket.drawNumber ? String(ticket.drawNumber).padStart(6, '0') : '',
+          nomeLote: order.loteName,
+          pdfBase64: ticket.pdfBase64,
+          fileName: `ingresso-${ticket.code}.pdf`,
+        });
+      });
+  }
+
+  res.json({ found: tickets.length > 0, nome: orders[0].buyerName, tickets });
+});
+
+// ---------------------------------------------------------------------
 // Mercado Pago webhook (Pix/boleto e confirmacoes assincronas de cartao)
 // ---------------------------------------------------------------------
 
