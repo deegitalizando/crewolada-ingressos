@@ -53,6 +53,10 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+// Available to every view without needing to be passed into each res.render()
+// call individually.
+app.locals.metaPixelId = process.env.FACEBOOK_PIXEL_ID || '';
+
 const eventInfo = {
   name: process.env.EVENT_NAME || 'Crewolada',
   dateLabel: process.env.EVENT_DATE_LABEL || '10/10/2026',

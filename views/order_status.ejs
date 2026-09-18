@@ -58,6 +58,12 @@
     </main>
   </div>
 
+  <% if (order.status === 'paid' && metaPixelId) { %>
+  <script>
+    fbq('track', 'Purchase', { value: <%= order.totalAmount %>, currency: 'BRL' }, { eventID: '<%= order.id %>' });
+  </script>
+  <% } %>
+
   <% if (order.status === 'pending' && order.pixQrCodeBase64) { %>
   <script>
     document.getElementById('btn-copiar-pix').addEventListener('click', async () => {

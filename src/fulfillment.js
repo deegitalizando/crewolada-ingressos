@@ -1,6 +1,7 @@
 const store = require('./store');
 const { buildTicketRecords, attachPdf } = require('./tickets');
 const { notifyOrderApproved } = require('./n8n');
+const { trackPurchase } = require('./metaConversions');
 
 // Marks an order paid and issues its tickets, exactly once. Both the
 // synchronous payment response (card) and the async Mercado Pago webhook
@@ -45,6 +46,7 @@ async function approveOrder(orderId, paymentId, eventInfo) {
   });
 
   await notifyOrderApproved(approvedOrder, tickets);
+  await trackPurchase(approvedOrder, approvedOrder.id);
 
   return { order: approvedOrder, tickets };
 }
