@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Convite - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <p class="hero-sub"><%= eventInfo.dateLabel %> &middot; <%= eventInfo.venue %></p>
+    </header>
+
+    <main class="card">
+      <% if (state === 'invalid') { %>
+        <h2>Link invalido</h2>
+        <p class="hint">Este link de convite nao existe ou foi cancelado. Fale com quem te enviou o convite.</p>
+      <% } else if (state === 'used') { %>
+        <h2>Convite ja utilizado</h2>
+        <p class="hint">Os ingressos deste convite ja foram cadastrados e enviados por e-mail. Se precisar de ajuda, fale com quem te enviou o convite.</p>
+        <a href="/meus-ingressos"><button type="button" class="btn-secondary">Ver meus ingressos</button></a>
+      <% } else { %>
+        <h2>Voce foi convidado! 🎟️</h2>
+        <p class="hint" style="margin-top:0">
+          Este convite tem direito a <strong><%= link.quantity %> ingresso<%= link.quantity === 1 ? '' : 's' %> de cortesia</strong>.
+          Preencha os dados de cada pessoa que vai ao evento (voce pode ser uma delas). Cada ingresso sera enviado
+          por e-mail para a pessoa correspondente. <strong>Atencao:</strong> o cadastro so pode ser enviado uma vez.
+        </p>
+
+        <% if (error) { %>
+          <div class="alert"><%= error %></div>
+        <% } %>
+
+        <form method="POST" action="/c/<%= link.token %>" class="form" id="cortesia-form">
+          <% for (let i = 0; i < link.quantity; i += 1) { const p = (people && people[i]) || {}; %>
+            <div class="template-box">
+              <h3 style="margin-top:0">Pessoa <%= i + 1 %> de <%= link.quantity %></h3>
+              <label>
+                Nome completo
+                <input type="text" name="people[<%= i %>][name]" value="<%= p.name || '' %>" required />
+              </label>
+              <label>
+                E-mail
+                <input type="email" name="people[<%= i %>][email]" value="<%= p.email || '' %>" required />
+              </label>
+              <label>
+                WhatsApp (com DDD)
+                <input type="tel" name="people[<%= i %>][phone]" value="<%= p.phone || '' %>" required />
+              </label>
+              <label>
+                CPF (opcional)
+                <input type="text" name="people[<%= i %>][cpf]" value="<%= p.cpf || '' %>" inputmode="numeric" />
+              </label>
+            </div>
+          <% } %>
+          <button type="submit" id="cortesia-submit">Confirmar e receber ingressos</button>
+        </form>
+        <script>
+          document.getElementById('cortesia-form').addEventListener('submit', function (e) {
+            if (!confirm('Confira os dados: depois de confirmar nao sera possivel alterar. Enviar agora?')) {
+              e.preventDefault();
+              return;
+            }
+            document.getElementById('cortesia-submit').disabled = true;
+          });
+        </script>
+      <% } %>
+    </main>
+  </div>
+</body>
+</html>

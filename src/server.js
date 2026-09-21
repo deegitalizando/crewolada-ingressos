@@ -26,6 +26,7 @@ function buildWhatsappTicketLink() {
   return `https://wa.me/${number}?text=${encodeURIComponent(WHATSAPP_TICKET_TRIGGER_TEXT)}`;
 }
 const { approveOrder } = require('./fulfillment');
+const { registerCortesiaRoutes } = require('./cortesia');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
 
@@ -62,6 +63,17 @@ const eventInfo = {
   dateLabel: process.env.EVENT_DATE_LABEL || '10/10/2026',
   venue: process.env.EVENT_VENUE || 'Bangu Atletico Clube',
 };
+
+// cortesia.<dominio> serves the same app but only exposes the invite pages
+// (and the assets/ticket views they link to) — never the sales page, checkout
+// or admin, so courtesy guests can't stumble into the public storefront.
+const CORTESIA_ALLOWED_PREFIXES = ['/c/', '/ingresso/', '/pedido/', '/meus-ingressos'];
+app.use((req, res, next) => {
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase();
+  if (!host.startsWith('cortesia.')) return next();
+  if (CORTESIA_ALLOWED_PREFIXES.some((p) => req.path.startsWith(p))) return next();
+  return res.status(404).send('Link de convite invalido. Use o link que voce recebeu.');
+});
 const maxQty = Number(process.env.MAX_QTY_PER_ORDER || 10);
 
 const REJECTION_MESSAGES = {
@@ -83,10 +95,11 @@ function describeRejection(statusDetail) {
 // Tickets sold under "Lote Teste" don't count toward real lote inventory —
 // those buyers keep their valid tickets, they just don't eat into the real
 // launch's 1o Lote allotment.
+// Courtesy tickets never count toward lote inventory either.
 function getSoldCount(db) {
   return Object.values(db.tickets).filter((t) => {
     const order = db.orders[t.orderId];
-    return !order || order.loteName !== 'Lote Teste';
+    return !order || (order.loteName !== 'Lote Teste' && !order.isCourtesy);
   }).length;
 }
 
@@ -507,7 +520,7 @@ app.get('/admin', (req, res) => {
   const loteMap = {};
 
   orders.forEach((o) => {
-    if (o.status !== 'paid') return;
+    if (o.status !== 'paid' || o.isCourtesy) return;
     stats.totalRevenue += o.totalAmount;
     stats.ticketsSold += o.quantity;
     stats.paidOrders += 1;
@@ -636,6 +649,8 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
     return res.status(500).json({ found: false, error: 'send_failed' });
   }
 });
+
+registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
   const db = store.load();

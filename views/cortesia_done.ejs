@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Ingressos confirmados - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <p class="hero-sub"><%= eventInfo.dateLabel %> &middot; <%= eventInfo.venue %></p>
+    </header>
+
+    <main class="card">
+      <h2>Ingressos confirmados! 🎉</h2>
+      <p class="hint" style="margin-top:0">
+        Cada pessoa cadastrada vai receber o ingresso no proprio e-mail (confira tambem a caixa de spam).
+        Voce tambem pode abrir os ingressos abaixo.
+      </p>
+      <div class="form" style="margin-top:16px">
+        <% tickets.forEach(function(t, i) { %>
+          <a href="/ingresso/<%= t.code %>"><button type="button" class="btn-secondary">Ver ingresso <%= i + 1 %><%= people[i] ? ' - ' + people[i].name : '' %></button></a>
+        <% }) %>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

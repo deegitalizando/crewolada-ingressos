@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Cortesias - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/lotes" class="tab">Lotes</a>
+      <a href="/admin/cortesias" class="tab active">Cortesias</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+    </nav>
+
+    <main class="card">
+      <h3>Novo link de cortesia</h3>
+      <p class="hint" style="margin-top:0">Defina para quem e o convite e quantos ingressos ele tem. O link gerado permite cadastrar exatamente essa quantidade de pessoas, uma unica vez.</p>
+      <% if (error) { %><div class="alert"><%= error %></div><% } %>
+      <form action="/admin/cortesias" method="POST" class="form">
+        <label>
+          Nome do convidado / identificacao
+          <input type="text" name="label" placeholder="Ex: Familia Silva, Banda X..." required maxlength="80" />
+        </label>
+        <label>
+          Quantidade de ingressos
+          <input type="number" name="quantity" min="1" max="50" value="2" required />
+        </label>
+        <button type="submit">Gerar link</button>
+      </form>
+    </main>
+
+    <main class="card">
+      <h3>Links gerados</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Convidado</th><th>Qtd</th><th>Status</th><th>Link</th><th></th></tr>
+          </thead>
+          <tbody>
+            <% links.forEach(function(l) { %>
+              <tr>
+                <td>
+                  <%= l.label %><br />
+                  <span class="hint" style="margin:0;text-align:left">Criado em <%= l.createdAtLabel %></span>
+                  <% if (l.people.length) { %>
+                    <br /><span class="hint" style="margin:0;text-align:left"><%= l.people.map(function(p) { return p.buyerName; }).join(', ') %></span>
+                  <% } %>
+                </td>
+                <td><%= l.quantity %></td>
+                <td><%= l.usedAt ? 'Cadastrado em ' + l.usedAtLabel : 'Aguardando cadastro' %></td>
+                <td>
+                  <% if (!l.usedAt) { %>
+                    <input type="text" readonly value="<%= l.url %>" onclick="this.select()" style="width:260px;padding:6px 8px;font-size:12px" />
+                    <button type="button" class="btn-secondary btn-copy" data-url="<%= l.url %>" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px">Copiar</button>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </td>
+                <td>
+                  <% if (!l.usedAt) { %>
+                    <form action="/admin/cortesias/<%= l.token %>/excluir" method="POST" onsubmit="return confirm('Cancelar este link?')">
+                      <button type="submit" class="btn-secondary" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px">Cancelar</button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+            <% if (links.length === 0) { %>
+              <tr><td colspan="5" style="text-align:center">Nenhum link criado ainda.</td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.querySelectorAll('.btn-copy').forEach(function (btn) {
+      btn.addEventListener('click', async function () {
+        try { await navigator.clipboard.writeText(btn.dataset.url); } catch (e) {
+          var input = btn.previousElementSibling; input.select(); document.execCommand('copy');
+        }
+        var original = btn.textContent;
+        btn.textContent = 'Copiado!';
+        setTimeout(function () { btn.textContent = original; }, 2000);
+      });
+    });
+  </script>
+</body>
+</html>

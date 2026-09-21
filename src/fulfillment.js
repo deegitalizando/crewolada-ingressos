@@ -46,7 +46,8 @@ async function approveOrder(orderId, paymentId, eventInfo) {
   });
 
   await notifyOrderApproved(approvedOrder, tickets);
-  await trackPurchase(approvedOrder, approvedOrder.id);
+  // Courtesy tickets aren't sales — don't report them as conversions.
+  if (!approvedOrder.isCourtesy) await trackPurchase(approvedOrder, approvedOrder.id);
 
   return { order: approvedOrder, tickets };
 }
