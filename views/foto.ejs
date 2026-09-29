@@ -139,7 +139,16 @@
         fadeWidth: 170,
         bottomBar: { y1: 590, font: 22, center: false },
       },
-      profile: { w: 1080, h: 1080, profile: true },
+      profile: {
+        w: 1080, h: 1080, profile: true,
+        logo: { x: 540, y: 140, size: 150 },
+        topLeft: { x: 60, y: 65 }, topRight: { x: 1020, y: 65 }, topFont: 24,
+        brush: { cy: 600, h: 300, x0: -100, x1: 1180, angle: -3 },
+        badge: { x: 260, y: 238, w: 560, h: 56 },
+        circle: { cx: 540, cy: 600, r: 290 },
+        nameBaseline: 962, nameMaxWidth: 860, nameFontMax: 92,
+        bottomBar: { y1: 1020, font: 24 },
+      },
     };
 
     const NAME_STYLES = {
@@ -258,7 +267,11 @@
 
     function currentRect() {
       const cfg = FORMATS[currentFormat];
-      return cfg.profile ? { x: 0, y: 0, w: cfg.w, h: cfg.h } : cfg.photoRect;
+      if (cfg.profile) {
+        const d = cfg.circle.r * 2;
+        return { x: cfg.circle.cx - cfg.circle.r, y: cfg.circle.cy - cfg.circle.r, w: d, h: d };
+      }
+      return cfg.photoRect;
     }
 
     function recalcPhotoFit() {
@@ -282,13 +295,31 @@
       offsetY = Math.min(maxOffY, Math.max(-maxOffY, offsetY));
     }
 
-    // Draws the user's photo (or a placeholder) desaturated with a warm tint
-    // into the given rect, optionally fading one edge to black so it blends
-    // into the background the way the DJ lineup posters do.
-    function drawFadedPhoto(rect, fadeWidth) {
+    // Duotone grade (near-black shadows to warm gold-ivory highlights) with a
+    // touch of extra contrast — a more editorial/professional look than a
+    // flat desaturate+tint, used everywhere the photo is drawn.
+    function applyDuotone(targetCtx, w, h) {
+      const idata = targetCtx.getImageData(0, 0, w, h);
+      const d = idata.data;
+      for (let i = 0; i < d.length; i += 4) {
+        let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        gray = ((gray / 255 - 0.5) * 1.18 + 0.5) * 255;
+        gray = Math.max(0, Math.min(255, gray));
+        const t = gray / 255;
+        d[i] = 14 + t * (255 - 14);
+        d[i + 1] = 12 + t * (228 - 12);
+        d[i + 2] = 10 + t * (168 - 10);
+      }
+      targetCtx.putImageData(idata, 0, 0);
+    }
+
+    // Renders the user's photo (or a placeholder) at the given size, panned
+    // and zoomed per the current scale/offset state, and returns it as an
+    // offscreen canvas ready to be drawn (into a rect or clipped to a circle).
+    function drawPhotoIntoOffscreen(w, h) {
       const off = document.createElement('canvas');
-      off.width = Math.max(1, Math.round(rect.w));
-      off.height = Math.max(1, Math.round(rect.h));
+      off.width = Math.max(1, Math.round(w));
+      off.height = Math.max(1, Math.round(h));
       const octx = off.getContext('2d', { willReadFrequently: true });
       if (img) {
         const iw = img.width * scale;
@@ -303,17 +334,16 @@
         octx.textBaseline = 'middle';
         octx.fillText('Sua foto aqui', off.width / 2, off.height / 2);
       }
-      const idata = octx.getImageData(0, 0, off.width, off.height);
-      const d = idata.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-        d[i] = Math.min(255, gray * 0.95 + 22);
-        d[i + 1] = Math.min(255, gray * 0.92 + 14);
-        d[i + 2] = Math.min(255, gray * 0.85);
-      }
-      octx.putImageData(idata, 0, 0);
+      applyDuotone(octx, off.width, off.height);
+      return off;
+    }
 
+    // Draws the photo into a rect, optionally fading one edge to transparent
+    // so it blends into the background the way the DJ lineup posters do.
+    function drawFadedPhoto(rect, fadeWidth) {
+      const off = drawPhotoIntoOffscreen(rect.w, rect.h);
       if (fadeWidth) {
+        const octx = off.getContext('2d', { willReadFrequently: true });
         const grad = octx.createLinearGradient(0, 0, fadeWidth, 0);
         grad.addColorStop(0, 'rgba(0,0,0,1)');
         grad.addColorStop(1, 'rgba(0,0,0,0)');
@@ -323,6 +353,31 @@
         octx.globalCompositeOperation = 'source-over';
       }
       ctx.drawImage(off, rect.x, rect.y);
+    }
+
+    // Draws the photo clipped to a circle with a gold ring border, keeping
+    // the same branded background (grunge/brush/badge) visible around it.
+    function drawCirclePhoto(circle) {
+      const size = circle.r * 2;
+      const off = drawPhotoIntoOffscreen(size, size);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(circle.cx, circle.cy, circle.r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(off, circle.cx - circle.r, circle.cy - circle.r, size, size);
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(circle.cx, circle.cy, circle.r + 6, 0, Math.PI * 2);
+      ctx.lineWidth = 14;
+      ctx.strokeStyle = '#f4b942';
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(circle.cx, circle.cy, circle.r - 6, 0, Math.PI * 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.stroke();
     }
 
     function drawStyledName(text, opts) {
@@ -374,9 +429,9 @@
     }
 
     function renderPoster(cfg) {
-      drawFadedPhoto(cfg.photoRect, cfg.fadeWidth);
       renderTopRow(cfg);
       drawBrushBand(cfg.brush);
+      drawFadedPhoto(cfg.photoRect, cfg.fadeWidth);
       drawRoughBadge(cfg.badge, 'PRESENÇA CONFIRMADA');
       drawStyledName(guestNameOrPlaceholder(), {
         align: 'left', x: cfg.badge.x, y: cfg.nameBaseline, maxWidth: cfg.nameMaxWidth, fontMax: cfg.nameFontMax,
@@ -387,7 +442,7 @@
       ctx.font = `700 ${cfg.subText.font}px "Segoe UI", Arial, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      fillTextSpaced('CREWOLOVER · 2026', cfg.subText.x, cfg.subText.y, 2);
+      fillTextSpaced('CREWLOVER OFICIAL', cfg.subText.x, cfg.subText.y, 2);
       ctx.restore();
 
       ctx.save();
@@ -406,42 +461,24 @@
       ctx.restore();
     }
 
+    // Same branded background as the posters (top row, brush band, badge),
+    // but the photo is framed inside the ring instead of going full-bleed —
+    // this is meant to be viewed as-is, not relying on a platform's own
+    // circular avatar crop, so the identity stays visible around the photo.
     function renderProfile(cfg) {
-      const rect = { x: 0, y: 0, w: cfg.w, h: cfg.h };
-      drawFadedPhoto(rect, 0);
-
-      const vignette = ctx.createRadialGradient(cfg.w / 2, cfg.h / 2, cfg.w * 0.32, cfg.w / 2, cfg.h / 2, cfg.w * 0.72);
-      vignette.addColorStop(0, 'rgba(0,0,0,0)');
-      vignette.addColorStop(1, 'rgba(0,0,0,0.78)');
-      ctx.fillStyle = vignette;
-      ctx.fillRect(0, 0, cfg.w, cfg.h);
-
-      const bottomFade = ctx.createLinearGradient(0, cfg.h * 0.66, 0, cfg.h);
-      bottomFade.addColorStop(0, 'rgba(0,0,0,0)');
-      bottomFade.addColorStop(1, 'rgba(0,0,0,0.88)');
-      ctx.fillStyle = bottomFade;
-      ctx.fillRect(0, cfg.h * 0.66, cfg.w, cfg.h * 0.34);
-
-      ctx.beginPath();
-      ctx.arc(cfg.w / 2, cfg.h / 2, cfg.w * 0.46, 0, Math.PI * 2);
-      ctx.lineWidth = 18;
-      ctx.strokeStyle = '#f4b942';
-      ctx.stroke();
-
-      if (logoReady) {
-        const s = 130;
-        ctx.drawImage(logoImg, cfg.w / 2 - s / 2, 46, s, s);
-      }
-
+      renderTopRow(cfg);
+      drawBrushBand(cfg.brush);
+      drawCirclePhoto(cfg.circle);
+      drawRoughBadge(cfg.badge, 'PRESENÇA CONFIRMADA');
       drawStyledName(guestNameOrPlaceholder(), {
-        align: 'center', x: cfg.w / 2, y: cfg.h * 0.865, maxWidth: cfg.w * 0.84, fontMax: 115,
+        align: 'center', x: cfg.w / 2, y: cfg.nameBaseline, maxWidth: cfg.nameMaxWidth, fontMax: cfg.nameFontMax,
       });
 
       ctx.save();
-      ctx.fillStyle = '#f4b942';
+      ctx.fillStyle = '#f5f0e6';
       ctx.textAlign = 'center';
-      ctx.font = '700 30px "Segoe UI", Arial, sans-serif';
-      ctx.fillText('EU VOU · 10/10/2026', cfg.w / 2, cfg.h * 0.93);
+      ctx.font = `700 ${cfg.bottomBar.font}px "Segoe UI", Arial, sans-serif`;
+      ctx.fillText('10/10/2026 · Bangu Atlético Clube', cfg.w / 2, cfg.bottomBar.y1);
       ctx.restore();
     }
 
