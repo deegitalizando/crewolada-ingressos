@@ -311,6 +311,10 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
 // Self-service lookup: buyer types in the CPF, e-mail or WhatsApp used at
 // checkout to find their paid order(s) and get to the participant-registration
 // page, without needing the order id/link from the confirmation e-mail.
+app.get('/foto', (req, res) => {
+  res.render('foto', { eventInfo });
+});
+
 app.get('/meus-ingressos', (req, res) => {
   res.render('meus_ingressos', { eventInfo, error: null, matches: null, termo: '' });
 });

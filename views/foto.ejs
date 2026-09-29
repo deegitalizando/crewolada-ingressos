@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Eu vou - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .foto-canvas-wrap {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      background: #000;
+      touch-action: none;
+    }
+    #foto-canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
+    #foto-canvas.dragging { cursor: grabbing; }
+    .foto-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .zoom-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+    .zoom-row input[type="range"] { flex: 1; }
+    .file-label {
+      display: block;
+      text-align: center;
+      background: var(--accent);
+      color: #1a1200;
+      border-radius: 12px;
+      padding: 16px 18px;
+      font-size: 16px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      cursor: pointer;
+    }
+    .file-label input { display: none; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <p class="hero-sub">Monte sua foto "Eu vou" e compartilhe nos stories!</p>
+    </header>
+
+    <main class="card">
+      <div class="foto-canvas-wrap">
+        <canvas id="foto-canvas" width="1080" height="1920"></canvas>
+      </div>
+
+      <div class="zoom-row">
+        <span class="hint" style="margin:0">🔍</span>
+        <input type="range" id="zoom-range" min="1" max="3" step="0.01" value="1" disabled />
+      </div>
+      <p class="hint" style="margin-top:8px">Arraste a foto para posicionar e use o controle para dar zoom.</p>
+
+      <div class="foto-actions">
+        <label class="file-label">
+          📷 Escolher foto
+          <input type="file" id="file-input" accept="image/*" />
+        </label>
+        <button type="button" id="btn-download" disabled>Baixar imagem</button>
+        <button type="button" id="btn-share" class="btn-secondary" hidden>Compartilhar</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('foto-canvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const CIRCLE = { cx: W / 2, cy: 620, r: 380 };
+
+    const fileInput = document.getElementById('file-input');
+    const zoomRange = document.getElementById('zoom-range');
+    const downloadBtn = document.getElementById('btn-download');
+    const shareBtn = document.getElementById('btn-share');
+
+    let img = null;
+    let scale = 1;
+    let minScale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let dragging = false;
+    let lastX = 0;
+    let lastY = 0;
+
+    const logoImg = new Image();
+    let logoReady = false;
+    logoImg.onload = () => { logoReady = true; render(); };
+    logoImg.src = '/img/logo.jpg';
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    function drawHalftone(x0, y0, cols, rows, gap, maxR) {
+      for (let i = 0; i < cols; i += 1) {
+        for (let j = 0; j < rows; j += 1) {
+          const d = Math.hypot(i, j) / Math.hypot(cols, rows);
+          const r = maxR * (1 - d);
+          if (r <= 0.3) continue;
+          ctx.beginPath();
+          ctx.arc(x0 - i * gap, y0 - j * gap, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+
+    function clampOffset() {
+      if (!img) return;
+      const iw = img.width * scale;
+      const ih = img.height * scale;
+      const maxOffX = Math.max(0, iw / 2 - CIRCLE.r);
+      const maxOffY = Math.max(0, ih / 2 - CIRCLE.r);
+      offsetX = Math.min(maxOffX, Math.max(-maxOffX, offsetX));
+      offsetY = Math.min(maxOffY, Math.max(-maxOffY, offsetY));
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#f4b942';
+      drawHalftone(W - 30, 40, 9, 9, 24, 3.2);
+      drawHalftone(30, H - 30, 9, 9, 24, 3.2);
+      ctx.restore();
+
+      const glow = ctx.createRadialGradient(CIRCLE.cx, CIRCLE.cy, CIRCLE.r * 0.5, CIRCLE.cx, CIRCLE.cy, CIRCLE.r * 1.4);
+      glow.addColorStop(0, 'rgba(244,185,66,0.35)');
+      glow.addColorStop(1, 'rgba(244,185,66,0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.save();
+      ctx.font = '700 34px "Segoe UI", Arial, sans-serif';
+      const pillText = 'EU VOU PRA';
+      const tw = ctx.measureText(pillText).width;
+      const pillW = tw + 68;
+      const pillH = 66;
+      const pillX = W / 2 - pillW / 2;
+      const pillY = 130;
+      roundRect(pillX, pillY, pillW, pillH, pillH / 2);
+      ctx.fillStyle = '#f4b942';
+      ctx.fill();
+      ctx.fillStyle = '#1a1200';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pillText, W / 2, pillY + pillH / 2 + 2);
+      ctx.restore();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(CIRCLE.cx, CIRCLE.cy, CIRCLE.r, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      if (img) {
+        const iw = img.width * scale;
+        const ih = img.height * scale;
+        ctx.drawImage(img, CIRCLE.cx - iw / 2 + offsetX, CIRCLE.cy - ih / 2 + offsetY, iw, ih);
+      } else {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(CIRCLE.cx - CIRCLE.r, CIRCLE.cy - CIRCLE.r, CIRCLE.r * 2, CIRCLE.r * 2);
+        ctx.fillStyle = '#a8a29a';
+        ctx.font = '600 40px "Segoe UI", Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Sua foto aqui', CIRCLE.cx, CIRCLE.cy);
+      }
+      ctx.restore();
+
+      ctx.beginPath();
+      ctx.arc(CIRCLE.cx, CIRCLE.cy, CIRCLE.r + 7, 0, Math.PI * 2);
+      ctx.lineWidth = 14;
+      ctx.strokeStyle = '#f4b942';
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(CIRCLE.cx, CIRCLE.cy, CIRCLE.r - 6, 0, Math.PI * 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.stroke();
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f4b942';
+      ctx.font = '900 150px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('EU VOU', W / 2, CIRCLE.cy + CIRCLE.r + 190);
+      ctx.font = '900 80px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('🎟️', W / 2, CIRCLE.cy + CIRCLE.r + 300);
+      ctx.restore();
+
+      if (logoReady) {
+        const ls = 320;
+        ctx.drawImage(logoImg, W / 2 - ls / 2, H - 540, ls, ls);
+      }
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f5f0e6';
+      ctx.font = '700 34px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('10/10/2026 · Bangu Atlético Clube', W / 2, H - 130);
+      ctx.fillStyle = '#f4b942';
+      ctx.font = '700 30px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('crewolada.com', W / 2, H - 85);
+      ctx.restore();
+    }
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        img = image;
+        minScale = Math.max((CIRCLE.r * 2) / img.width, (CIRCLE.r * 2) / img.height);
+        scale = minScale;
+        offsetX = 0;
+        offsetY = 0;
+        zoomRange.value = '1';
+        zoomRange.disabled = false;
+        downloadBtn.disabled = false;
+        render();
+        URL.revokeObjectURL(url);
+      };
+      image.src = url;
+    });
+
+    zoomRange.addEventListener('input', () => {
+      scale = minScale * parseFloat(zoomRange.value);
+      clampOffset();
+      render();
+    });
+
+    function canvasScaleFactor() {
+      return canvas.width / canvas.getBoundingClientRect().width;
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!img) return;
+      dragging = true;
+      canvas.classList.add('dragging');
+      lastX = e.clientX;
+      lastY = e.clientY;
+      canvas.setPointerCapture(e.pointerId);
+    });
+    canvas.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const k = canvasScaleFactor();
+      offsetX += (e.clientX - lastX) * k;
+      offsetY += (e.clientY - lastY) * k;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      clampOffset();
+      render();
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => {
+      canvas.addEventListener(ev, () => { dragging = false; canvas.classList.remove('dragging'); });
+    });
+
+    downloadBtn.addEventListener('click', () => {
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'eu-vou-crewolada.png';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      }, 'image/png');
+    });
+
+    if (navigator.canShare && navigator.share) {
+      shareBtn.hidden = false;
+      shareBtn.addEventListener('click', () => {
+        canvas.toBlob(async (blob) => {
+          const file = new File([blob], 'eu-vou-crewolada.png', { type: 'image/png' });
+          try {
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({ files: [file], text: 'Eu vou pra Crewolada! 🎟️' });
+            }
+          } catch (e) { /* user cancelled */ }
+        }, 'image/png');
+      });
+    }
+
+    render();
+  </script>
+</body>
+</html>
