@@ -3,6 +3,8 @@
 <head>
   <title>Eu vou - <%= eventInfo.name %></title>
   <%- include('partials/head') %>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Permanent+Marker&family=Sacramento&display=swap">
   <style>
     .foto-canvas-wrap {
       position: relative;
@@ -14,9 +16,31 @@
     }
     #foto-canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
     #foto-canvas.dragging { cursor: grabbing; }
-    .foto-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .chip-btn {
+      flex: 1 1 30%;
+      min-height: 46px;
+      min-width: 90px;
+      padding: 10px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--card-border);
+      background: #1a1a1a;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      margin: 0;
+      width: auto;
+    }
+    .chip-btn.active { background: var(--accent); color: #1a1200; border-color: var(--accent); }
+
+    .field-label { display: block; margin-top: 16px; }
+
     .zoom-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
-    .zoom-row input[type="range"] { flex: 1; }
+    .zoom-row input[type="range"] { flex: 1; height: 32px; }
+
+    .foto-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 18px; }
     .file-label {
       display: block;
       text-align: center;
@@ -37,19 +61,37 @@
   <div class="page">
     <header class="hero hero-sm">
       <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
-      <p class="hero-sub">Monte sua foto "Eu vou" e compartilhe nos stories!</p>
+      <p class="hero-sub">Monte sua arte "Eu vou" e compartilhe!</p>
     </header>
 
     <main class="card">
       <div class="foto-canvas-wrap">
-        <canvas id="foto-canvas" width="1080" height="1920"></canvas>
+        <canvas id="foto-canvas"></canvas>
+      </div>
+
+      <p class="hint" style="margin-top:8px">Toque e arraste a foto para posicionar. Use o dedo (pinça) ou o controle para dar zoom.</p>
+
+      <div class="chip-row" id="format-row">
+        <button type="button" class="chip-btn active" data-format="story">📱 Story</button>
+        <button type="button" class="chip-btn" data-format="banner">🖥️ Banner</button>
+        <button type="button" class="chip-btn" data-format="profile">👤 Perfil</button>
+      </div>
+
+      <label class="field-label">
+        Seu nome
+        <input type="text" id="name-input" maxlength="26" placeholder="Como quer aparecer na arte" autocomplete="name" />
+      </label>
+
+      <div class="chip-row" id="style-row">
+        <button type="button" class="chip-btn active" data-style="impacto">Impacto</button>
+        <button type="button" class="chip-btn" data-style="grafite">Grafite</button>
+        <button type="button" class="chip-btn" data-style="assinatura">Assinatura</button>
       </div>
 
       <div class="zoom-row">
         <span class="hint" style="margin:0">🔍</span>
         <input type="range" id="zoom-range" min="1" max="3" step="0.01" value="1" disabled />
       </div>
-      <p class="hint" style="margin-top:8px">Arraste a foto para posicionar e use o controle para dar zoom.</p>
 
       <div class="foto-actions">
         <label class="file-label">
@@ -65,14 +107,49 @@
   <script>
     const canvas = document.getElementById('foto-canvas');
     const ctx = canvas.getContext('2d');
-    const W = canvas.width, H = canvas.height;
-    const CIRCLE = { cx: W / 2, cy: 620, r: 380 };
 
     const fileInput = document.getElementById('file-input');
+    const nameInput = document.getElementById('name-input');
     const zoomRange = document.getElementById('zoom-range');
     const downloadBtn = document.getElementById('btn-download');
     const shareBtn = document.getElementById('btn-share');
 
+    const FORMATS = {
+      story: {
+        w: 1080, h: 1920,
+        logo: { x: 540, y: 175, size: 200 },
+        topLeft: { x: 70, y: 90 }, topRight: { x: 1010, y: 90 }, topFont: 28,
+        brush: { cy: 1010, h: 190, x0: -80, x1: 1200, angle: -3 },
+        badge: { x: 70, y: 935, w: 640, h: 80 },
+        nameBaseline: 1218, nameMaxWidth: 940, nameFontMax: 165,
+        subText: { x: 74, y: 1275, font: 28 },
+        photoRect: { x: 500, y: 500, w: 580, h: 1260 },
+        fadeWidth: 240,
+        bottomBar: { y1: 1830, y2: 1878, font: 32, center: true },
+      },
+      banner: {
+        w: 1200, h: 628,
+        logo: { x: 600, y: 62, size: 110 },
+        topLeft: { x: 40, y: 30 }, topRight: { x: 1160, y: 30 }, topFont: 20,
+        brush: { cy: 340, h: 112, x0: -60, x1: 720, angle: -3 },
+        badge: { x: 40, y: 305, w: 440, h: 54 },
+        nameBaseline: 425, nameMaxWidth: 560, nameFontMax: 100,
+        subText: { x: 44, y: 452, font: 20 },
+        photoRect: { x: 660, y: 0, w: 540, h: 628 },
+        fadeWidth: 170,
+        bottomBar: { y1: 590, font: 22, center: false },
+      },
+      profile: { w: 1080, h: 1080, profile: true },
+    };
+
+    const NAME_STYLES = {
+      impacto: { family: 'Anton', color: '#ffffff', upper: true },
+      grafite: { family: 'Permanent Marker', color: '#f4b942', upper: true },
+      assinatura: { family: 'Sacramento', color: '#ffffff', upper: false },
+    };
+
+    let currentFormat = 'story';
+    let currentStyle = 'impacto';
     let img = null;
     let scale = 1;
     let minScale = 1;
@@ -81,135 +158,331 @@
     let dragging = false;
     let lastX = 0;
     let lastY = 0;
+    const activePointers = new Map();
+    let pinchStartDist = null;
+    let pinchStartScale = 1;
 
     const logoImg = new Image();
     let logoReady = false;
     logoImg.onload = () => { logoReady = true; render(); };
     logoImg.src = '/img/logo.jpg';
 
-    function roundRect(x, y, w, h, r) {
-      ctx.beginPath();
-      ctx.moveTo(x + r, y);
-      ctx.arcTo(x + w, y, x + w, y + h, r);
-      ctx.arcTo(x + w, y + h, x, y + h, r);
-      ctx.arcTo(x, y + h, x, y, r);
-      ctx.arcTo(x, y, x + w, y, r);
-      ctx.closePath();
+    // Deterministic "noise" (same values every run) so the grunge texture and
+    // rough brush/badge edges don't jitter between re-renders.
+    const SEED = Array.from({ length: 24 }, (_, i) => Math.abs(Math.sin(i * 12.9898 + 4.1414)) % 1);
+    const GRUNGE_BLOBS = Array.from({ length: 42 }, (_, i) => ({
+      x: SEED[i % SEED.length],
+      y: SEED[(i * 3 + 1) % SEED.length],
+      r: 0.03 + SEED[(i * 5 + 2) % SEED.length] * 0.09,
+      a: 0.04 + SEED[(i * 7 + 3) % SEED.length] * 0.09,
+    }));
+
+    function titleCase(text) {
+      return text.trim().toLowerCase().replace(/\p{L}+/gu, (w) => w.charAt(0).toUpperCase() + w.slice(1));
     }
 
-    function drawHalftone(x0, y0, cols, rows, gap, maxR) {
-      for (let i = 0; i < cols; i += 1) {
-        for (let j = 0; j < rows; j += 1) {
-          const d = Math.hypot(i, j) / Math.hypot(cols, rows);
-          const r = maxR * (1 - d);
-          if (r <= 0.3) continue;
-          ctx.beginPath();
-          ctx.arc(x0 - i * gap, y0 - j * gap, r, 0, Math.PI * 2);
-          ctx.fill();
-        }
+    function fitFontSize(text, family, maxWidth, maxSize, minSize) {
+      let size = maxSize;
+      while (size > minSize) {
+        ctx.font = `400 ${size}px "${family}"`;
+        if (ctx.measureText(text).width <= maxWidth) break;
+        size -= 2;
       }
+      return size;
+    }
+
+    function fillTextSpaced(text, x, y, spacing) {
+      let cx = x;
+      for (const ch of text) {
+        ctx.fillText(ch, cx, y);
+        cx += ctx.measureText(ch).width + spacing;
+      }
+      return cx - spacing;
+    }
+
+    function drawGrunge(W, H) {
+      GRUNGE_BLOBS.forEach((b) => {
+        const g = ctx.createRadialGradient(b.x * W, b.y * H, 0, b.x * W, b.y * H, b.r * Math.max(W, H));
+        g.addColorStop(0, `rgba(255,255,255,${b.a})`);
+        g.addColorStop(1, 'rgba(255,255,255,0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, W, H);
+      });
+    }
+
+    function jaggedPath(x0, x1, yBase, amp, steps, offset) {
+      const pts = [];
+      const step = (x1 - x0) / steps;
+      for (let i = 0; i <= steps; i += 1) {
+        pts.push({ x: x0 + i * step, y: yBase + (SEED[(i + offset) % SEED.length] - 0.5) * amp });
+      }
+      return pts;
+    }
+
+    function drawBrushBand(b) {
+      ctx.save();
+      const midX = (b.x0 + b.x1) / 2;
+      ctx.translate(midX, b.cy);
+      ctx.rotate((b.angle * Math.PI) / 180);
+      ctx.translate(-midX, -b.cy);
+      const top = jaggedPath(b.x0, b.x1, b.cy - b.h / 2, 20, 16, 0);
+      const bot = jaggedPath(b.x1, b.x0, b.cy + b.h / 2, 20, 16, 6);
+      ctx.beginPath();
+      top.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      bot.forEach((p) => ctx.lineTo(p.x, p.y));
+      ctx.closePath();
+      ctx.fillStyle = '#f4b942';
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawRoughBadge(rect, text) {
+      const top = jaggedPath(rect.x, rect.x + rect.w, rect.y, 8, 12, 2);
+      const bot = jaggedPath(rect.x + rect.w, rect.x, rect.y + rect.h, 8, 12, 8);
+      ctx.beginPath();
+      top.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+      bot.forEach((p) => ctx.lineTo(p.x, p.y));
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(8,8,8,0.92)';
+      ctx.fill();
+
+      ctx.save();
+      ctx.fillStyle = '#f4b942';
+      ctx.font = `700 ${Math.round(rect.h * 0.42)}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      const totalW = [...text].reduce((w, ch) => w + ctx.measureText(ch).width + 2, 0);
+      fillTextSpaced(text, rect.x + (rect.w - totalW) / 2, rect.y + rect.h / 2 + 1, 2);
+      ctx.restore();
+    }
+
+    function currentRect() {
+      const cfg = FORMATS[currentFormat];
+      return cfg.profile ? { x: 0, y: 0, w: cfg.w, h: cfg.h } : cfg.photoRect;
+    }
+
+    function recalcPhotoFit() {
+      if (!img) return;
+      const rect = currentRect();
+      minScale = Math.max(rect.w / img.width, rect.h / img.height);
+      scale = minScale;
+      offsetX = 0;
+      offsetY = 0;
+      zoomRange.value = '1';
     }
 
     function clampOffset() {
       if (!img) return;
+      const rect = currentRect();
       const iw = img.width * scale;
       const ih = img.height * scale;
-      const maxOffX = Math.max(0, iw / 2 - CIRCLE.r);
-      const maxOffY = Math.max(0, ih / 2 - CIRCLE.r);
+      const maxOffX = Math.max(0, (iw - rect.w) / 2);
+      const maxOffY = Math.max(0, (ih - rect.h) / 2);
       offsetX = Math.min(maxOffX, Math.max(-maxOffX, offsetX));
       offsetY = Math.min(maxOffY, Math.max(-maxOffY, offsetY));
     }
 
-    function render() {
-      ctx.clearRect(0, 0, W, H);
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.save();
-      ctx.globalAlpha = 0.3;
-      ctx.fillStyle = '#f4b942';
-      drawHalftone(W - 30, 40, 9, 9, 24, 3.2);
-      drawHalftone(30, H - 30, 9, 9, 24, 3.2);
-      ctx.restore();
-
-      const glow = ctx.createRadialGradient(CIRCLE.cx, CIRCLE.cy, CIRCLE.r * 0.5, CIRCLE.cx, CIRCLE.cy, CIRCLE.r * 1.4);
-      glow.addColorStop(0, 'rgba(244,185,66,0.35)');
-      glow.addColorStop(1, 'rgba(244,185,66,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, W, H);
-
-      ctx.save();
-      ctx.font = '700 34px "Segoe UI", Arial, sans-serif';
-      const pillText = 'EU VOU PRA';
-      const tw = ctx.measureText(pillText).width;
-      const pillW = tw + 68;
-      const pillH = 66;
-      const pillX = W / 2 - pillW / 2;
-      const pillY = 130;
-      roundRect(pillX, pillY, pillW, pillH, pillH / 2);
-      ctx.fillStyle = '#f4b942';
-      ctx.fill();
-      ctx.fillStyle = '#1a1200';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(pillText, W / 2, pillY + pillH / 2 + 2);
-      ctx.restore();
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(CIRCLE.cx, CIRCLE.cy, CIRCLE.r, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
+    // Draws the user's photo (or a placeholder) desaturated with a warm tint
+    // into the given rect, optionally fading one edge to black so it blends
+    // into the background the way the DJ lineup posters do.
+    function drawFadedPhoto(rect, fadeWidth) {
+      const off = document.createElement('canvas');
+      off.width = Math.max(1, Math.round(rect.w));
+      off.height = Math.max(1, Math.round(rect.h));
+      const octx = off.getContext('2d', { willReadFrequently: true });
       if (img) {
         const iw = img.width * scale;
         const ih = img.height * scale;
-        ctx.drawImage(img, CIRCLE.cx - iw / 2 + offsetX, CIRCLE.cy - ih / 2 + offsetY, iw, ih);
+        octx.drawImage(img, off.width / 2 - iw / 2 + offsetX, off.height / 2 - ih / 2 + offsetY, iw, ih);
       } else {
-        ctx.fillStyle = '#1a1a1a';
-        ctx.fillRect(CIRCLE.cx - CIRCLE.r, CIRCLE.cy - CIRCLE.r, CIRCLE.r * 2, CIRCLE.r * 2);
-        ctx.fillStyle = '#a8a29a';
-        ctx.font = '600 40px "Segoe UI", Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('Sua foto aqui', CIRCLE.cx, CIRCLE.cy);
+        octx.fillStyle = '#1a1a1a';
+        octx.fillRect(0, 0, off.width, off.height);
+        octx.fillStyle = '#a8a29a';
+        octx.font = '600 32px "Segoe UI", Arial, sans-serif';
+        octx.textAlign = 'center';
+        octx.textBaseline = 'middle';
+        octx.fillText('Sua foto aqui', off.width / 2, off.height / 2);
       }
-      ctx.restore();
+      const idata = octx.getImageData(0, 0, off.width, off.height);
+      const d = idata.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+        d[i] = Math.min(255, gray * 0.95 + 22);
+        d[i + 1] = Math.min(255, gray * 0.92 + 14);
+        d[i + 2] = Math.min(255, gray * 0.85);
+      }
+      octx.putImageData(idata, 0, 0);
 
-      ctx.beginPath();
-      ctx.arc(CIRCLE.cx, CIRCLE.cy, CIRCLE.r + 7, 0, Math.PI * 2);
-      ctx.lineWidth = 14;
-      ctx.strokeStyle = '#f4b942';
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(CIRCLE.cx, CIRCLE.cy, CIRCLE.r - 6, 0, Math.PI * 2);
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      ctx.stroke();
+      if (fadeWidth) {
+        const grad = octx.createLinearGradient(0, 0, fadeWidth, 0);
+        grad.addColorStop(0, 'rgba(0,0,0,1)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        octx.globalCompositeOperation = 'destination-out';
+        octx.fillStyle = grad;
+        octx.fillRect(0, 0, fadeWidth, off.height);
+        octx.globalCompositeOperation = 'source-over';
+      }
+      ctx.drawImage(off, rect.x, rect.y);
+    }
 
+    function drawStyledName(text, opts) {
+      const style = NAME_STYLES[currentStyle];
+      const display = style.upper ? text.toUpperCase() : titleCase(text);
+      const size = fitFontSize(display, style.family, opts.maxWidth, opts.fontMax, opts.minSize || 30);
       ctx.save();
-      ctx.textAlign = 'center';
+      ctx.font = `400 ${size}px "${style.family}"`;
+      ctx.fillStyle = style.color;
+      ctx.textAlign = opts.align || 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.shadowColor = 'rgba(0,0,0,0.55)';
+      ctx.shadowBlur = 10;
+      ctx.fillText(display, opts.x, opts.y);
+      ctx.restore();
+    }
+
+    function guestNameOrPlaceholder() {
+      return (nameInput.value || '').trim() || 'SEU NOME';
+    }
+
+    function renderTopRow(cfg) {
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `700 ${cfg.topFont}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      fillTextSpaced('BLACK MUSIC', cfg.topLeft.x, cfg.topLeft.y, 2);
+      fillTextSpaced('CRISTÃ', cfg.topLeft.x, cfg.topLeft.y + cfg.topFont * 1.25, 2);
       ctx.fillStyle = '#f4b942';
-      ctx.font = '900 150px "Segoe UI", Arial, sans-serif';
-      ctx.fillText('EU VOU', W / 2, CIRCLE.cy + CIRCLE.r + 190);
-      ctx.font = '900 80px "Segoe UI", Arial, sans-serif';
-      ctx.fillText('🎟️', W / 2, CIRCLE.cy + CIRCLE.r + 300);
+      ctx.fillRect(cfg.topLeft.x, cfg.topLeft.y + cfg.topFont * 2.7, 56, 4);
       ctx.restore();
 
       if (logoReady) {
-        const ls = 320;
-        ctx.drawImage(logoImg, W / 2 - ls / 2, H - 540, ls, ls);
+        const s = cfg.logo.size;
+        ctx.drawImage(logoImg, cfg.logo.x - s / 2, cfg.logo.y - s / 2, s, s);
       }
 
       ctx.save();
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#f5f0e6';
-      ctx.font = '700 34px "Segoe UI", Arial, sans-serif';
-      ctx.fillText('10/10/2026 · Bangu Atlético Clube', W / 2, H - 130);
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `700 ${cfg.topFont}px "Segoe UI", Arial, sans-serif`;
+      ctx.fillText('Presença', cfg.topRight.x, cfg.topRight.y);
       ctx.fillStyle = '#f4b942';
-      ctx.font = '700 30px "Segoe UI", Arial, sans-serif';
-      ctx.fillText('crewolada.com', W / 2, H - 85);
+      ctx.font = `italic 700 ${cfg.topFont}px "Segoe UI", Arial, sans-serif`;
+      ctx.fillText('confirmada!', cfg.topRight.x, cfg.topRight.y + cfg.topFont * 1.3);
       ctx.restore();
     }
+
+    function renderPoster(cfg) {
+      drawFadedPhoto(cfg.photoRect, cfg.fadeWidth);
+      renderTopRow(cfg);
+      drawBrushBand(cfg.brush);
+      drawRoughBadge(cfg.badge, 'PRESENÇA CONFIRMADA');
+      drawStyledName(guestNameOrPlaceholder(), {
+        align: 'left', x: cfg.badge.x, y: cfg.nameBaseline, maxWidth: cfg.nameMaxWidth, fontMax: cfg.nameFontMax,
+      });
+
+      ctx.save();
+      ctx.fillStyle = '#f4b942';
+      ctx.font = `700 ${cfg.subText.font}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      fillTextSpaced('CREWOLOVER · 2026', cfg.subText.x, cfg.subText.y, 2);
+      ctx.restore();
+
+      ctx.save();
+      ctx.fillStyle = '#f5f0e6';
+      ctx.font = `700 ${cfg.bottomBar.font}px "Segoe UI", Arial, sans-serif`;
+      if (cfg.bottomBar.center) {
+        ctx.textAlign = 'center';
+        ctx.fillText('10/10/2026 · Bangu Atlético Clube', cfg.w / 2, cfg.bottomBar.y1);
+        ctx.fillStyle = '#f4b942';
+        ctx.font = `700 ${cfg.bottomBar.font - 4}px "Segoe UI", Arial, sans-serif`;
+        ctx.fillText('crewolada.com', cfg.w / 2, cfg.bottomBar.y2);
+      } else {
+        ctx.textAlign = 'left';
+        ctx.fillText('10/10/2026 · Bangu Atlético Clube · crewolada.com', cfg.badge.x, cfg.bottomBar.y1);
+      }
+      ctx.restore();
+    }
+
+    function renderProfile(cfg) {
+      const rect = { x: 0, y: 0, w: cfg.w, h: cfg.h };
+      drawFadedPhoto(rect, 0);
+
+      const vignette = ctx.createRadialGradient(cfg.w / 2, cfg.h / 2, cfg.w * 0.32, cfg.w / 2, cfg.h / 2, cfg.w * 0.72);
+      vignette.addColorStop(0, 'rgba(0,0,0,0)');
+      vignette.addColorStop(1, 'rgba(0,0,0,0.78)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, cfg.w, cfg.h);
+
+      const bottomFade = ctx.createLinearGradient(0, cfg.h * 0.66, 0, cfg.h);
+      bottomFade.addColorStop(0, 'rgba(0,0,0,0)');
+      bottomFade.addColorStop(1, 'rgba(0,0,0,0.88)');
+      ctx.fillStyle = bottomFade;
+      ctx.fillRect(0, cfg.h * 0.66, cfg.w, cfg.h * 0.34);
+
+      ctx.beginPath();
+      ctx.arc(cfg.w / 2, cfg.h / 2, cfg.w * 0.46, 0, Math.PI * 2);
+      ctx.lineWidth = 18;
+      ctx.strokeStyle = '#f4b942';
+      ctx.stroke();
+
+      if (logoReady) {
+        const s = 130;
+        ctx.drawImage(logoImg, cfg.w / 2 - s / 2, 46, s, s);
+      }
+
+      drawStyledName(guestNameOrPlaceholder(), {
+        align: 'center', x: cfg.w / 2, y: cfg.h * 0.865, maxWidth: cfg.w * 0.84, fontMax: 115,
+      });
+
+      ctx.save();
+      ctx.fillStyle = '#f4b942';
+      ctx.textAlign = 'center';
+      ctx.font = '700 30px "Segoe UI", Arial, sans-serif';
+      ctx.fillText('EU VOU · 10/10/2026', cfg.w / 2, cfg.h * 0.93);
+      ctx.restore();
+    }
+
+    function render() {
+      const cfg = FORMATS[currentFormat];
+      canvas.width = cfg.w;
+      canvas.height = cfg.h;
+      ctx.clearRect(0, 0, cfg.w, cfg.h);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, cfg.w, cfg.h);
+      drawGrunge(cfg.w, cfg.h);
+
+      if (cfg.profile) {
+        renderProfile(cfg);
+      } else {
+        renderPoster(cfg);
+      }
+    }
+
+    // ---- controls ----
+
+    document.getElementById('format-row').addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip-btn');
+      if (!btn) return;
+      document.querySelectorAll('#format-row .chip-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFormat = btn.dataset.format;
+      recalcPhotoFit();
+      render();
+    });
+
+    document.getElementById('style-row').addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip-btn');
+      if (!btn) return;
+      document.querySelectorAll('#style-row .chip-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStyle = btn.dataset.style;
+      render();
+    });
+
+    nameInput.addEventListener('input', render);
 
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -218,11 +491,7 @@
       const image = new Image();
       image.onload = () => {
         img = image;
-        minScale = Math.max((CIRCLE.r * 2) / img.width, (CIRCLE.r * 2) / img.height);
-        scale = minScale;
-        offsetX = 0;
-        offsetY = 0;
-        zoomRange.value = '1';
+        recalcPhotoFit();
         zoomRange.disabled = false;
         downloadBtn.disabled = false;
         render();
@@ -243,13 +512,36 @@
 
     canvas.addEventListener('pointerdown', (e) => {
       if (!img) return;
-      dragging = true;
-      canvas.classList.add('dragging');
-      lastX = e.clientX;
-      lastY = e.clientY;
       canvas.setPointerCapture(e.pointerId);
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (activePointers.size === 1) {
+        dragging = true;
+        canvas.classList.add('dragging');
+        lastX = e.clientX;
+        lastY = e.clientY;
+      } else if (activePointers.size === 2) {
+        dragging = false;
+        const pts = [...activePointers.values()];
+        pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        pinchStartScale = scale;
+      }
     });
+
     canvas.addEventListener('pointermove', (e) => {
+      if (!activePointers.has(e.pointerId)) return;
+      activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activePointers.size === 2 && pinchStartDist) {
+        const pts = [...activePointers.values()];
+        const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const ratio = dist / pinchStartDist;
+        scale = Math.min(minScale * 3, Math.max(minScale, pinchStartScale * ratio));
+        zoomRange.value = String(scale / minScale);
+        clampOffset();
+        render();
+        return;
+      }
+
       if (!dragging) return;
       const k = canvasScaleFactor();
       offsetX += (e.clientX - lastX) * k;
@@ -259,8 +551,16 @@
       clampOffset();
       render();
     });
+
     ['pointerup', 'pointercancel', 'pointerleave'].forEach((ev) => {
-      canvas.addEventListener(ev, () => { dragging = false; canvas.classList.remove('dragging'); });
+      canvas.addEventListener(ev, (e) => {
+        activePointers.delete(e.pointerId);
+        pinchStartDist = null;
+        if (activePointers.size === 0) {
+          dragging = false;
+          canvas.classList.remove('dragging');
+        }
+      });
     });
 
     downloadBtn.addEventListener('click', () => {
@@ -268,7 +568,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = 'eu-vou-crewolada.png';
+        a.download = `eu-vou-crewolada-${currentFormat}.png`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -280,7 +580,7 @@
       shareBtn.hidden = false;
       shareBtn.addEventListener('click', () => {
         canvas.toBlob(async (blob) => {
-          const file = new File([blob], 'eu-vou-crewolada.png', { type: 'image/png' });
+          const file = new File([blob], `eu-vou-crewolada-${currentFormat}.png`, { type: 'image/png' });
           try {
             if (navigator.canShare({ files: [file] })) {
               await navigator.share({ files: [file], text: 'Eu vou pra Crewolada! 🎟️' });
@@ -290,6 +590,8 @@
       });
     }
 
+    const fontsToLoad = ['400 60px "Anton"', '400 60px "Permanent Marker"', '400 60px "Sacramento"'];
+    Promise.all(fontsToLoad.map((f) => document.fonts.load(f))).then(() => document.fonts.ready).then(render).catch(render);
     render();
   </script>
 </body>
