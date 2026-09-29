@@ -8,13 +8,27 @@
   <style>
     .foto-canvas-wrap {
       position: relative;
+      display: flex;
+      justify-content: center;
       border-radius: 16px;
       overflow: hidden;
       border: 1px solid var(--card-border);
       background: #000;
-      touch-action: none;
     }
-    #foto-canvas { display: block; width: 100%; height: auto; touch-action: none; cursor: grab; }
+    /* Capped to a fraction of the viewport height so the canvas (tall in the
+       Story format) never fills the whole screen on a phone — otherwise
+       there'd be no page area left outside it to start a scroll gesture
+       from, since the canvas itself blocks touch scrolling to allow panning
+       the photo with one finger. */
+    #foto-canvas {
+      display: block;
+      width: auto;
+      height: auto;
+      max-width: 100%;
+      max-height: 60vh;
+      touch-action: none;
+      cursor: grab;
+    }
     #foto-canvas.dragging { cursor: grabbing; }
 
     .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
@@ -549,7 +563,10 @@
 
     canvas.addEventListener('pointerdown', (e) => {
       if (!img) return;
-      canvas.setPointerCapture(e.pointerId);
+      // Capture is best-effort: if it throws (some browsers reject it in
+      // edge cases), dragging must still register instead of silently
+      // doing nothing.
+      try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
       activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (activePointers.size === 1) {
         dragging = true;
