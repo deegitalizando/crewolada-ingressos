@@ -3,8 +3,6 @@
 <head>
   <title>Eu vou - <%= eventInfo.name %></title>
   <%- include('partials/head') %>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Permanent+Marker&family=Sacramento&display=swap">
   <style>
     .foto-canvas-wrap {
       position: relative;
@@ -15,11 +13,10 @@
       border: 1px solid var(--card-border);
       background: #000;
     }
-    /* Capped to a fraction of the viewport height so the canvas (tall in the
-       Story format) never fills the whole screen on a phone — otherwise
-       there'd be no page area left outside it to start a scroll gesture
-       from, since the canvas itself blocks touch scrolling to allow panning
-       the photo with one finger. */
+    /* Capped to a fraction of the viewport height so the canvas never fills
+       the whole screen on a phone — otherwise there'd be no page area left
+       outside it to start a scroll gesture from, since the canvas itself
+       blocks touch scrolling to allow panning the photo with one finger. */
     #foto-canvas {
       display: block;
       width: auto;
@@ -30,26 +27,6 @@
       cursor: grab;
     }
     #foto-canvas.dragging { cursor: grabbing; }
-
-    .chip-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
-    .chip-btn {
-      flex: 1 1 30%;
-      min-height: 46px;
-      min-width: 90px;
-      padding: 10px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--card-border);
-      background: #1a1a1a;
-      color: var(--text-dim);
-      font-size: 13px;
-      font-weight: 700;
-      white-space: nowrap;
-      margin: 0;
-      width: auto;
-    }
-    .chip-btn.active { background: var(--accent); color: #1a1200; border-color: var(--accent); }
-
-    .field-label { display: block; margin-top: 16px; }
 
     .zoom-row { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
     .zoom-row input[type="range"] { flex: 1; height: 32px; }
@@ -75,7 +52,7 @@
   <div class="page">
     <header class="hero hero-sm">
       <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
-      <p class="hero-sub">Monte sua arte "Eu vou" e compartilhe!</p>
+      <p class="hero-sub">Monte sua arte "Confirmado na Crewolada" e compartilhe!</p>
     </header>
 
     <main class="card">
@@ -84,23 +61,6 @@
       </div>
 
       <p class="hint" style="margin-top:8px">Toque e arraste a foto para posicionar. Use o dedo (pinça) ou o controle para dar zoom.</p>
-
-      <div class="chip-row" id="format-row">
-        <button type="button" class="chip-btn active" data-format="story">📱 Story</button>
-        <button type="button" class="chip-btn" data-format="banner">🖥️ Banner</button>
-        <button type="button" class="chip-btn" data-format="profile">👤 Perfil</button>
-      </div>
-
-      <label class="field-label">
-        Seu nome
-        <input type="text" id="name-input" maxlength="26" placeholder="Como quer aparecer na arte" autocomplete="name" />
-      </label>
-
-      <div class="chip-row" id="style-row">
-        <button type="button" class="chip-btn active" data-style="impacto">Impacto</button>
-        <button type="button" class="chip-btn" data-style="grafite">Grafite</button>
-        <button type="button" class="chip-btn" data-style="assinatura">Assinatura</button>
-      </div>
 
       <div class="zoom-row">
         <span class="hint" style="margin:0">🔍</span>
@@ -121,58 +81,22 @@
   <script>
     const canvas = document.getElementById('foto-canvas');
     const ctx = canvas.getContext('2d');
+    const W = 1080;
+    const H = 1080;
+    canvas.width = W;
+    canvas.height = H;
+
+    // Window carved out of the frame artwork where the photo shows through
+    // (measured from the frame's own transparent pixels, then scaled from
+    // its native 1254x1254 to this canvas's 1080x1080).
+    const K = W / 1254;
+    const WINDOW = { x: 193 * K, y: 219 * K, w: 870 * K, h: 669 * K };
 
     const fileInput = document.getElementById('file-input');
-    const nameInput = document.getElementById('name-input');
     const zoomRange = document.getElementById('zoom-range');
     const downloadBtn = document.getElementById('btn-download');
     const shareBtn = document.getElementById('btn-share');
 
-    const FORMATS = {
-      story: {
-        w: 1080, h: 1920,
-        logo: { x: 540, y: 175, size: 200 },
-        topLeft: { x: 70, y: 90 }, topRight: { x: 1010, y: 90 }, topFont: 28,
-        brush: { cy: 1010, h: 190, x0: -80, x1: 1200, angle: -3 },
-        badge: { x: 70, y: 935, w: 640, h: 80 },
-        nameBaseline: 1218, nameMaxWidth: 940, nameFontMax: 165,
-        subText: { x: 74, y: 1275, font: 28 },
-        photoRect: { x: 500, y: 500, w: 580, h: 1260 },
-        fadeWidth: 240,
-        bottomBar: { y1: 1830, y2: 1878, font: 32, center: true },
-      },
-      banner: {
-        w: 1200, h: 628,
-        logo: { x: 600, y: 62, size: 110 },
-        topLeft: { x: 40, y: 30 }, topRight: { x: 1160, y: 30 }, topFont: 20,
-        brush: { cy: 340, h: 112, x0: -60, x1: 720, angle: -3 },
-        badge: { x: 40, y: 305, w: 440, h: 54 },
-        nameBaseline: 425, nameMaxWidth: 560, nameFontMax: 100,
-        subText: { x: 44, y: 452, font: 20 },
-        photoRect: { x: 660, y: 0, w: 540, h: 628 },
-        fadeWidth: 170,
-        bottomBar: { y1: 590, font: 22, center: false },
-      },
-      profile: {
-        w: 1080, h: 1080, profile: true,
-        logo: { x: 540, y: 140, size: 150 },
-        topLeft: { x: 60, y: 65 }, topRight: { x: 1020, y: 65 }, topFont: 24,
-        brush: { cy: 600, h: 300, x0: -100, x1: 1180, angle: -3 },
-        badge: { x: 260, y: 238, w: 560, h: 56 },
-        circle: { cx: 540, cy: 600, r: 290 },
-        nameBaseline: 962, nameMaxWidth: 860, nameFontMax: 92,
-        bottomBar: { y1: 1020, font: 24 },
-      },
-    };
-
-    const NAME_STYLES = {
-      impacto: { family: 'Anton', color: '#ffffff', upper: true },
-      grafite: { family: 'Permanent Marker', color: '#f4b942', upper: true },
-      assinatura: { family: 'Sacramento', color: '#ffffff', upper: false },
-    };
-
-    let currentFormat = 'story';
-    let currentStyle = 'impacto';
     let img = null;
     let scale = 1;
     let minScale = 1;
@@ -185,113 +109,14 @@
     let pinchStartDist = null;
     let pinchStartScale = 1;
 
-    const logoImg = new Image();
-    let logoReady = false;
-    logoImg.onload = () => { logoReady = true; render(); };
-    logoImg.src = '/img/logo.jpg';
-
-    // Deterministic "noise" (same values every run) so the grunge texture and
-    // rough brush/badge edges don't jitter between re-renders.
-    const SEED = Array.from({ length: 24 }, (_, i) => Math.abs(Math.sin(i * 12.9898 + 4.1414)) % 1);
-    const GRUNGE_BLOBS = Array.from({ length: 42 }, (_, i) => ({
-      x: SEED[i % SEED.length],
-      y: SEED[(i * 3 + 1) % SEED.length],
-      r: 0.03 + SEED[(i * 5 + 2) % SEED.length] * 0.09,
-      a: 0.04 + SEED[(i * 7 + 3) % SEED.length] * 0.09,
-    }));
-
-    function titleCase(text) {
-      return text.trim().toLowerCase().replace(/\p{L}+/gu, (w) => w.charAt(0).toUpperCase() + w.slice(1));
-    }
-
-    function fitFontSize(text, family, maxWidth, maxSize, minSize) {
-      let size = maxSize;
-      while (size > minSize) {
-        ctx.font = `400 ${size}px "${family}"`;
-        if (ctx.measureText(text).width <= maxWidth) break;
-        size -= 2;
-      }
-      return size;
-    }
-
-    function fillTextSpaced(text, x, y, spacing) {
-      let cx = x;
-      for (const ch of text) {
-        ctx.fillText(ch, cx, y);
-        cx += ctx.measureText(ch).width + spacing;
-      }
-      return cx - spacing;
-    }
-
-    function drawGrunge(W, H) {
-      GRUNGE_BLOBS.forEach((b) => {
-        const g = ctx.createRadialGradient(b.x * W, b.y * H, 0, b.x * W, b.y * H, b.r * Math.max(W, H));
-        g.addColorStop(0, `rgba(255,255,255,${b.a})`);
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, W, H);
-      });
-    }
-
-    function jaggedPath(x0, x1, yBase, amp, steps, offset) {
-      const pts = [];
-      const step = (x1 - x0) / steps;
-      for (let i = 0; i <= steps; i += 1) {
-        pts.push({ x: x0 + i * step, y: yBase + (SEED[(i + offset) % SEED.length] - 0.5) * amp });
-      }
-      return pts;
-    }
-
-    function drawBrushBand(b) {
-      ctx.save();
-      const midX = (b.x0 + b.x1) / 2;
-      ctx.translate(midX, b.cy);
-      ctx.rotate((b.angle * Math.PI) / 180);
-      ctx.translate(-midX, -b.cy);
-      const top = jaggedPath(b.x0, b.x1, b.cy - b.h / 2, 20, 16, 0);
-      const bot = jaggedPath(b.x1, b.x0, b.cy + b.h / 2, 20, 16, 6);
-      ctx.beginPath();
-      top.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-      bot.forEach((p) => ctx.lineTo(p.x, p.y));
-      ctx.closePath();
-      ctx.fillStyle = '#f4b942';
-      ctx.fill();
-      ctx.restore();
-    }
-
-    function drawRoughBadge(rect, text) {
-      const top = jaggedPath(rect.x, rect.x + rect.w, rect.y, 8, 12, 2);
-      const bot = jaggedPath(rect.x + rect.w, rect.x, rect.y + rect.h, 8, 12, 8);
-      ctx.beginPath();
-      top.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-      bot.forEach((p) => ctx.lineTo(p.x, p.y));
-      ctx.closePath();
-      ctx.fillStyle = 'rgba(8,8,8,0.92)';
-      ctx.fill();
-
-      ctx.save();
-      ctx.fillStyle = '#f4b942';
-      ctx.font = `700 ${Math.round(rect.h * 0.42)}px "Segoe UI", Arial, sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      const totalW = [...text].reduce((w, ch) => w + ctx.measureText(ch).width + 2, 0);
-      fillTextSpaced(text, rect.x + (rect.w - totalW) / 2, rect.y + rect.h / 2 + 1, 2);
-      ctx.restore();
-    }
-
-    function currentRect() {
-      const cfg = FORMATS[currentFormat];
-      if (cfg.profile) {
-        const d = cfg.circle.r * 2;
-        return { x: cfg.circle.cx - cfg.circle.r, y: cfg.circle.cy - cfg.circle.r, w: d, h: d };
-      }
-      return cfg.photoRect;
-    }
+    const frameImg = new Image();
+    let frameReady = false;
+    frameImg.onload = () => { frameReady = true; render(); };
+    frameImg.src = '/img/foto-frame.webp';
 
     function recalcPhotoFit() {
       if (!img) return;
-      const rect = currentRect();
-      minScale = Math.max(rect.w / img.width, rect.h / img.height);
+      minScale = Math.max(WINDOW.w / img.width, WINDOW.h / img.height);
       scale = minScale;
       offsetX = 0;
       offsetY = 0;
@@ -300,240 +125,44 @@
 
     function clampOffset() {
       if (!img) return;
-      const rect = currentRect();
       const iw = img.width * scale;
       const ih = img.height * scale;
-      const maxOffX = Math.max(0, (iw - rect.w) / 2);
-      const maxOffY = Math.max(0, (ih - rect.h) / 2);
+      const maxOffX = Math.max(0, (iw - WINDOW.w) / 2);
+      const maxOffY = Math.max(0, (ih - WINDOW.h) / 2);
       offsetX = Math.min(maxOffX, Math.max(-maxOffX, offsetX));
       offsetY = Math.min(maxOffY, Math.max(-maxOffY, offsetY));
     }
 
-    // Duotone grade (near-black shadows to warm gold-ivory highlights) with a
-    // touch of extra contrast — a more editorial/professional look than a
-    // flat desaturate+tint, used everywhere the photo is drawn.
-    function applyDuotone(targetCtx, w, h) {
-      const idata = targetCtx.getImageData(0, 0, w, h);
-      const d = idata.data;
-      for (let i = 0; i < d.length; i += 4) {
-        let gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-        gray = ((gray / 255 - 0.5) * 1.18 + 0.5) * 255;
-        gray = Math.max(0, Math.min(255, gray));
-        const t = gray / 255;
-        d[i] = 14 + t * (255 - 14);
-        d[i + 1] = 12 + t * (228 - 12);
-        d[i + 2] = 10 + t * (168 - 10);
-      }
-      targetCtx.putImageData(idata, 0, 0);
-    }
+    function render() {
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
 
-    // Renders the user's photo (or a placeholder) at the given size, panned
-    // and zoomed per the current scale/offset state, and returns it as an
-    // offscreen canvas ready to be drawn (into a rect or clipped to a circle).
-    function drawPhotoIntoOffscreen(w, h) {
-      const off = document.createElement('canvas');
-      off.width = Math.max(1, Math.round(w));
-      off.height = Math.max(1, Math.round(h));
-      const octx = off.getContext('2d', { willReadFrequently: true });
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
+      ctx.clip();
       if (img) {
         const iw = img.width * scale;
         const ih = img.height * scale;
-        octx.drawImage(img, off.width / 2 - iw / 2 + offsetX, off.height / 2 - ih / 2 + offsetY, iw, ih);
+        const cx = WINDOW.x + WINDOW.w / 2 + offsetX;
+        const cy = WINDOW.y + WINDOW.h / 2 + offsetY;
+        ctx.drawImage(img, cx - iw / 2, cy - ih / 2, iw, ih);
       } else {
-        octx.fillStyle = '#1a1a1a';
-        octx.fillRect(0, 0, off.width, off.height);
-        octx.fillStyle = '#a8a29a';
-        octx.font = '600 32px "Segoe UI", Arial, sans-serif';
-        octx.textAlign = 'center';
-        octx.textBaseline = 'middle';
-        octx.fillText('Sua foto aqui', off.width / 2, off.height / 2);
-      }
-      applyDuotone(octx, off.width, off.height);
-      return off;
-    }
-
-    // Draws the photo into a rect, optionally fading one edge to transparent
-    // so it blends into the background the way the DJ lineup posters do.
-    function drawFadedPhoto(rect, fadeWidth) {
-      const off = drawPhotoIntoOffscreen(rect.w, rect.h);
-      if (fadeWidth) {
-        const octx = off.getContext('2d', { willReadFrequently: true });
-        const grad = octx.createLinearGradient(0, 0, fadeWidth, 0);
-        grad.addColorStop(0, 'rgba(0,0,0,1)');
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        octx.globalCompositeOperation = 'destination-out';
-        octx.fillStyle = grad;
-        octx.fillRect(0, 0, fadeWidth, off.height);
-        octx.globalCompositeOperation = 'source-over';
-      }
-      ctx.drawImage(off, rect.x, rect.y);
-    }
-
-    // Draws the photo clipped to a circle with a gold ring border, keeping
-    // the same branded background (grunge/brush/badge) visible around it.
-    function drawCirclePhoto(circle) {
-      const size = circle.r * 2;
-      const off = drawPhotoIntoOffscreen(size, size);
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(circle.cx, circle.cy, circle.r, 0, Math.PI * 2);
-      ctx.closePath();
-      ctx.clip();
-      ctx.drawImage(off, circle.cx - circle.r, circle.cy - circle.r, size, size);
-      ctx.restore();
-
-      ctx.beginPath();
-      ctx.arc(circle.cx, circle.cy, circle.r + 6, 0, Math.PI * 2);
-      ctx.lineWidth = 14;
-      ctx.strokeStyle = '#f4b942';
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(circle.cx, circle.cy, circle.r - 6, 0, Math.PI * 2);
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-      ctx.stroke();
-    }
-
-    function drawStyledName(text, opts) {
-      const style = NAME_STYLES[currentStyle];
-      const display = style.upper ? text.toUpperCase() : titleCase(text);
-      const size = fitFontSize(display, style.family, opts.maxWidth, opts.fontMax, opts.minSize || 30);
-      ctx.save();
-      ctx.font = `400 ${size}px "${style.family}"`;
-      ctx.fillStyle = style.color;
-      ctx.textAlign = opts.align || 'left';
-      ctx.textBaseline = 'alphabetic';
-      ctx.shadowColor = 'rgba(0,0,0,0.55)';
-      ctx.shadowBlur = 10;
-      ctx.fillText(display, opts.x, opts.y);
-      ctx.restore();
-    }
-
-    function guestNameOrPlaceholder() {
-      return (nameInput.value || '').trim() || 'SEU NOME';
-    }
-
-    function renderTopRow(cfg) {
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `700 ${cfg.topFont}px "Segoe UI", Arial, sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      fillTextSpaced('BLACK MUSIC', cfg.topLeft.x, cfg.topLeft.y, 2);
-      fillTextSpaced('CRISTÃ', cfg.topLeft.x, cfg.topLeft.y + cfg.topFont * 1.25, 2);
-      ctx.fillStyle = '#f4b942';
-      ctx.fillRect(cfg.topLeft.x, cfg.topLeft.y + cfg.topFont * 2.7, 56, 4);
-      ctx.restore();
-
-      if (logoReady) {
-        const s = cfg.logo.size;
-        ctx.drawImage(logoImg, cfg.logo.x - s / 2, cfg.logo.y - s / 2, s, s);
-      }
-
-      ctx.save();
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'top';
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `700 ${cfg.topFont}px "Segoe UI", Arial, sans-serif`;
-      ctx.fillText('Presença', cfg.topRight.x, cfg.topRight.y);
-      ctx.fillStyle = '#f4b942';
-      ctx.font = `italic 700 ${cfg.topFont}px "Segoe UI", Arial, sans-serif`;
-      ctx.fillText('confirmada!', cfg.topRight.x, cfg.topRight.y + cfg.topFont * 1.3);
-      ctx.restore();
-    }
-
-    function renderPoster(cfg) {
-      renderTopRow(cfg);
-      drawBrushBand(cfg.brush);
-      drawFadedPhoto(cfg.photoRect, cfg.fadeWidth);
-      drawRoughBadge(cfg.badge, 'PRESENÇA CONFIRMADA');
-      drawStyledName(guestNameOrPlaceholder(), {
-        align: 'left', x: cfg.badge.x, y: cfg.nameBaseline, maxWidth: cfg.nameMaxWidth, fontMax: cfg.nameFontMax,
-      });
-
-      ctx.save();
-      ctx.fillStyle = '#f4b942';
-      ctx.font = `700 ${cfg.subText.font}px "Segoe UI", Arial, sans-serif`;
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      fillTextSpaced('CREWLOVER OFICIAL', cfg.subText.x, cfg.subText.y, 2);
-      ctx.restore();
-
-      ctx.save();
-      ctx.fillStyle = '#f5f0e6';
-      ctx.font = `700 ${cfg.bottomBar.font}px "Segoe UI", Arial, sans-serif`;
-      if (cfg.bottomBar.center) {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(WINDOW.x, WINDOW.y, WINDOW.w, WINDOW.h);
+        ctx.fillStyle = '#a8a29a';
+        ctx.font = '600 30px "Segoe UI", Arial, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('10/10/2026 · Bangu Atlético Clube', cfg.w / 2, cfg.bottomBar.y1);
-        ctx.fillStyle = '#f4b942';
-        ctx.font = `700 ${cfg.bottomBar.font - 4}px "Segoe UI", Arial, sans-serif`;
-        ctx.fillText('crewolada.com', cfg.w / 2, cfg.bottomBar.y2);
-      } else {
-        ctx.textAlign = 'left';
-        ctx.fillText('10/10/2026 · Bangu Atlético Clube · crewolada.com', cfg.badge.x, cfg.bottomBar.y1);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Sua foto aqui', WINDOW.x + WINDOW.w / 2, WINDOW.y + WINDOW.h / 2);
       }
       ctx.restore();
-    }
 
-    // Same branded background as the posters (top row, brush band, badge),
-    // but the photo is framed inside the ring instead of going full-bleed —
-    // this is meant to be viewed as-is, not relying on a platform's own
-    // circular avatar crop, so the identity stays visible around the photo.
-    function renderProfile(cfg) {
-      renderTopRow(cfg);
-      drawBrushBand(cfg.brush);
-      drawCirclePhoto(cfg.circle);
-      drawRoughBadge(cfg.badge, 'PRESENÇA CONFIRMADA');
-      drawStyledName(guestNameOrPlaceholder(), {
-        align: 'center', x: cfg.w / 2, y: cfg.nameBaseline, maxWidth: cfg.nameMaxWidth, fontMax: cfg.nameFontMax,
-      });
-
-      ctx.save();
-      ctx.fillStyle = '#f5f0e6';
-      ctx.textAlign = 'center';
-      ctx.font = `700 ${cfg.bottomBar.font}px "Segoe UI", Arial, sans-serif`;
-      ctx.fillText('10/10/2026 · Bangu Atlético Clube', cfg.w / 2, cfg.bottomBar.y1);
-      ctx.restore();
-    }
-
-    function render() {
-      const cfg = FORMATS[currentFormat];
-      canvas.width = cfg.w;
-      canvas.height = cfg.h;
-      ctx.clearRect(0, 0, cfg.w, cfg.h);
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, cfg.w, cfg.h);
-      drawGrunge(cfg.w, cfg.h);
-
-      if (cfg.profile) {
-        renderProfile(cfg);
-      } else {
-        renderPoster(cfg);
+      if (frameReady) {
+        ctx.drawImage(frameImg, 0, 0, W, H);
       }
     }
-
-    // ---- controls ----
-
-    document.getElementById('format-row').addEventListener('click', (e) => {
-      const btn = e.target.closest('.chip-btn');
-      if (!btn) return;
-      document.querySelectorAll('#format-row .chip-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentFormat = btn.dataset.format;
-      recalcPhotoFit();
-      render();
-    });
-
-    document.getElementById('style-row').addEventListener('click', (e) => {
-      const btn = e.target.closest('.chip-btn');
-      if (!btn) return;
-      document.querySelectorAll('#style-row .chip-btn').forEach((b) => b.classList.remove('active'));
-      btn.classList.add('active');
-      currentStyle = btn.dataset.style;
-      render();
-    });
-
-    nameInput.addEventListener('input', render);
 
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -622,7 +251,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `eu-vou-crewolada-${currentFormat}.png`;
+        a.download = 'confirmado-na-crewolada.png';
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -634,18 +263,16 @@
       shareBtn.hidden = false;
       shareBtn.addEventListener('click', () => {
         canvas.toBlob(async (blob) => {
-          const file = new File([blob], `eu-vou-crewolada-${currentFormat}.png`, { type: 'image/png' });
+          const file = new File([blob], 'confirmado-na-crewolada.png', { type: 'image/png' });
           try {
             if (navigator.canShare({ files: [file] })) {
-              await navigator.share({ files: [file], text: 'Eu vou pra Crewolada! 🎟️' });
+              await navigator.share({ files: [file], text: 'Confirmado na Crewolada! 🎟️' });
             }
           } catch (e) { /* user cancelled */ }
         }, 'image/png');
       });
     }
 
-    const fontsToLoad = ['400 60px "Anton"', '400 60px "Permanent Marker"', '400 60px "Sacramento"'];
-    Promise.all(fontsToLoad.map((f) => document.fonts.load(f))).then(() => document.fonts.ready).then(render).catch(render);
     render();
   </script>
 </body>
