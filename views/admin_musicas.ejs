@@ -24,6 +24,9 @@
     .tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
     .tag { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--card-border); color:var(--accent); }
     .tag.warn { color:#fca5a5; border-color:rgba(239,68,68,0.4); }
+    .tag.free { color:#86efac; border-color:rgba(34,197,94,0.5); }
+    .links a.free { background:var(--ok); border-color:var(--ok); color:#04210f; font-weight:800; flex:1; text-align:center; padding:9px; font-size:14px; }
+    .bc-player { border:0; width:100%; height:42px; border-radius:8px; }
     .tag.new { color:#93c5fd; border-color:rgba(59,130,246,0.4); }
     .track audio { width:100%; height:36px; }
     .links { display:flex; gap:6px; flex-wrap:wrap; }
@@ -66,7 +69,8 @@
       <h3>Sugestões de músicas</h3>
       <p class="hint" style="margin-top:0">
         Todo dia, a partir das 6h, o sistema busca novas faixas de black music cristã (neo soul, soulful rap, boom bap, R&B, trap, hip hop, hip hop soul).
-        Ouça a prévia e use os links para comprar ou baixar nas lojas oficiais. Lembre que tocar música em evento público exige a licença do ECAD.
+        Em <strong>Download grátis</strong> ficam lançamentos que os próprios artistas liberam de graça no Bandcamp: clique em "Baixar grátis", depois em "Free Download" ou "Buy Digital", digite <strong>0</strong> no valor e escolha o formato (MP3 320 ou WAV). Às vezes o Bandcamp pede um e-mail para enviar o link.
+        Em <strong>Para comprar</strong> ficam faixas de artistas maiores, que não são liberadas de graça. Lembre que tocar música em evento público exige a licença do ECAD.
       </p>
 
       <% if (msg === 'gerado') { %><div class="alert" style="background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac">Sugestões atualizadas.</div><% } %>
@@ -75,10 +79,11 @@
       <% if (msg === 'artista-nao-encontrado') { %><div class="alert">Não achei esse artista no Deezer. Confira o nome exato.</div><% } %>
 
       <div class="mus-bar">
-        <a href="/downloads" class="chip <%= view === 'dia' ? 'on' : '' %>" style="text-decoration:none">Sugestões do dia</a>
+        <a href="/downloads<%= date && date !== days[0] ? '?data=' + date : '' %>" class="chip <%= view === 'gratis' ? 'on' : '' %>" style="text-decoration:none">Download grátis</a>
+        <a href="/downloads?ver=comprar<%= date && date !== days[0] ? '&data=' + date : '' %>" class="chip <%= view === 'comprar' ? 'on' : '' %>" style="text-decoration:none">Para comprar</a>
         <a href="/downloads?ver=playlist" class="chip <%= view === 'playlist' ? 'on' : '' %>" style="text-decoration:none">Playlist do evento (<%= Object.values(marks).filter(m => m === 'playlist').length %>)</a>
-        <% if (view === 'dia' && days.length) { %>
-          <select onchange="location.href='/downloads?data='+this.value">
+        <% if (view !== 'playlist' && days.length) { %>
+          <select onchange="location.href='/downloads?<%= view === 'comprar' ? 'ver=comprar&' : '' %>data='+this.value">
             <% days.forEach(d => { %>
               <option value="<%= d %>" <%= d === date ? 'selected' : '' %>><%= d.split('-').reverse().join('/') %><%= d === today ? ' (hoje)' : '' %></option>
             <% }) %>
@@ -98,7 +103,7 @@
       <% } %>
 
       <% if (!tracks.length) { %>
-        <p class="hint"><%= view === 'playlist' ? 'Nenhuma música na playlist ainda. Use "+ Playlist" nas sugestões.' : 'Ainda não há sugestões. Clique em "Buscar sugestões agora".' %></p>
+        <p class="hint"><%= view === 'playlist' ? 'Nenhuma música na playlist ainda. Use "+ Playlist" nas sugestões.' : (view === 'gratis' && days.length ? 'Nenhum download grátis encontrado neste dia. Clique em "Buscar de novo hoje".' : 'Ainda não há sugestões. Clique em "Buscar sugestões agora".') %></p>
       <% } else { %>
         <div class="chips" id="estilo-filter">
           <button type="button" class="chip on" data-estilo="">Todos</button>
@@ -115,11 +120,19 @@
                   <div class="track-artist"><%= t.artist %></div>
                   <div class="tags">
                     <span class="tag"><%= t.estilo %></span>
+                    <% if (t.freeType) { %><span class="tag free"><%= t.freeType %></span><% } %>
                     <% if (t.tipo === 'descoberta') { %><span class="tag new">Artista novo</span><% } %>
                     <% if (t.explicit) { %><span class="tag warn">Letra explícita</span><% } %>
                   </div>
                 </div>
               </div>
+              <% if (t.source === 'bandcamp') { %>
+              <iframe class="bc-player" src="<%= t.embed %>" seamless loading="lazy" title="Ouvir <%= t.title %>"></iframe>
+              <div class="hint" style="margin:0;font-size:12px"><%= t.kind %><%= t.location ? ' · ' + t.location : '' %><%= t.releaseDate ? ' · ' + t.releaseDate.split('-').reverse().join('/') : '' %></div>
+              <div class="links">
+                <a class="buy free" href="<%= t.url %>" target="_blank" rel="noopener">Baixar grátis</a>
+              </div>
+              <% } else { %>
               <audio controls preload="none" src="/api/downloads/preview/<%= t.id %>"></audio>
               <div class="links">
                 <% if (t.links.apple) { %><a class="buy" href="<%= t.links.apple %>" target="_blank" rel="noopener">Comprar (iTunes)</a><% } %>
@@ -129,6 +142,7 @@
                 <a href="<%= t.links.spotify %>" target="_blank" rel="noopener">Spotify</a>
                 <a href="<%= t.links.youtube %>" target="_blank" rel="noopener">YouTube</a>
               </div>
+              <% } %>
               <div class="actions">
                 <button type="button" class="mini-btn <%= mark === 'playlist' ? '' : 'ghost' %>" data-mark="playlist"><%= mark === 'playlist' ? '✓ Na playlist' : '+ Playlist' %></button>
                 <button type="button" class="mini-btn ghost" data-mark="descartada"><%= mark === 'descartada' ? 'Desfazer' : 'Descartar' %></button>

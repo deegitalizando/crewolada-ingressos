@@ -2,6 +2,8 @@
 //
 // Discovery uses the public Deezer API (no key) for artists, top tracks and
 // 30s previews, and the iTunes Search API for the official purchase link.
+// Free downloads come from Bandcamp releases the artists themselves offer for
+// free / name-your-price.
 // We only ever link to legitimate places to listen/buy/download (Apple Music /
 // iTunes, Bandcamp, Amazon, Deezer, Spotify, YouTube) — never to pirated
 // files.
@@ -199,11 +201,112 @@ async function seedPool(state) {
   state.seeded = true;
 }
 
+
+// ---- free downloads (Bandcamp) ---------------------------------------
+//
+// Releases the artists themselves put up as "free download" or "name your
+// price" (min. 0) on Bandcamp. Only Christian-specific tags are scanned —
+// generic ones like "neo-soul"/"gospel" bring in secular music and
+// unlicensed mashups.
+
+const BANDCAMP_TAGS = [
+  ['christian-hip-hop', 'Hip hop'],
+  ['holy-hip-hop', 'Boom bap'],
+  ['christian-rap', 'Hip hop'],
+  ['gospel-rap', 'Soulful rap'],
+  ['gospel-hip-hop', 'Hip hop soul'],
+  ['hip-hop-gospel', 'Hip hop soul'],
+  ['rap-gospel', 'Hip hop'],
+  ['christian-trap', 'Trap'],
+  ['christian-r-b', 'R&B'],
+  ['christian-soul', 'Neo soul'],
+  ['gospel-soul', 'Neo soul'],
+];
+const FREE_PER_DAY = 15;
+const FREE_EXCLUDE = /mash-?up|bootleg|type beat/i;
+
+async function bandcampDiscover(tag, slice, cursor) {
+  const res = await fetch('https://bandcamp.com/api/discover/1/discover_web', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'User-Agent': 'CrewoladaMusicBot/1.0 (+https://crewolada.com)' },
+    body: JSON.stringify({
+      category_id: 0,
+      tag_norm_names: [tag],
+      geoname_id: 0,
+      slice,
+      time_facet_id: null,
+      cursor,
+      size: 60,
+      include_result_types: ['a', 's'],
+    }),
+  });
+  if (!res.ok) throw new Error(`Bandcamp HTTP ${res.status}`);
+  const data = await res.json();
+  await sleep(400);
+  return data;
+}
+
+function toFreeSuggestion(r, estilo, tag) {
+  const isTrack = r.item_type === 't';
+  return {
+    id: `bc-${r.item_id}`,
+    source: 'bandcamp',
+    title: r.title,
+    artist: r.band_name,
+    cover: r.primary_image ? `https://f4.bcbits.com/img/${r.primary_image.is_art ? 'a' : ''}${r.primary_image.image_id}_9.jpg` : null,
+    url: String(r.item_url || '').split('?')[0],
+    embed: `https://bandcamp.com/EmbeddedPlayer/${isTrack ? 'track' : 'album'}=${r.item_id}/size=small/bgcol=121212/linkcol=f4b942/transparent=true/`,
+    kind: isTrack ? 'Single' : `Álbum · ${r.track_count || '?'} faixas`,
+    freeType: r.is_free_download ? 'Download grátis' : 'Pague quanto quiser (pode ser R$ 0)',
+    location: r.band_location || null,
+    releaseDate: r.release_date ? r.release_date.slice(0, 10) : null,
+    estilo,
+    tag,
+  };
+}
+
+function isFree(r) {
+  return r.is_free_download || (!r.is_set_price && r.price && r.price.amount === 0);
+}
+
+async function findFreeDownloads(seenIds) {
+  const found = [];
+  const perTag = Math.ceil(FREE_PER_DAY / 4);
+  for (const [tag, estilo] of shuffle(BANDCAMP_TAGS)) {
+    if (found.length >= FREE_PER_DAY) break;
+    let taken = 0;
+    // New releases first, then the all-time top, so each day brings fresh
+    // drops but the backlog of good free stuff still surfaces over time.
+    for (const slice of ['new', 'top']) {
+      let cursor = '*';
+      for (let page = 0; page < 5 && cursor && taken < perTag; page++) {
+        try {
+          const data = await bandcampDiscover(tag, slice, cursor);
+          for (const r of data.results || []) {
+            const id = `bc-${r.item_id}`;
+            if (taken >= perTag || found.length >= FREE_PER_DAY) break;
+            if (!isFree(r) || seenIds.has(id) || FREE_EXCLUDE.test(r.title)) continue;
+            found.push(toFreeSuggestion(r, estilo, tag));
+            seenIds.add(id);
+            taken++;
+          }
+          cursor = (data.results || []).length ? data.cursor : null;
+        } catch (err) {
+          console.error('[musicas] bandcamp falhou', tag, err.message);
+          cursor = null;
+        }
+      }
+      if (taken >= perTag) break;
+    }
+  }
+  return found;
+}
+
 // ---- daily generation ------------------------------------------------
 
 function alreadySuggested(state) {
   const ids = new Set();
-  for (const day of Object.values(state.days)) for (const t of day.tracks) ids.add(t.id);
+  for (const day of Object.values(state.days)) for (const t of [...day.tracks, ...(day.free || [])]) ids.add(t.id);
   return ids;
 }
 
@@ -281,7 +384,8 @@ async function generateDay(state, date) {
     }
   }
 
-  state.days[date] = { generatedAt: new Date().toISOString(), tracks };
+  const free = await findFreeDownloads(seen);
+  state.days[date] = { generatedAt: new Date().toISOString(), free, tracks };
   return state.days[date];
 }
 
@@ -290,10 +394,15 @@ function generateToday({ force = false } = {}) {
   if (generating) return generating;
   const date = todayBrasilia();
   generating = withState(async (state) => {
-    if (state.days[date] && !force) return state.days[date];
+    const existing = state.days[date];
+    if (existing && !force) {
+      // Days generated before the free-download source existed.
+      if (!existing.free) existing.free = await findFreeDownloads(alreadySuggested(state));
+      return existing;
+    }
     console.log(`[musicas] gerando sugestoes de ${date}...`);
     const day = await generateDay(state, date);
-    console.log(`[musicas] ${day.tracks.length} sugestoes geradas para ${date}`);
+    console.log(`[musicas] ${day.free.length} gratis + ${day.tracks.length} sugestoes geradas para ${date}`);
     return day;
   }).finally(() => {
     generating = null;
@@ -305,7 +414,8 @@ function generateToday({ force = false } = {}) {
 function startMusicScheduler() {
   const tick = () => {
     const state = load();
-    if (!state.days[todayBrasilia()] && hourBrasilia() >= 6) {
+    const day = state.days[todayBrasilia()];
+    if ((!day || !day.free) && hourBrasilia() >= 6) {
       generateToday().catch((err) => console.error('[musicas] geracao falhou:', err.message));
     }
   };

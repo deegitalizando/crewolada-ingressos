@@ -750,16 +750,16 @@ app.get('/downloads', (req, res) => {
   }
   const state = musicas.load();
   const days = Object.keys(state.days).sort().reverse();
-  const view = req.query.ver === 'playlist' ? 'playlist' : 'dia';
+  const view = ['playlist', 'comprar'].includes(req.query.ver) ? req.query.ver : 'gratis';
   const date = days.includes(req.query.data) ? req.query.data : days[0] || null;
 
   let tracks = [];
   if (view === 'playlist') {
     const byId = {};
-    for (const d of days) for (const t of state.days[d].tracks) byId[t.id] = t;
+    for (const d of days) for (const t of [...(state.days[d].free || []), ...state.days[d].tracks]) byId[t.id] = t;
     tracks = Object.keys(state.marks).filter((id) => state.marks[id] === 'playlist' && byId[id]).map((id) => byId[id]);
   } else if (date) {
-    tracks = state.days[date].tracks;
+    tracks = view === 'gratis' ? state.days[date].free || [] : state.days[date].tracks;
   }
 
   const artists = Object.values(state.artists).sort((a, b) => a.name.localeCompare(b.name));
@@ -803,6 +803,7 @@ app.post('/api/downloads/artista', requireAdminAuth, async (req, res) => {
 });
 
 app.post('/api/downloads/faixa/:id', requireAdminAuth, async (req, res) => {
+  if (!/^(bc-)?\d+$/.test(req.params.id)) return res.status(400).json({ ok: false });
   const mark = ['playlist', 'descartada'].includes(req.body.mark) ? req.body.mark : null;
   await musicas.setTrackMark(req.params.id, mark);
   res.json({ ok: true, mark });
