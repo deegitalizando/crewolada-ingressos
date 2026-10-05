@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Músicas - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .mus-bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:16px; }
+    .mus-bar form { margin:0; }
+    .mus-bar button, .mus-bar select, .chip, .mini-btn { width:auto; margin-top:0; }
+    .mus-bar select { background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); border-radius:10px; padding:10px 12px; font-size:14px; }
+    .mus-bar button { padding:10px 14px; font-size:13px; }
+    .chips { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
+    .chip { background:transparent; color:var(--text-dim); border:1px solid var(--card-border); border-radius:999px; padding:6px 12px; font-size:12px; font-weight:700; text-transform:none; letter-spacing:0; }
+    .chip.on { background:var(--accent); color:#1a1200; border-color:var(--accent); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:12px; }
+    .track { border:1px solid var(--card-border); border-radius:14px; padding:12px; display:flex; flex-direction:column; gap:10px; background:#0b0b0b; }
+    .track.descartada { opacity:0.35; }
+    .track.playlist { border-color:var(--ok); }
+    .track-head { display:flex; gap:12px; align-items:center; min-width:0; }
+    .track-head img { width:64px; height:64px; border-radius:8px; flex-shrink:0; object-fit:cover; background:#222; }
+    .track-head .meta { min-width:0; }
+    .track-title { font-weight:800; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .track-artist { color:var(--text-dim); font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+    .tag { font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--card-border); color:var(--accent); }
+    .tag.warn { color:#fca5a5; border-color:rgba(239,68,68,0.4); }
+    .tag.new { color:#93c5fd; border-color:rgba(59,130,246,0.4); }
+    .track audio { width:100%; height:36px; }
+    .links { display:flex; gap:6px; flex-wrap:wrap; }
+    .links a { font-size:12px; padding:5px 9px; border-radius:8px; border:1px solid var(--card-border); color:var(--text); text-decoration:none; }
+    .links a.buy { border-color:var(--accent); color:var(--accent); font-weight:700; }
+    .actions { display:flex; gap:6px; }
+    .mini-btn { flex:1; padding:8px 10px; font-size:12px; border-radius:8px; }
+    .mini-btn.ghost { background:transparent; color:var(--text-dim); border:1px solid var(--card-border); }
+    .artist-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:10px 0; border-bottom:1px solid var(--card-border); }
+    .artist-row img { width:40px; height:40px; border-radius:50%; object-fit:cover; }
+    .artist-row .name { flex:1; min-width:140px; }
+    .artist-row form { margin:0; display:flex; gap:6px; }
+    .artist-row button { width:auto; margin-top:0; padding:8px 12px; font-size:12px; }
+    .artist-row select, .add-artist select { background:var(--card-bg); color:var(--text); border:1px solid var(--card-border); border-radius:8px; padding:8px; font-size:13px; }
+    .add-artist { display:flex; gap:8px; flex-wrap:wrap; }
+    .add-artist input { flex:1; min-width:160px; margin:0; }
+    .add-artist button { width:auto; margin-top:0; padding:10px 14px; font-size:13px; }
+    details summary { cursor:pointer; color:var(--accent); font-weight:700; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/lotes" class="tab">Lotes</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/downloads" class="tab active">Músicas</a>
+    </nav>
+
+    <main class="card">
+      <h3>Sugestões de músicas</h3>
+      <p class="hint" style="margin-top:0">
+        Todo dia, a partir das 6h, o sistema busca novas faixas de black music cristã (neo soul, soulful rap, boom bap, R&B, trap, hip hop, hip hop soul).
+        Ouça a prévia e use os links para comprar ou baixar nas lojas oficiais. Lembre que tocar música em evento público exige a licença do ECAD.
+      </p>
+
+      <% if (msg === 'gerado') { %><div class="alert" style="background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac">Sugestões atualizadas.</div><% } %>
+      <% if (msg === 'erro') { %><div class="alert">Não deu para buscar sugestões agora. Tente de novo em alguns minutos.</div><% } %>
+      <% if (msg === 'artista-ok') { %><div class="alert" style="background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac">Artista adicionado. Ele entra nas próximas sugestões.</div><% } %>
+      <% if (msg === 'artista-nao-encontrado') { %><div class="alert">Não achei esse artista no Deezer. Confira o nome exato.</div><% } %>
+
+      <div class="mus-bar">
+        <a href="/downloads" class="chip <%= view === 'dia' ? 'on' : '' %>" style="text-decoration:none">Sugestões do dia</a>
+        <a href="/downloads?ver=playlist" class="chip <%= view === 'playlist' ? 'on' : '' %>" style="text-decoration:none">Playlist do evento (<%= Object.values(marks).filter(m => m === 'playlist').length %>)</a>
+        <% if (view === 'dia' && days.length) { %>
+          <select onchange="location.href='/downloads?data='+this.value">
+            <% days.forEach(d => { %>
+              <option value="<%= d %>" <%= d === date ? 'selected' : '' %>><%= d.split('-').reverse().join('/') %><%= d === today ? ' (hoje)' : '' %></option>
+            <% }) %>
+          </select>
+        <% } %>
+        <form action="/api/downloads/gerar" method="POST" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Buscando... (até 1 min)'">
+          <% if (days.includes(today)) { %><input type="hidden" name="force" value="1" /><% } %>
+          <button type="submit"><%= days.includes(today) ? 'Buscar de novo hoje' : 'Buscar sugestões agora' %></button>
+        </form>
+      </div>
+
+      <% if (pending.length) { %>
+        <div class="alert" style="background:rgba(59,130,246,0.12);border-color:#3b82f6;color:#bfdbfe">
+          <%= pending.length %> artista<%= pending.length === 1 ? '' : 's' %> novo<%= pending.length === 1 ? '' : 's' %> aguardando aprovação.
+          <a href="#pendentes" style="color:inherit;font-weight:700">Revisar</a>
+        </div>
+      <% } %>
+
+      <% if (!tracks.length) { %>
+        <p class="hint"><%= view === 'playlist' ? 'Nenhuma música na playlist ainda. Use "+ Playlist" nas sugestões.' : 'Ainda não há sugestões. Clique em "Buscar sugestões agora".' %></p>
+      <% } else { %>
+        <div class="chips" id="estilo-filter">
+          <button type="button" class="chip on" data-estilo="">Todos</button>
+          <% estilos.forEach(e => { %><button type="button" class="chip" data-estilo="<%= e %>"><%= e %></button><% }) %>
+        </div>
+
+        <div class="grid">
+          <% tracks.forEach(t => { const mark = marks[t.id] || ''; %>
+            <div class="track <%= mark %>" data-estilo="<%= t.estilo %>" data-id="<%= t.id %>">
+              <div class="track-head">
+                <img src="<%= t.cover || '/img/logo.jpg' %>" alt="" loading="lazy" />
+                <div class="meta">
+                  <div class="track-title" title="<%= t.title %>"><%= t.title %></div>
+                  <div class="track-artist"><%= t.artist %></div>
+                  <div class="tags">
+                    <span class="tag"><%= t.estilo %></span>
+                    <% if (t.tipo === 'descoberta') { %><span class="tag new">Artista novo</span><% } %>
+                    <% if (t.explicit) { %><span class="tag warn">Letra explícita</span><% } %>
+                  </div>
+                </div>
+              </div>
+              <audio controls preload="none" src="/api/downloads/preview/<%= t.id %>"></audio>
+              <div class="links">
+                <% if (t.links.apple) { %><a class="buy" href="<%= t.links.apple %>" target="_blank" rel="noopener">Comprar (iTunes)</a><% } %>
+                <a class="buy" href="<%= t.links.bandcamp %>" target="_blank" rel="noopener">Bandcamp</a>
+                <a href="<%= t.links.amazon %>" target="_blank" rel="noopener">Amazon</a>
+                <% if (t.links.deezer) { %><a href="<%= t.links.deezer %>" target="_blank" rel="noopener">Deezer</a><% } %>
+                <a href="<%= t.links.spotify %>" target="_blank" rel="noopener">Spotify</a>
+                <a href="<%= t.links.youtube %>" target="_blank" rel="noopener">YouTube</a>
+              </div>
+              <div class="actions">
+                <button type="button" class="mini-btn <%= mark === 'playlist' ? '' : 'ghost' %>" data-mark="playlist"><%= mark === 'playlist' ? '✓ Na playlist' : '+ Playlist' %></button>
+                <button type="button" class="mini-btn ghost" data-mark="descartada"><%= mark === 'descartada' ? 'Desfazer' : 'Descartar' %></button>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </main>
+
+    <% if (pending.length) { %>
+      <section class="card" id="pendentes">
+        <h3>Artistas novos para aprovar</h3>
+        <p class="hint" style="margin-top:0">Encontrados como "parecidos" com artistas do acervo. Confira se são cristãos e se combinam com o evento antes de aprovar.</p>
+        <% pending.forEach(a => { %>
+          <div class="artist-row">
+            <% if (a.picture) { %><img src="<%= a.picture %>" alt="" loading="lazy" /><% } %>
+            <div class="name">
+              <a href="https://www.deezer.com/artist/<%= a.id %>" target="_blank" rel="noopener" style="color:var(--text);font-weight:700"><%= a.name %></a>
+              <div class="hint" style="margin:0;font-size:12px"><%= a.origem %></div>
+            </div>
+            <form action="/api/downloads/artista/<%= a.id %>" method="POST">
+              <select name="estilo"><% estilos.forEach(e => { %><option <%= e === a.estilo ? 'selected' : '' %>><%= e %></option><% }) %></select>
+              <button type="submit" name="status" value="aprovado">Aprovar</button>
+              <button type="submit" name="status" value="rejeitado" class="btn-secondary">Rejeitar</button>
+            </form>
+          </div>
+        <% }) %>
+      </section>
+    <% } %>
+
+    <section class="card">
+      <details>
+        <summary>Acervo de artistas (<%= approved.length %>)</summary>
+        <form action="/api/downloads/artista" method="POST" class="add-artist" style="margin:16px 0">
+          <input type="text" name="nome" placeholder="Adicionar artista (nome exato)" required />
+          <select name="estilo"><% estilos.forEach(e => { %><option><%= e %></option><% }) %></select>
+          <button type="submit">Adicionar</button>
+        </form>
+        <% approved.forEach(a => { %>
+          <div class="artist-row">
+            <% if (a.picture) { %><img src="<%= a.picture %>" alt="" loading="lazy" /><% } %>
+            <div class="name"><%= a.name %> <span class="hint" style="font-size:12px">· <%= a.origem %></span></div>
+            <form action="/api/downloads/artista/<%= a.id %>" method="POST">
+              <select name="estilo" onchange="this.form.submit()"><% estilos.forEach(e => { %><option <%= e === a.estilo ? 'selected' : '' %>><%= e %></option><% }) %></select>
+              <button type="submit" name="status" value="rejeitado" class="btn-secondary">Remover</button>
+            </form>
+          </div>
+        <% }) %>
+      </details>
+    </section>
+  </div>
+
+  <script>
+    // Filter by style
+    const chips = document.querySelectorAll('#estilo-filter .chip');
+    chips.forEach((chip) => chip.addEventListener('click', () => {
+      chips.forEach((c) => c.classList.toggle('on', c === chip));
+      document.querySelectorAll('.track').forEach((t) => {
+        t.style.display = !chip.dataset.estilo || t.dataset.estilo === chip.dataset.estilo ? '' : 'none';
+      });
+    }));
+
+    // Only one preview playing at a time
+    document.addEventListener('play', (e) => {
+      document.querySelectorAll('audio').forEach((a) => { if (a !== e.target) a.pause(); });
+    }, true);
+
+    // Playlist / discard toggles
+    document.querySelectorAll('.track [data-mark]').forEach((btn) => btn.addEventListener('click', async () => {
+      const card = btn.closest('.track');
+      const current = card.classList.contains('playlist') ? 'playlist' : card.classList.contains('descartada') ? 'descartada' : '';
+      const next = current === btn.dataset.mark ? '' : btn.dataset.mark;
+      const res = await fetch('/api/downloads/faixa/' + card.dataset.id, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mark: next }),
+      });
+      if (!res.ok) return alert('Não foi possível salvar.');
+      card.classList.remove('playlist', 'descartada');
+      if (next) card.classList.add(next);
+      const [pBtn, dBtn] = card.querySelectorAll('[data-mark]');
+      pBtn.textContent = next === 'playlist' ? '✓ Na playlist' : '+ Playlist';
+      pBtn.classList.toggle('ghost', next !== 'playlist');
+      dBtn.textContent = next === 'descartada' ? 'Desfazer' : 'Descartar';
+    }));
+  </script>
+</body>
+</html>

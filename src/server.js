@@ -43,6 +43,7 @@ function buildAdminWhatsappResendLink(order) {
 }
 const { getTemplates } = require('./templates');
 const { startReminderScheduler } = require('./reminders');
+const musicas = require('./musicas');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -559,9 +560,13 @@ app.post('/admin/login', (req, res) => {
       sameSite: 'lax',
       maxAge: 12 * 60 * 60 * 1000,
     });
-    return res.redirect('/admin');
+    return res.redirect(req.body.next === '/downloads' ? '/downloads' : '/admin');
   }
-  return res.status(401).render('admin_login', { eventInfo, error: 'Login ou senha incorretos.' });
+  return res.status(401).render('admin_login', {
+    eventInfo,
+    error: 'Login ou senha incorretos.',
+    next: req.body.next === '/downloads' ? '/downloads' : null,
+  });
 });
 
 app.post('/admin/logout', (req, res) => {
@@ -737,7 +742,84 @@ app.post('/api/admin/campanhas/:id/excluir', requireAdminAuth, async (req, res) 
   res.redirect('/admin/mensagens?saved=1');
 });
 
+// ---- musicas: sugestoes diarias para a playlist do evento ----
+app.get('/downloads', (req, res) => {
+  const token = req.cookies.admin_session;
+  if (!token || !adminSessions.has(token)) {
+    return res.render('admin_login', { eventInfo, error: null, next: '/downloads' });
+  }
+  const state = musicas.load();
+  const days = Object.keys(state.days).sort().reverse();
+  const view = req.query.ver === 'playlist' ? 'playlist' : 'dia';
+  const date = days.includes(req.query.data) ? req.query.data : days[0] || null;
+
+  let tracks = [];
+  if (view === 'playlist') {
+    const byId = {};
+    for (const d of days) for (const t of state.days[d].tracks) byId[t.id] = t;
+    tracks = Object.keys(state.marks).filter((id) => state.marks[id] === 'playlist' && byId[id]).map((id) => byId[id]);
+  } else if (date) {
+    tracks = state.days[date].tracks;
+  }
+
+  const artists = Object.values(state.artists).sort((a, b) => a.name.localeCompare(b.name));
+  res.render('admin_musicas', {
+    eventInfo,
+    view,
+    date,
+    days,
+    tracks,
+    marks: state.marks,
+    pending: artists.filter((a) => a.status === 'pendente'),
+    approved: artists.filter((a) => a.status === 'aprovado'),
+    estilos: musicas.ESTILOS,
+    today: musicas.todayBrasilia(),
+    msg: req.query.msg || null,
+  });
+});
+
+app.post('/api/downloads/gerar', requireAdminAuth, async (req, res) => {
+  try {
+    await musicas.generateToday({ force: req.body.force === '1' });
+    res.redirect('/downloads?msg=gerado');
+  } catch (err) {
+    console.error('[musicas] geracao manual falhou:', err.message);
+    res.redirect('/downloads?msg=erro');
+  }
+});
+
+app.post('/api/downloads/artista/:id', requireAdminAuth, async (req, res) => {
+  const { status, estilo } = req.body;
+  if (['aprovado', 'rejeitado', 'pendente'].includes(status)) await musicas.setArtistStatus(req.params.id, status);
+  if (estilo) await musicas.setArtistEstilo(req.params.id, estilo);
+  if (req.is('json')) return res.json({ ok: true });
+  res.redirect(req.get('referer') || '/downloads');
+});
+
+app.post('/api/downloads/artista', requireAdminAuth, async (req, res) => {
+  const name = String(req.body.nome || '').trim();
+  const artist = name ? await musicas.addArtistByName(name, req.body.estilo).catch(() => null) : null;
+  res.redirect(`/downloads?msg=${artist ? 'artista-ok' : 'artista-nao-encontrado'}`);
+});
+
+app.post('/api/downloads/faixa/:id', requireAdminAuth, async (req, res) => {
+  const mark = ['playlist', 'descartada'].includes(req.body.mark) ? req.body.mark : null;
+  await musicas.setTrackMark(req.params.id, mark);
+  res.json({ ok: true, mark });
+});
+
+app.get('/api/downloads/preview/:id', requireAdminAuth, async (req, res) => {
+  try {
+    const url = await musicas.previewUrl(req.params.id);
+    if (!url) return res.status(404).send('Sem previa');
+    res.redirect(url);
+  } catch {
+    res.status(502).send('Previa indisponivel');
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Crewolada rodando em http://localhost:${PORT}`);
   startReminderScheduler();
+  musicas.startMusicScheduler();
 });
