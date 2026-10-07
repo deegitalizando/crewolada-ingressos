@@ -30,7 +30,6 @@
     .seg label { flex: 1; flex-direction: row; justify-content: center; align-items: center; gap: 6px; padding: 11px 8px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #1a1a1a; cursor: pointer; font-weight: 700; }
     .seg label:has(input:checked) { border-color: var(--accent); color: var(--accent); background: rgba(244,185,66,0.1); }
     .seg input { width: auto; margin: 0; }
-    .falta-box { padding: 12px 14px; border-radius: 10px; background: #1a1a1a; border: 1px dashed rgba(255,255,255,0.18); font-weight: 800; }
     .ok-box { background: rgba(34,197,94,0.15); border-color: #22c55e; color: #86efac; }
     .verdict { font-size: 15px; margin: 0 0 20px; padding: 12px 14px; border-radius: 10px; background: #1a1a1a; border: 1px solid var(--card-border); }
     .dre td:first-child { white-space: normal; }
@@ -359,8 +358,8 @@
             <label>Já foi pago (R$)
               <input type="text" name="valorPago" id="lanc-pago" inputmode="decimal" placeholder="0,00" value="<%= e && e.valorPago ? money(e.valorPago) : '' %>" />
             </label>
-            <label>Falta pagar
-              <div class="falta-box" id="lanc-falta">R$ 0,00</div>
+            <label>Falta pagar (R$)
+              <input type="text" name="faltaPagar" id="lanc-falta" inputmode="decimal" placeholder="0,00" value="<%= e && e.faltaPagar ? money(e.faltaPagar) : '' %>" />
             </label>
             <label class="check" style="align-self:center">
               <input type="checkbox" name="quitado" value="1" id="lanc-quitado" /> Pago integralmente
@@ -391,7 +390,7 @@
         </form>
         <p class="hint">
           <% if (tipo === 'despesa') { %>
-            Ao escolher a categoria, o tipo (fixa/variável) é sugerido automaticamente — dá pra trocar. Se pagou só uma parte (ex: sinal de 50%), informe em "Já foi pago" e o restante fica em "Falta pagar".
+            Ao escolher a categoria, o tipo (fixa/variável) é sugerido automaticamente — dá pra trocar. Pagou só uma parte? Preencha "Já foi pago" e "Falta pagar" — o valor total é calculado sozinho (ex: pagou 1.000, falta 1.500 → total 2.500).
           <% } else { %>
             Os ingressos vendidos no site entram sozinhos. Lance aqui o que não passa pelo site: vendas do bar (por forma de pagamento, com a taxa da maquininha), venda na porta, patrocínios…
           <% } %>
@@ -415,7 +414,6 @@
               if (v.indexOf(',') >= 0 || /^\d{1,3}(\.\d{3})+$/.test(v)) v = v.replace(/\./g, '').replace(',', '.');
               var n = Number(v); return isFinite(n) && n > 0 ? n : 0;
             }
-            function brl(n) { return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
             function sugerirNatureza() {
               if (tipo !== 'despesa') return;
@@ -459,19 +457,34 @@
               var quitado = document.getElementById('lanc-quitado');
               var falta = document.getElementById('lanc-falta');
               var vencWrap = document.getElementById('lanc-venc-wrap');
-              function atualizarFalta() {
-                var total = parse(valor.value);
-                if (quitado.checked) pago.value = valor.value;
-                pago.readOnly = quitado.checked;
-                var resto = Math.max(0, total - parse(pago.value));
-                falta.textContent = brl(resto);
-                falta.className = 'falta-box' + (resto > 0 ? ' neg' : ' pos');
+              function fmt(n) { return n > 0 ? n.toFixed(2).replace('.', ',') : ''; }
+              // Total, pago and falta stay consistent whichever one is typed:
+              // typing total or pago recalculates falta; typing falta
+              // recalculates the total (pago + falta).
+              // "Pago integralmente" is just a shortcut: ticking it fills pago
+              // with the total; typing a remaining amount unticks it.
+              function sync(origem) {
+                if (origem === 'quitado' && quitado.checked) {
+                  pago.value = valor.value;
+                  falta.value = '';
+                } else if (origem === 'falta') {
+                  valor.value = fmt(parse(pago.value) + parse(falta.value));
+                } else {
+                  falta.value = fmt(Math.max(0, parse(valor.value) - parse(pago.value)));
+                }
+                var resto = parse(falta.value);
+                quitado.checked = resto === 0 && parse(pago.value) > 0;
+                falta.classList.toggle('neg', resto > 0);
                 vencWrap.style.display = resto > 0 ? '' : 'none';
               }
-              quitado.checked = editando && parse(pago.value) >= parse(valor.value) && parse(valor.value) > 0;
-              [valor, pago].forEach(function (el) { el.addEventListener('input', atualizarFalta); });
-              quitado.addEventListener('change', function () { if (!quitado.checked) pago.value = ''; atualizarFalta(); });
-              atualizarFalta();
+              valor.addEventListener('input', function () { sync('valor'); });
+              pago.addEventListener('input', function () { sync('pago'); });
+              falta.addEventListener('input', function () { sync('falta'); });
+              quitado.addEventListener('change', function () {
+                if (!quitado.checked) { pago.value = ''; falta.value = valor.value; }
+                sync('quitado');
+              });
+              sync('valor');
               form.addEventListener('submit', function (ev) {
                 if (!form.querySelector('input[name=natureza]:checked')) {
                   ev.preventDefault();

@@ -342,7 +342,9 @@ function registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo
     const tipo = ['despesa', 'receita'].includes(req.body.tipo) ? req.body.tipo : null;
     const ver = tipo === 'receita' ? 'receitas' : 'despesas';
     const setor = SETORES[req.body.setor] ? req.body.setor : null;
-    const valor = parseValor(req.body.valor);
+    // An expense can be entered as "paid X, still owe Y" without a total.
+    const valor = parseValor(req.body.valor)
+      || (tipo === 'despesa' ? round2(parseValor(req.body.valorPago) + parseValor(req.body.faltaPagar)) : 0);
     if (!tipo || !setor || valor <= 0) return redirectBack(res, tipo ? ver : 'resumo', 'invalido');
 
     const novaCategoria = String(req.body.categoriaNova || '').trim().replace(/\s+/g, ' ').slice(0, 60);
