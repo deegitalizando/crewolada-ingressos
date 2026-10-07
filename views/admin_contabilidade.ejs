@@ -16,17 +16,33 @@
     .section-title h3 { margin: 0; }
     .mini-btn { margin: 0; width: auto; padding: 5px 10px; font-size: 12px; }
     .inline-form { display: inline; margin: 0; }
+    .actions { display: flex; gap: 4px; }
     .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 700; }
     .pill-ok { background: rgba(34,197,94,0.18); color: #86efac; }
     .pill-warn { background: rgba(244,185,66,0.18); color: var(--accent); }
     .pill-bad { background: rgba(239,68,68,0.18); color: #fca5a5; }
-    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; align-items: end; }
+    .grid-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; align-items: end; padding: 16px; border-radius: 12px; background: #161616; border: 1px solid var(--card-border); }
     .grid-form select { width: 100%; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 15px; font-family: inherit; }
     .grid-form .check { flex-direction: row; align-items: center; gap: 8px; }
     .grid-form .check input { width: auto; }
+    .grid-form .full { grid-column: 1 / -1; }
+    .seg { display: flex; gap: 6px; }
+    .seg label { flex: 1; flex-direction: row; justify-content: center; align-items: center; gap: 6px; padding: 11px 8px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #1a1a1a; cursor: pointer; font-weight: 700; }
+    .seg label:has(input:checked) { border-color: var(--accent); color: var(--accent); background: rgba(244,185,66,0.1); }
+    .seg input { width: auto; margin: 0; }
+    .falta-box { padding: 12px 14px; border-radius: 10px; background: #1a1a1a; border: 1px dashed rgba(255,255,255,0.18); font-weight: 800; }
     .ok-box { background: rgba(34,197,94,0.15); border-color: #22c55e; color: #86efac; }
-    @media (max-width: 480px) { .stat-value { font-size: 18px; } }
     .verdict { font-size: 15px; margin: 0 0 20px; padding: 12px 14px; border-radius: 10px; background: #1a1a1a; border: 1px solid var(--card-border); }
+    .dre td:first-child { white-space: normal; }
+    .dre .grupo td { color: var(--accent); font-weight: 800; text-transform: uppercase; font-size: 12px; letter-spacing: 0.04em; padding-top: 18px; }
+    .dre .sub td:first-child { padding-left: 24px; }
+    .dre .total td { font-weight: 800; border-top: 1px solid rgba(255,255,255,0.2); }
+    .dre .resultado td { font-weight: 800; font-size: 16px; border-top: 2px solid var(--accent); }
+    @media (max-width: 480px) { .stat-value { font-size: 18px; } }
+    @media (max-width: 600px) {
+      .grid-form { grid-template-columns: 1fr; padding: 12px; }
+      .grid-form > * { grid-column: 1 / -1 !important; min-width: 0; }
+    }
   </style>
 </head>
 <body>
@@ -34,12 +50,12 @@
   function brl(n) {
     return 'R$ ' + (Number(n) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
+  function money(n) { return (Number(n) || 0).toFixed(2).replace('.', ','); }
   function signClass(n) { return n > 0 ? 'pos' : n < 0 ? 'neg' : ''; }
   function dataBr(iso) { return iso ? iso.split('-').reverse().join('/') : '—'; }
-  const totalReceita = bilheteria.receitaTotal + bar.receitaTotal;
-  const totalCustos = bilheteria.totalCustos + bar.totalCustos;
-  const totalResultado = bilheteria.resultado + bar.resultado;
-  const totalAPagar = bilheteria.custosAPagar + bar.custosAPagar;
+  const I = b.ingressos;
+  const S = b.setores;
+  const e = editing && ((ver === 'despesas' && editing.tipo === 'despesa') || (ver === 'receitas' && editing.tipo === 'receita')) ? editing : null;
 %>
   <div class="page page-wide">
     <header class="hero hero-sm">
@@ -65,71 +81,112 @@
         <a href="/contabilidade/exportar.csv" class="hint" style="margin:0">⬇ Exportar planilha (CSV)</a>
       </div>
       <nav class="sub-tabs">
-        <a href="/contabilidade" class="<%= ver === 'resumo' ? 'active' : '' %>">Balanço geral</a>
-        <a href="/contabilidade?ver=bilheteria" class="<%= ver === 'bilheteria' ? 'active' : '' %>">Borderô Bilheteria</a>
-        <a href="/contabilidade?ver=bar" class="<%= ver === 'bar' ? 'active' : '' %>">Borderô Bar</a>
+        <a href="/contabilidade" class="<%= ver === 'resumo' ? 'active' : '' %>">Balanço</a>
+        <a href="/contabilidade?ver=receitas" class="<%= ver === 'receitas' ? 'active' : '' %>">Receitas</a>
+        <a href="/contabilidade?ver=despesas" class="<%= ver === 'despesas' ? 'active' : '' %>">Despesas</a>
       </nav>
 
       <% if (msg === 'salvo') { %><div class="alert ok-box">Lançamento salvo.</div><% } %>
       <% if (msg === 'excluido') { %><div class="alert ok-box">Lançamento excluído.</div><% } %>
+      <% if (msg === 'quitado') { %><div class="alert ok-box">Despesa quitada.</div><% } %>
       <% if (msg === 'invalido') { %><div class="alert">Preencha o valor (maior que zero) para salvar o lançamento.</div><% } %>
-      <% if (msg && msg.startsWith('sync-ok')) { %><div class="alert ok-box">Mercado Pago sincronizado: <%= msg.split('-')[2] %> pagamento(s) consultado(s).</div><% } %>
-      <% if (msg && msg.startsWith('sync-parcial')) { %><div class="alert">Sincronização parcial: <%= msg.split('-')[2] %> ok, <%= msg.split('-')[3] %> falharam. Tente de novo em instantes.</div><% } %>
+      <% if (msg && msg.startsWith('sync-ok')) { %><div class="alert ok-box">Mercado Pago conferido: <%= msg.split('-')[2] %> pagamento(s) consultado(s).</div><% } %>
+      <% if (msg && msg.startsWith('sync-parcial')) { %><div class="alert">Conferência parcial: <%= msg.split('-')[2] %> ok, <%= msg.split('-')[3] %> falharam. Tente de novo em instantes.</div><% } %>
       <% if (msg === 'sync-erro') { %><div class="alert">Não foi possível consultar o Mercado Pago agora. Tente novamente.</div><% } %>
 
+      <%# ======================= BALANÇO ======================= %>
       <% if (ver === 'resumo') { %>
         <p class="verdict">
-          <% if (totalResultado >= 0) { %>
-            ✅ O evento está <strong class="pos">no lucro</strong>: <strong class="pos"><%= brl(totalResultado) %></strong>.
+          <% if (b.resultado >= 0) { %>
+            ✅ O evento está <strong class="pos">no lucro</strong>: <strong class="pos"><%= brl(b.resultado) %></strong>.
           <% } else { %>
-            ⚠️ O evento está <strong class="neg">no prejuízo</strong>: <strong class="neg"><%= brl(totalResultado) %></strong>. Faltam <%= brl(-totalResultado) %> para empatar.
+            ⚠️ O evento está <strong class="neg">no prejuízo</strong>: <strong class="neg"><%= brl(b.resultado) %></strong>. Faltam <%= brl(-b.resultado) %> em receita para empatar.
           <% } %>
-          <% if (bilheteria.estimado) { %><br><span class="stat-sub">Valores de ingresso estimados — <%= bilheteria.ingressos.pedidosNaoSincronizados %> pedido(s) ainda não conferidos com o Mercado Pago. Sincronize no Borderô Bilheteria.</span><% } %>
+          <% if (I.estimado) { %><br><span class="stat-sub">Valores de ingresso estimados — <%= I.pedidosNaoSincronizados %> pedido(s) ainda não conferidos com o Mercado Pago (aba Receitas).</span><% } %>
         </p>
 
         <div class="stats-row">
-          <div class="stat-box"><span class="stat-label">Entradas (líquido)</span><span class="stat-value"><%= brl(totalReceita) %></span></div>
-          <div class="stat-box"><span class="stat-label">Custos</span><span class="stat-value"><%= brl(totalCustos) %></span><span class="stat-sub"><%= brl(totalAPagar) %> ainda a pagar</span></div>
-          <div class="stat-box"><span class="stat-label">Resultado</span><span class="stat-value <%= signClass(totalResultado) %>"><%= brl(totalResultado) %></span></div>
+          <div class="stat-box"><span class="stat-label">Receitas</span><span class="stat-value"><%= brl(b.receitaTotal) %></span><span class="stat-sub">Bilheteria <%= brl(S.bilheteria.receita) %> · Bar <%= brl(S.bar.receita) %></span></div>
+          <div class="stat-box"><span class="stat-label">Despesas</span><span class="stat-value"><%= brl(b.despesaTotal) %></span><span class="stat-sub">Fixas <%= brl(b.fixas.total) %> · Variáveis <%= brl(b.variaveis.total) %></span></div>
+          <div class="stat-box"><span class="stat-label">Resultado</span><span class="stat-value <%= signClass(b.resultado) %>"><%= brl(b.resultado) %></span></div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-box"><span class="stat-label">Despesas já pagas</span><span class="stat-value"><%= brl(b.pagoTotal) %></span></div>
+          <div class="stat-box"><span class="stat-label">Falta pagar</span><span class="stat-value <%= b.faltaPagar > 0 ? 'neg' : '' %>"><%= brl(b.faltaPagar) %></span></div>
+          <div class="stat-box"><span class="stat-label">Saldo em caixa hoje</span><span class="stat-value <%= signClass(b.saldoCaixa) %>"><%= brl(b.saldoCaixa) %></span><span class="stat-sub">receitas − o que já foi pago</span></div>
         </div>
 
         <div class="table-wrap">
-          <table>
-            <thead><tr><th>Setor</th><th class="num">Entradas (líquido)</th><th class="num">Custos</th><th class="num">A pagar</th><th class="num">Resultado</th><th>Situação</th></tr></thead>
+          <table class="dre">
+            <thead><tr><th>Demonstrativo</th><th class="num">Valor</th><th class="num">Pago</th><th class="num">Falta pagar</th></tr></thead>
             <tbody>
-              <% [['bilheteria', bilheteria], ['bar', bar]].forEach(function(pair) { var s = pair[1]; %>
+              <tr class="grupo"><td colspan="4">Receitas</td></tr>
+              <tr class="sub"><td>Bilheteria — ingressos do site (líquido Mercado Pago)</td><td class="num"><%= brl(I.liquido) %></td><td></td><td></td></tr>
+              <tr class="sub"><td>Bilheteria — outras receitas</td><td class="num"><%= brl(S.bilheteria.receitaManual) %></td><td></td><td></td></tr>
+              <tr class="sub"><td>Bar</td><td class="num"><%= brl(S.bar.receita) %></td><td></td><td></td></tr>
+              <tr class="total"><td>Total de receitas</td><td class="num"><%= brl(b.receitaTotal) %></td><td></td><td></td></tr>
+
+              <tr class="grupo"><td colspan="4">Despesas fixas</td></tr>
+              <% Object.keys(setores).forEach(function(k) { var d = S[k].fixas; %>
+                <tr class="sub"><td><%= setores[k] %></td><td class="num">− <%= brl(d.total) %></td><td class="num"><%= brl(d.pago) %></td><td class="num"><%= brl(d.falta) %></td></tr>
+              <% }) %>
+              <tr class="total"><td>Total fixas</td><td class="num">− <%= brl(b.fixas.total) %></td><td class="num"><%= brl(b.fixas.pago) %></td><td class="num"><%= brl(b.fixas.falta) %></td></tr>
+
+              <tr class="grupo"><td colspan="4">Despesas variáveis</td></tr>
+              <% Object.keys(setores).forEach(function(k) { var d = S[k].variaveis; %>
+                <tr class="sub"><td><%= setores[k] %></td><td class="num">− <%= brl(d.total) %></td><td class="num"><%= brl(d.pago) %></td><td class="num"><%= brl(d.falta) %></td></tr>
+              <% }) %>
+              <tr class="total"><td>Total variáveis</td><td class="num">− <%= brl(b.variaveis.total) %></td><td class="num"><%= brl(b.variaveis.pago) %></td><td class="num"><%= brl(b.variaveis.falta) %></td></tr>
+
+              <tr class="resultado"><td>Resultado do evento</td><td class="num <%= signClass(b.resultado) %>"><%= brl(b.resultado) %></td><td class="num"><%= brl(b.pagoTotal) %></td><td class="num"><%= brl(b.faltaPagar) %></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-title"><h3>Resultado por setor</h3></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Setor</th><th class="num">Receitas</th><th class="num">Desp. fixas</th><th class="num">Desp. variáveis</th><th class="num">Resultado</th><th>Situação</th></tr></thead>
+            <tbody>
+              <% Object.keys(setores).forEach(function(k) { var s = S[k]; %>
                 <tr>
-                  <td><a href="/contabilidade?ver=<%= pair[0] %>" style="color:var(--accent)"><%= setores[pair[0]].label %></a></td>
-                  <td class="num"><%= brl(s.receitaTotal) %></td>
-                  <td class="num"><%= brl(s.totalCustos) %></td>
-                  <td class="num"><%= brl(s.custosAPagar) %></td>
+                  <td><%= setores[k] %></td>
+                  <td class="num"><%= brl(s.receita) %></td>
+                  <td class="num"><%= brl(s.fixas.total) %></td>
+                  <td class="num"><%= brl(s.variaveis.total) %></td>
                   <td class="num <%= signClass(s.resultado) %>"><%= brl(s.resultado) %></td>
                   <td><% if (s.resultado >= 0) { %><span class="pill pill-ok">Se pagou</span><% } else { %><span class="pill pill-bad">Prejuízo</span><% } %></td>
                 </tr>
               <% }) %>
             </tbody>
             <tfoot>
-              <tr><td>Evento</td><td class="num"><%= brl(totalReceita) %></td><td class="num"><%= brl(totalCustos) %></td><td class="num"><%= brl(totalAPagar) %></td><td class="num <%= signClass(totalResultado) %>"><%= brl(totalResultado) %></td><td></td></tr>
+              <tr><td>Evento</td><td class="num"><%= brl(b.receitaTotal) %></td><td class="num"><%= brl(b.fixas.total) %></td><td class="num"><%= brl(b.variaveis.total) %></td><td class="num <%= signClass(b.resultado) %>"><%= brl(b.resultado) %></td><td></td></tr>
             </tfoot>
           </table>
         </div>
-
-        <p class="hint">Bilheteria = ingressos online (valor líquido que caiu no Mercado Pago, já sem taxas e estornos) + entradas extras lançadas (venda na porta, patrocínio...) − custos da bilheteria. Bar = entradas lançadas no bar (líquido das taxas da maquininha) − custos do bar.</p>
+        <% if (b.pontoEquilibrio !== null) { %>
+          <p class="hint">Ponto de equilíbrio: com o líquido médio de <%= brl(I.liquidoMedio) %> por ingresso, o evento empata com <strong><%= b.pontoEquilibrio %></strong> ingressos vendidos (já considerando o bar e as outras receitas). Vendidos até agora: <strong><%= I.vendidos %></strong><%= I.vendidos >= b.pontoEquilibrio ? ' — já atingido ✓' : ' — faltam ' + (b.pontoEquilibrio - I.vendidos) %>.</p>
+        <% } %>
       <% } %>
 
-      <% if (ver !== 'resumo') { %>
-        <div class="btn-row" style="margin:0 0 18px; flex-wrap:wrap">
-          <a href="#form-lancamento" data-tipo="custo" class="atalho-lanc"><button type="button" style="width:auto; margin:0; padding:10px 18px">− Lançar saída (custo)</button></a>
-          <a href="#form-lancamento" data-tipo="entrada" class="atalho-lanc"><button type="button" class="btn-secondary" style="width:auto; margin:0; padding:10px 18px">+ Lançar entrada</button></a>
+      <%# ======================= RECEITAS ======================= %>
+      <% if (ver === 'receitas') { %>
+        <div class="btn-row" style="margin:0 0 18px">
+          <a href="#form-lancamento"><button type="button" style="width:auto; margin:0; padding:10px 18px">+ Lançar receita</button></a>
         </div>
-      <% } %>
 
-      <% if (ver === 'bilheteria') { const b = bilheteria; %>
+        <div class="stats-row">
+          <div class="stat-box"><span class="stat-label">Receita bilheteria</span><span class="stat-value"><%= brl(S.bilheteria.receita) %></span><span class="stat-sub">site <%= brl(I.liquido) %> · outras <%= brl(S.bilheteria.receitaManual) %></span></div>
+          <div class="stat-box"><span class="stat-label">Receita bar</span><span class="stat-value"><%= brl(S.bar.receita) %></span><span class="stat-sub">bruto <%= brl(S.bar.receitaBruta) %> · taxas <%= brl(S.bar.taxas) %></span></div>
+          <div class="stat-box"><span class="stat-label">Total de receitas</span><span class="stat-value"><%= brl(b.receitaTotal) %></span></div>
+        </div>
+
+        <div class="section-title"><h3>Bilheteria — ingressos vendidos no site</h3></div>
         <div class="verdict" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
           <span>
             <strong>Mercado Pago</strong> —
             <% if (mpSyncedAt) { %>última conferência em <%= new Date(mpSyncedAt).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }) %>.<% } else { %>ainda não conferido.<% } %>
-            <% if (b.estimado) { %><br><span class="stat-sub"><%= b.ingressos.pedidosNaoSincronizados %> pedido(s) (<%= brl(b.ingressos.naoSincronizado) %>) sem conferência — contados pelo valor bruto até sincronizar.</span><% } %>
+            <% if (I.estimado) { %><br><span class="stat-sub"><%= I.pedidosNaoSincronizados %> pedido(s) (<%= brl(I.naoSincronizado) %>) sem conferência — contados pelo valor bruto até conferir.</span><% } %>
           </span>
           <form action="/api/contabilidade/sincronizar-mp" method="POST" class="inline-form" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Consultando...'">
             <button type="submit" class="mini-btn" style="padding:10px 16px; font-size:14px">🔄 Conferir com Mercado Pago</button>
@@ -137,31 +194,19 @@
         </div>
 
         <div class="stats-row">
-          <div class="stat-box"><span class="stat-label">Ingressos vendidos</span><span class="stat-value"><%= b.ingressos.vendidos %></span><span class="stat-sub">+ <%= b.cortesias %> cortesia(s)</span></div>
-          <div class="stat-box"><span class="stat-label">Bruto vendido</span><span class="stat-value"><%= brl(b.ingressos.bruto) %></span></div>
-          <div class="stat-box"><span class="stat-label">Taxas MP</span><span class="stat-value neg"><%= brl(b.ingressos.taxas) %></span><% if (b.ingressos.estornos > 0) { %><span class="stat-sub neg">Estornos: <%= brl(b.ingressos.estornos) %></span><% } %></div>
-          <div class="stat-box"><span class="stat-label">Líquido recebido</span><span class="stat-value"><%= brl(b.liquidoIngressos) %></span><span class="stat-sub">média <%= brl(b.liquidoMedio) %>/ingresso</span></div>
+          <div class="stat-box"><span class="stat-label">Ingressos vendidos</span><span class="stat-value"><%= I.vendidos %></span><span class="stat-sub">+ <%= I.cortesias %> cortesia(s) · <%= I.checkins %> entraram</span></div>
+          <div class="stat-box"><span class="stat-label">Bruto vendido</span><span class="stat-value"><%= brl(I.bruto) %></span></div>
+          <div class="stat-box"><span class="stat-label">Taxas MP</span><span class="stat-value neg"><%= brl(I.taxas) %></span><% if (I.estornos > 0) { %><span class="stat-sub neg">Estornos: <%= brl(I.estornos) %></span><% } %></div>
+          <div class="stat-box"><span class="stat-label">Líquido recebido</span><span class="stat-value"><%= brl(I.liquido) %></span><span class="stat-sub">média <%= brl(I.liquidoMedio) %>/ingresso</span></div>
         </div>
-        <div class="stats-row">
-          <div class="stat-box"><span class="stat-label">Entradas extras</span><span class="stat-value"><%= brl(b.entradasManuais.liquido) %></span></div>
-          <div class="stat-box"><span class="stat-label">Custos bilheteria</span><span class="stat-value"><%= brl(b.totalCustos) %></span><span class="stat-sub"><%= brl(b.custosAPagar) %> a pagar</span></div>
-          <div class="stat-box"><span class="stat-label">Resultado</span><span class="stat-value <%= signClass(b.resultado) %>"><%= brl(b.resultado) %></span></div>
-          <div class="stat-box"><span class="stat-label">Ponto de equilíbrio</span>
-            <% if (b.pontoEquilibrio !== null) { %>
-              <span class="stat-value"><%= b.pontoEquilibrio %></span>
-              <span class="stat-sub"><%= b.ingressos.vendidos >= b.pontoEquilibrio ? 'ingressos — já atingido ✓' : 'ingressos — faltam ' + (b.pontoEquilibrio - b.ingressos.vendidos) %></span>
-            <% } else { %><span class="stat-value">—</span><span class="stat-sub">sem vendas ainda</span><% } %>
-          </div>
-        </div>
-        <p class="hint" style="margin-top:-12px">Entrada no evento: <strong><%= b.checkins %></strong> ingresso(s) validado(s) na portaria (<%= b.checkinsCortesia %> cortesia). <%= b.pendentes %> pedido(s) com pagamento pendente (Pix não pago) não entram na conta.</p>
 
-        <% if (b.divergencias.length) { %>
+        <% if (I.divergencias.length) { %>
           <div class="section-title"><h3>⚠️ Divergências com o Mercado Pago</h3></div>
           <div class="table-wrap">
             <table>
               <thead><tr><th>Comprador</th><th>Pedido</th><th>ID MP</th><th class="num">Valor</th><th>Problema</th></tr></thead>
               <tbody>
-                <% b.divergencias.forEach(function(d) { %>
+                <% I.divergencias.forEach(function(d) { %>
                   <tr><td><%= d.order.buyerName %></td><td><a href="/pedido/<%= d.order.id %>" target="_blank" style="color:var(--accent)"><%= d.order.id.slice(0, 8) %></a></td><td><%= d.order.mpPaymentId %></td><td class="num"><%= brl(d.order.totalAmount) %></td><td style="white-space:normal"><%= d.motivo %></td></tr>
                 <% }) %>
               </tbody>
@@ -169,140 +214,131 @@
           </div>
         <% } %>
 
-        <div class="section-title"><h3>Ingressos por lote</h3></div>
-        <div class="table-wrap">
+        <div class="table-wrap" style="margin-top:12px">
           <table>
-            <thead><tr><th>Lote</th><th class="num">Preço</th><th class="num">Qtd</th><th class="num">Pedidos</th><th class="num">Bruto</th><th class="num">Taxas MP</th><th class="num">Líquido</th></tr></thead>
+            <thead><tr><th>Lote</th><th class="num">Preço</th><th class="num">Qtd</th><th class="num">Bruto</th><th class="num">Taxas MP</th><th class="num">Líquido</th></tr></thead>
             <tbody>
-              <% b.porLote.forEach(function(l) { %>
-                <tr><td><%= l.name %></td><td class="num"><%= brl(l.unitPrice) %></td><td class="num"><%= l.qty %></td><td class="num"><%= l.pedidos %></td><td class="num"><%= brl(l.bruto) %></td><td class="num"><%= brl(l.taxas) %></td><td class="num"><%= brl(l.liquido) %></td></tr>
+              <% I.porLote.forEach(function(l) { %>
+                <tr><td><%= l.name %></td><td class="num"><%= brl(l.unitPrice) %></td><td class="num"><%= l.qty %></td><td class="num"><%= brl(l.bruto) %></td><td class="num"><%= brl(l.taxas) %></td><td class="num"><%= brl(l.liquido) %></td></tr>
               <% }) %>
-              <% if (!b.porLote.length) { %><tr><td colspan="7" style="text-align:center">Nenhum ingresso vendido ainda.</td></tr><% } %>
+              <% if (!I.porLote.length) { %><tr><td colspan="6" style="text-align:center">Nenhum ingresso vendido ainda.</td></tr><% } %>
             </tbody>
-            <% if (b.porLote.length) { %>
-              <tfoot><tr><td>Total</td><td></td><td class="num"><%= b.ingressos.vendidos %></td><td></td><td class="num"><%= brl(b.ingressos.bruto) %></td><td class="num"><%= brl(b.ingressos.taxas) %></td><td class="num"><%= brl(b.ingressos.recebidoMp) %></td></tr></tfoot>
+            <% if (I.porLote.length) { %>
+              <tfoot><tr><td>Total</td><td></td><td class="num"><%= I.vendidos %></td><td class="num"><%= brl(I.bruto) %></td><td class="num"><%= brl(I.taxas) %></td><td class="num"><%= brl(I.recebidoMp) %></td></tr></tfoot>
             <% } %>
           </table>
         </div>
-        <% if (b.estimado) { %><p class="hint">A coluna "Líquido" só soma pedidos já conferidos com o Mercado Pago.</p><% } %>
+        <% if (I.porForma.length) { %>
+          <p class="hint">Por forma de pagamento:
+            <% I.porForma.forEach(function(f, i) { %><%= i ? ' · ' : '' %><%= f.forma %>: <%= f.pedidos %> pedido(s), líquido <%= brl(f.liquido) %><% }) %>
+          </p>
+        <% } %>
+        <% if (I.estimado) { %><p class="hint">O líquido por lote só soma pedidos já conferidos com o Mercado Pago.</p><% } %>
 
-        <% if (b.porForma.length) { %>
-          <div class="section-title"><h3>Por forma de pagamento (Mercado Pago)</h3></div>
+        <% Object.keys(setores).forEach(function(k) { var lista = b.receitas.filter(function(l) { return l.setor === k; }); %>
+          <div class="section-title">
+            <h3><%= k === 'bar' ? 'Bar — receitas' : 'Bilheteria — outras receitas (fora do site)' %></h3>
+            <span class="hint" style="margin:0">Líquido: <strong><%= brl(S[k].receitaManual) %></strong></span>
+          </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Forma</th><th class="num">Pedidos</th><th class="num">Bruto</th><th class="num">Taxas</th><th class="num">Líquido</th></tr></thead>
+              <thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Forma</th><th class="num">Bruto</th><th class="num">Taxa</th><th class="num">Líquido</th><th></th></tr></thead>
               <tbody>
-                <% b.porForma.forEach(function(f) { %>
-                  <tr><td><%= f.forma %></td><td class="num"><%= f.pedidos %></td><td class="num"><%= brl(f.bruto) %></td><td class="num"><%= brl(f.taxas) %></td><td class="num"><%= brl(f.liquido) %></td></tr>
+                <% lista.forEach(function(l) { %>
+                  <tr>
+                    <td><%= dataBr(l.data) %></td><td><%= l.categoria %></td><td style="white-space:normal"><%= l.descricao %></td><td><%= l.forma || '—' %></td>
+                    <td class="num"><%= brl(l.valor) %></td><td class="num"><%= brl(l.taxa) %></td><td class="num"><%= brl(l.liquido) %></td>
+                    <td class="actions">
+                      <a href="/contabilidade?ver=receitas&editar=<%= l.id %>#form-lancamento"><button type="button" class="btn-secondary mini-btn">Editar</button></a>
+                      <form action="/api/contabilidade/lancamentos/<%= l.id %>/excluir" method="POST" class="inline-form" onsubmit="return confirm('Excluir esta receita?')"><button type="submit" class="btn-secondary mini-btn">Excluir</button></form>
+                    </td>
+                  </tr>
                 <% }) %>
+                <% if (!lista.length) { %><tr><td colspan="8" style="text-align:center"><%= k === 'bar' ? 'Lance aqui o fechamento do caixa e da maquininha do bar.' : 'Venda na porta, patrocínio etc. Os ingressos do site entram sozinhos.' %></td></tr><% } %>
               </tbody>
             </table>
           </div>
-        <% } %>
+        <% }) %>
       <% } %>
 
-      <% if (ver === 'bar') { const b = bar; %>
-        <div class="stats-row">
-          <div class="stat-box"><span class="stat-label">Vendas do bar (bruto)</span><span class="stat-value"><%= brl(b.entradasManuais.bruto) %></span></div>
-          <div class="stat-box"><span class="stat-label">Taxas (maquininha)</span><span class="stat-value neg"><%= brl(b.entradasManuais.taxas) %></span></div>
-          <div class="stat-box"><span class="stat-label">Líquido</span><span class="stat-value"><%= brl(b.receitaTotal) %></span></div>
-        </div>
-        <div class="stats-row">
-          <div class="stat-box"><span class="stat-label">Custos do bar</span><span class="stat-value"><%= brl(b.totalCustos) %></span><span class="stat-sub"><%= brl(b.custosAPagar) %> a pagar</span></div>
-          <div class="stat-box"><span class="stat-label">Resultado</span><span class="stat-value <%= signClass(b.resultado) %>"><%= brl(b.resultado) %></span></div>
-          <div class="stat-box"><span class="stat-label">Margem</span><span class="stat-value <%= signClass(b.margem || 0) %>"><%= b.margem === null ? '—' : b.margem.toLocaleString('pt-BR') + '%' %></span><span class="stat-sub">do líquido vendido</span></div>
+      <%# ======================= DESPESAS ======================= %>
+      <% if (ver === 'despesas') { %>
+        <div class="btn-row" style="margin:0 0 18px">
+          <a href="#form-lancamento"><button type="button" style="width:auto; margin:0; padding:10px 18px">+ Lançar despesa</button></a>
         </div>
 
-        <% if (b.porForma.length) { %>
-          <div class="section-title"><h3>Vendas por forma de pagamento</h3></div>
+        <div class="stats-row">
+          <div class="stat-box"><span class="stat-label">Despesas fixas</span><span class="stat-value"><%= brl(b.fixas.total) %></span><span class="stat-sub">falta pagar <%= brl(b.fixas.falta) %></span></div>
+          <div class="stat-box"><span class="stat-label">Despesas variáveis</span><span class="stat-value"><%= brl(b.variaveis.total) %></span><span class="stat-sub">falta pagar <%= brl(b.variaveis.falta) %></span></div>
+          <div class="stat-box"><span class="stat-label">Total</span><span class="stat-value"><%= brl(b.despesaTotal) %></span></div>
+        </div>
+        <div class="stats-row">
+          <div class="stat-box"><span class="stat-label">Já pago</span><span class="stat-value pos"><%= brl(b.pagoTotal) %></span></div>
+          <div class="stat-box"><span class="stat-label">Falta pagar</span><span class="stat-value <%= b.faltaPagar > 0 ? 'neg' : '' %>"><%= brl(b.faltaPagar) %></span></div>
+        </div>
+
+        <% Object.keys(naturezas).forEach(function(nat) {
+             var lista = b.despesas.filter(function(l) { return l.natureza === nat; });
+             var tot = nat === 'fixa' ? b.fixas : b.variaveis; %>
+          <div class="section-title">
+            <h3>Despesas <%= nat === 'fixa' ? 'fixas' : 'variáveis' %></h3>
+            <span class="hint" style="margin:0"><%= nat === 'fixa' ? 'Não mudam com o público (salão, som, atrações…)' : 'Crescem com o público (bebidas, gelo, pulseiras…)' %></span>
+          </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Forma</th><th class="num">Bruto</th><th class="num">Taxas</th><th class="num">Líquido</th></tr></thead>
+              <thead><tr><th>Setor</th><th>Categoria</th><th>Descrição</th><th class="num">Valor total</th><th class="num">Pago</th><th class="num">Falta pagar</th><th>Situação</th><th></th></tr></thead>
               <tbody>
-                <% b.porForma.forEach(function(f) { %>
-                  <tr><td><%= f.forma %></td><td class="num"><%= brl(f.bruto) %></td><td class="num"><%= brl(f.taxas) %></td><td class="num"><%= brl(f.liquido) %></td></tr>
+                <% lista.forEach(function(l) { %>
+                  <tr>
+                    <td><%= setores[l.setor] %></td><td><%= l.categoria %></td><td style="white-space:normal"><%= l.descricao %></td>
+                    <td class="num"><%= brl(l.valor) %></td>
+                    <td class="num"><%= brl(l.valorPago) %></td>
+                    <td class="num <%= l.faltaPagar > 0 ? 'neg' : '' %>"><%= brl(l.faltaPagar) %></td>
+                    <td>
+                      <% if (l.status === 'pago') { %><span class="pill pill-ok">Pago</span>
+                      <% } else if (l.status === 'parcial') { %><span class="pill pill-warn">Parcial</span>
+                      <% } else { %><span class="pill pill-bad">A pagar</span><% } %>
+                      <% if (l.vencimento && l.faltaPagar > 0) { %><br><span class="stat-sub">vence <%= dataBr(l.vencimento) %></span><% } %>
+                    </td>
+                    <td class="actions">
+                      <% if (l.faltaPagar > 0) { %>
+                        <form action="/api/contabilidade/lancamentos/<%= l.id %>/quitar" method="POST" class="inline-form" onsubmit="return confirm('Marcar como totalmente pago (<%= brl(l.valor) %>)?')"><button type="submit" class="mini-btn">Quitar</button></form>
+                      <% } %>
+                      <a href="/contabilidade?ver=despesas&editar=<%= l.id %>#form-lancamento"><button type="button" class="btn-secondary mini-btn">Editar</button></a>
+                      <form action="/api/contabilidade/lancamentos/<%= l.id %>/excluir" method="POST" class="inline-form" onsubmit="return confirm('Excluir esta despesa?')"><button type="submit" class="btn-secondary mini-btn">Excluir</button></form>
+                    </td>
+                  </tr>
                 <% }) %>
+                <% if (!lista.length) { %><tr><td colspan="8" style="text-align:center">Nenhuma despesa <%= nat === 'fixa' ? 'fixa' : 'variável' %> lançada.</td></tr><% } %>
               </tbody>
+              <% if (lista.length) { %>
+                <tfoot><tr><td colspan="3">Total</td><td class="num"><%= brl(tot.total) %></td><td class="num"><%= brl(tot.pago) %></td><td class="num"><%= brl(tot.falta) %></td><td colspan="2"></td></tr></tfoot>
+              <% } %>
             </table>
           </div>
-        <% } %>
+        <% }) %>
       <% } %>
 
-      <% if (ver !== 'resumo') { const setor = ver; const s = ver === 'bar' ? bar : bilheteria; %>
-        <div class="section-title">
-          <h3><%= setor === 'bar' ? 'Entradas do bar' : 'Entradas extras (fora do site)' %></h3>
-          <span class="hint" style="margin:0">Total líquido: <strong><%= brl(s.entradasManuais.liquido) %></strong></span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Forma</th><th class="num">Bruto</th><th class="num">Taxa</th><th class="num">Líquido</th><th></th></tr></thead>
-            <tbody>
-              <% s.entradas.forEach(function(l) { %>
-                <tr>
-                  <td><%= dataBr(l.data) %></td><td><%= l.categoria %></td><td style="white-space:normal"><%= l.descricao %></td><td><%= l.forma || '—' %></td>
-                  <td class="num"><%= brl(l.valor) %></td><td class="num"><%= brl(l.taxa) %></td><td class="num"><%= brl(l.valor - l.taxa) %></td>
-                  <td>
-                    <a href="/contabilidade?ver=<%= setor %>&editar=<%= l.id %>#form-lancamento"><button type="button" class="btn-secondary mini-btn">Editar</button></a>
-                    <form action="/api/contabilidade/lancamentos/<%= l.id %>/excluir" method="POST" class="inline-form" onsubmit="return confirm('Excluir este lançamento?')"><button type="submit" class="btn-secondary mini-btn">Excluir</button></form>
-                  </td>
-                </tr>
-              <% }) %>
-              <% if (!s.entradas.length) { %><tr><td colspan="8" style="text-align:center"><%= setor === 'bar' ? 'Lance aqui o fechamento do caixa e da maquininha do bar.' : 'Venda na porta, patrocínio etc. Os ingressos do site já entram automaticamente.' %></td></tr><% } %>
-            </tbody>
-          </table>
-        </div>
-
-        <div class="section-title">
-          <h3>Saídas (custos) — <%= setores[setor].label %></h3>
-          <span class="hint" style="margin:0">Total: <strong><%= brl(s.totalCustos) %></strong> · a pagar: <strong><%= brl(s.custosAPagar) %></strong></span>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Data</th><th>Categoria</th><th>Descrição</th><th>Forma</th><th class="num">Valor</th><th>Status</th><th></th></tr></thead>
-            <tbody>
-              <% s.custos.forEach(function(l) { %>
-                <tr>
-                  <td><%= dataBr(l.data) %></td><td><%= l.categoria %></td><td style="white-space:normal"><%= l.descricao %></td><td><%= l.forma || '—' %></td>
-                  <td class="num"><%= brl(l.valor) %></td>
-                  <td>
-                    <form action="/api/contabilidade/lancamentos/<%= l.id %>/pago" method="POST" class="inline-form">
-                      <button type="submit" class="link-btn" title="Clique para alternar" style="padding:0"><span class="pill <%= l.pago ? 'pill-ok' : 'pill-warn' %>"><%= l.pago ? 'Pago' : 'A pagar' %></span></button>
-                    </form>
-                  </td>
-                  <td>
-                    <a href="/contabilidade?ver=<%= setor %>&editar=<%= l.id %>#form-lancamento"><button type="button" class="btn-secondary mini-btn">Editar</button></a>
-                    <form action="/api/contabilidade/lancamentos/<%= l.id %>/excluir" method="POST" class="inline-form" onsubmit="return confirm('Excluir este lançamento?')"><button type="submit" class="btn-secondary mini-btn">Excluir</button></form>
-                  </td>
-                </tr>
-              <% }) %>
-              <% if (!s.custos.length) { %><tr><td colspan="7" style="text-align:center">Nenhum custo lançado ainda.</td></tr><% } %>
-            </tbody>
-          </table>
-        </div>
-
-        <% if (s.custosPorCategoria.length > 1) { %>
-          <div class="section-title"><h3>Custos por categoria</h3></div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Categoria</th><th class="num">Valor</th><th class="num">% dos custos</th></tr></thead>
-              <tbody>
-                <% s.custosPorCategoria.forEach(function(c) { %>
-                  <tr><td><%= c.categoria %></td><td class="num"><%= brl(c.valor) %></td><td class="num"><%= (c.valor / s.totalCustos * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) %>%</td></tr>
-                <% }) %>
-              </tbody>
-            </table>
-          </div>
-        <% } %>
-
-        <% const e = editing && editing.setor === setor ? editing : null; %>
-        <div class="section-title" id="form-lancamento"><h3><%= e ? 'Editar lançamento' : 'Novo lançamento — ' + setores[setor].label %></h3></div>
+      <%# ======================= FORMULÁRIO ======================= %>
+      <% if (ver !== 'resumo') { const tipo = ver === 'despesas' ? 'despesa' : 'receita'; %>
+        <div class="section-title" id="form-lancamento"><h3><%= e ? 'Editar ' + tipo : (tipo === 'despesa' ? 'Nova despesa' : 'Nova receita') %></h3></div>
         <form action="/api/contabilidade/lancamentos" method="POST" class="grid-form" id="lanc-form">
-          <input type="hidden" name="setor" value="<%= setor %>" />
+          <input type="hidden" name="tipo" value="<%= tipo %>" />
           <% if (e) { %><input type="hidden" name="id" value="<%= e.id %>" /><% } %>
-          <label>Tipo
-            <select name="tipo" id="lanc-tipo">
-              <option value="custo" <%= !e || e.tipo === 'custo' ? 'selected' : '' %>>Saída (custo)</option>
-              <option value="entrada" <%= e && e.tipo === 'entrada' ? 'selected' : '' %>>Entrada (receita)</option>
+
+          <% if (tipo === 'despesa') { %>
+            <div class="full">
+              <span class="stat-label">Tipo de despesa</span>
+              <div class="seg" style="margin-top:6px">
+                <label><input type="radio" name="natureza" value="fixa" <%= e && e.natureza === 'fixa' ? 'checked' : '' %> /> Fixa</label>
+                <label><input type="radio" name="natureza" value="variavel" <%= e && e.natureza === 'variavel' ? 'checked' : '' %> /> Variável</label>
+              </div>
+            </div>
+          <% } %>
+
+          <label>Setor
+            <select name="setor" id="lanc-setor">
+              <% Object.keys(setores).forEach(function(k) { %><option value="<%= k %>" <%= e && e.setor === k ? 'selected' : '' %>><%= setores[k] %></option><% }) %>
             </select>
           </label>
           <label>Categoria
@@ -312,14 +348,32 @@
             <input type="text" name="categoriaNova" id="lanc-categoria-nova" maxlength="60" placeholder="Ex: Aluguel de telão" />
           </label>
           <label style="grid-column: span 2">Descrição
-            <input type="text" name="descricao" maxlength="200" placeholder="<%= setor === 'bar' ? 'Ex: 10 fardos de cerveja - Atacadão' : 'Ex: Cachê DJ fulano' %>" value="<%= e ? e.descricao : '' %>" />
+            <input type="text" name="descricao" maxlength="200" placeholder="<%= tipo === 'despesa' ? 'Ex: Som e luz - Fulano Produções' : 'Ex: Fechamento maquininha crédito' %>" value="<%= e ? e.descricao : '' %>" />
           </label>
-          <label>Valor (R$)
-            <input type="text" name="valor" inputmode="decimal" placeholder="0,00" required value="<%= e ? e.valor.toFixed(2).replace('.', ',') : '' %>" />
+
+          <label><%= tipo === 'despesa' ? 'Valor total (R$)' : 'Valor bruto (R$)' %>
+            <input type="text" name="valor" id="lanc-valor" inputmode="decimal" placeholder="0,00" required value="<%= e ? money(e.valor) : '' %>" />
           </label>
-          <label class="only-entrada">Taxa (R$)
-            <input type="text" name="taxa" inputmode="decimal" placeholder="0,00" value="<%= e && e.taxa ? e.taxa.toFixed(2).replace('.', ',') : '' %>" />
-          </label>
+
+          <% if (tipo === 'despesa') { %>
+            <label>Já foi pago (R$)
+              <input type="text" name="valorPago" id="lanc-pago" inputmode="decimal" placeholder="0,00" value="<%= e && e.valorPago ? money(e.valorPago) : '' %>" />
+            </label>
+            <label>Falta pagar
+              <div class="falta-box" id="lanc-falta">R$ 0,00</div>
+            </label>
+            <label class="check" style="align-self:center">
+              <input type="checkbox" name="quitado" value="1" id="lanc-quitado" /> Pago integralmente
+            </label>
+            <label id="lanc-venc-wrap">Vencimento do restante
+              <input type="date" name="vencimento" value="<%= e && e.vencimento ? e.vencimento : '' %>" />
+            </label>
+          <% } else { %>
+            <label>Taxa (R$)
+              <input type="text" name="taxa" inputmode="decimal" placeholder="0,00" value="<%= e && e.taxa ? money(e.taxa) : '' %>" />
+            </label>
+          <% } %>
+
           <label>Forma de pagamento
             <select name="forma">
               <option value="">—</option>
@@ -329,28 +383,56 @@
           <label>Data
             <input type="date" name="data" value="<%= e && e.data ? e.data : '' %>" />
           </label>
-          <label class="check only-custo">
-            <input type="checkbox" name="pago" value="1" <%= !e || e.pago ? 'checked' : '' %> /> Já foi pago
-          </label>
-          <div style="grid-column: 1 / -1; display:flex; gap:8px; flex-wrap:wrap">
-            <button type="submit" style="width:auto; padding:12px 24px"><%= e ? 'Salvar alterações' : 'Adicionar lançamento' %></button>
-            <% if (e) { %><a href="/contabilidade?ver=<%= setor %>"><button type="button" class="btn-secondary" style="width:auto; padding:12px 24px">Cancelar</button></a><% } %>
+
+          <div class="full" style="display:flex; gap:8px; flex-wrap:wrap">
+            <button type="submit" style="width:auto; padding:12px 24px; margin:0"><%= e ? 'Salvar alterações' : (tipo === 'despesa' ? 'Adicionar despesa' : 'Adicionar receita') %></button>
+            <% if (e) { %><a href="/contabilidade?ver=<%= ver %>"><button type="button" class="btn-secondary" style="width:auto; padding:12px 24px; margin:0">Cancelar</button></a><% } %>
           </div>
         </form>
-        <% if (setor === 'bar') { %>
-          <p class="hint">Dica: ao fim do evento, lance uma entrada por forma de pagamento (ex: "Maquininha — crédito", com a taxa cobrada; "Dinheiro — caixa 1"). Custos: bebidas, gelo, copos, equipe do bar…</p>
-        <% } else { %>
-          <p class="hint">Os ingressos vendidos no site entram sozinhos (via Mercado Pago). Lance aqui os custos do evento — espaço, atrações, som, segurança, divulgação… — e entradas que não passam pelo site.</p>
-        <% } %>
+        <p class="hint">
+          <% if (tipo === 'despesa') { %>
+            Ao escolher a categoria, o tipo (fixa/variável) é sugerido automaticamente — dá pra trocar. Se pagou só uma parte (ex: sinal de 50%), informe em "Já foi pago" e o restante fica em "Falta pagar".
+          <% } else { %>
+            Os ingressos vendidos no site entram sozinhos. Lance aqui o que não passa pelo site: vendas do bar (por forma de pagamento, com a taxa da maquininha), venda na porta, patrocínios…
+          <% } %>
+        </p>
 
         <script>
           (function () {
-            var categorias = <%- JSON.stringify(categorias) %>;
+            var tipo = <%- JSON.stringify(tipo) %>;
+            var categorias = <%- JSON.stringify(categorias[tipo]) %>;
             var atual = <%- JSON.stringify(e ? e.categoria : null) %>;
-            var tipo = document.getElementById('lanc-tipo');
+            var editando = <%- JSON.stringify(Boolean(e)) %>;
+            var form = document.getElementById('lanc-form');
+            var setor = document.getElementById('lanc-setor');
             var cat = document.getElementById('lanc-categoria');
-            function render() {
-              var lista = categorias[tipo.value].slice();
+            var novaWrap = document.getElementById('lanc-categoria-nova-wrap');
+            var novaInput = document.getElementById('lanc-categoria-nova');
+
+            function nome(c) { return typeof c === 'string' ? c : c.nome; }
+            function parse(v) {
+              v = String(v || '').replace(/[R$\s]/g, '');
+              if (v.indexOf(',') >= 0 || /^\d{1,3}(\.\d{3})+$/.test(v)) v = v.replace(/\./g, '').replace(',', '.');
+              var n = Number(v); return isFinite(n) && n > 0 ? n : 0;
+            }
+            function brl(n) { return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+            function sugerirNatureza() {
+              if (tipo !== 'despesa') return;
+              var item = categorias[setor.value].find(function (c) { return nome(c) === cat.value; });
+              if (item && item.natureza) {
+                var radio = form.querySelector('input[name=natureza][value=' + item.natureza + ']');
+                if (radio) radio.checked = true;
+              }
+            }
+            function toggleNova() {
+              var on = cat.value === '__nova__';
+              novaWrap.style.display = on ? '' : 'none';
+              novaInput.required = on;
+              if (on) novaInput.focus(); else novaInput.value = '';
+            }
+            function renderCategorias() {
+              var lista = categorias[setor.value].map(nome);
               if (atual && lista.indexOf(atual) === -1) lista.unshift(atual);
               cat.innerHTML = '';
               lista.forEach(function (c) {
@@ -364,26 +446,39 @@
               nova.textContent = '+ Nova categoria…';
               cat.appendChild(nova);
               toggleNova();
-              document.querySelectorAll('.only-entrada').forEach(function (el) { el.style.display = tipo.value === 'entrada' ? '' : 'none'; });
-              document.querySelectorAll('.only-custo').forEach(function (el) { el.style.display = tipo.value === 'custo' ? '' : 'none'; });
             }
-            var novaWrap = document.getElementById('lanc-categoria-nova-wrap');
-            var novaInput = document.getElementById('lanc-categoria-nova');
-            function toggleNova() {
-              var on = cat.value === '__nova__';
-              novaWrap.style.display = on ? '' : 'none';
-              novaInput.required = on;
-              if (on) novaInput.focus(); else novaInput.value = '';
-            }
-            cat.addEventListener('change', toggleNova);
-            tipo.addEventListener('change', function () { atual = null; render(); });
-            render();
-            document.querySelectorAll('.atalho-lanc').forEach(function (a) {
-              a.addEventListener('click', function () {
-                if (tipo.value !== a.dataset.tipo) { tipo.value = a.dataset.tipo; atual = null; render(); }
-                setTimeout(function () { document.querySelector('#lanc-form [name=valor]').focus(); }, 300);
+
+            setor.addEventListener('change', function () { atual = null; renderCategorias(); sugerirNatureza(); });
+            cat.addEventListener('change', function () { toggleNova(); sugerirNatureza(); });
+            renderCategorias();
+            if (!editando) sugerirNatureza();
+
+            if (tipo === 'despesa') {
+              var valor = document.getElementById('lanc-valor');
+              var pago = document.getElementById('lanc-pago');
+              var quitado = document.getElementById('lanc-quitado');
+              var falta = document.getElementById('lanc-falta');
+              var vencWrap = document.getElementById('lanc-venc-wrap');
+              function atualizarFalta() {
+                var total = parse(valor.value);
+                if (quitado.checked) pago.value = valor.value;
+                pago.readOnly = quitado.checked;
+                var resto = Math.max(0, total - parse(pago.value));
+                falta.textContent = brl(resto);
+                falta.className = 'falta-box' + (resto > 0 ? ' neg' : ' pos');
+                vencWrap.style.display = resto > 0 ? '' : 'none';
+              }
+              quitado.checked = editando && parse(pago.value) >= parse(valor.value) && parse(valor.value) > 0;
+              [valor, pago].forEach(function (el) { el.addEventListener('input', atualizarFalta); });
+              quitado.addEventListener('change', function () { if (!quitado.checked) pago.value = ''; atualizarFalta(); });
+              atualizarFalta();
+              form.addEventListener('submit', function (ev) {
+                if (!form.querySelector('input[name=natureza]:checked')) {
+                  ev.preventDefault();
+                  alert('Escolha se a despesa é fixa ou variável.');
+                }
               });
-            });
+            }
           })();
         </script>
       <% } %>
