@@ -27,6 +27,7 @@ function buildWhatsappTicketLink() {
 }
 const { approveOrder } = require('./fulfillment');
 const { registerCortesiaRoutes } = require('./cortesia');
+const { registerContabilidadeRoutes } = require('./contabilidade');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
 
@@ -156,9 +157,13 @@ function requireValidatorAuth(req, res, next) {
 // ---- admin panel auth (in-memory sessions, reset on server restart) ----
 const adminSessions = new Set();
 
-function requireAdminAuth(req, res, next) {
+function isAdmin(req) {
   const token = req.cookies.admin_session;
-  if (token && adminSessions.has(token)) return next();
+  return Boolean(token && adminSessions.has(token));
+}
+
+function requireAdminAuth(req, res, next) {
+  if (isAdmin(req)) return next();
   return res.redirect('/admin');
 }
 
@@ -550,6 +555,9 @@ app.get('/admin', (req, res) => {
   });
 });
 
+// Pages outside /admin that send the user through the admin login and back.
+const ADMIN_LOGIN_NEXT = ['/downloads', '/contabilidade'];
+
 app.post('/admin/login', (req, res) => {
   const { login, password } = req.body;
   if (login === process.env.ADMIN_LOGIN && password === process.env.ADMIN_PASSWORD) {
@@ -560,12 +568,12 @@ app.post('/admin/login', (req, res) => {
       sameSite: 'lax',
       maxAge: 12 * 60 * 60 * 1000,
     });
-    return res.redirect(req.body.next === '/downloads' ? '/downloads' : '/admin');
+    return res.redirect(ADMIN_LOGIN_NEXT.includes(req.body.next) ? req.body.next : '/admin');
   }
   return res.status(401).render('admin_login', {
     eventInfo,
     error: 'Login ou senha incorretos.',
-    next: req.body.next === '/downloads' ? '/downloads' : null,
+    next: ADMIN_LOGIN_NEXT.includes(req.body.next) ? req.body.next : null,
   });
 });
 
@@ -660,6 +668,7 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
 });
 
 registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
+registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
 
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
   const db = store.load();

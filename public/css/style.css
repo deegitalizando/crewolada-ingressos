@@ -371,6 +371,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .tabs-row {
+  flex-wrap: wrap;
   display: flex;
   gap: 8px;
   margin: 0 0 8px;
