@@ -9,10 +9,12 @@ const SETORES = {
   bilheteria: {
     label: 'Bilheteria',
     categoriasCusto: [
-      'Locação do espaço', 'Atrações / DJs', 'Som e luz', 'Segurança', 'Equipe / produção',
-      'Divulgação / anúncios', 'Impressos / pulseiras', 'Taxas e licenças (ECAD etc.)', 'Transporte', 'Outros',
+      'Salão / locação do espaço', 'Som', 'Iluminação', 'Palco e estrutura', 'Camarim', 'Atrações / artistas', 'DJs',
+      'Apresentador / MC', 'Segurança', 'Bombeiro / brigada', 'Recepção / portaria', 'Limpeza', 'Equipe de produção',
+      'Decoração', 'Gerador / energia', 'Fotografia e vídeo', 'Divulgação / anúncios', 'Impressos / pulseiras',
+      'Alimentação da equipe', 'Transporte / frete', 'Hospedagem', 'Taxas e licenças (ECAD, alvará)', 'Outros',
     ],
-    categoriasEntrada: ['Venda na porta', 'Patrocínio', 'Lista / promoter', 'Outros'],
+    categoriasEntrada: ['Venda na porta', 'Patrocínio', 'Apoio / permuta', 'Lista / promoter', 'Estacionamento', 'Outros'],
   },
   bar: {
     label: 'Bar',
@@ -41,7 +43,20 @@ function parseValor(raw) {
 }
 
 function getContabilidade(db) {
-  return { lancamentos: [], ...(db.contabilidade || {}) };
+  return { lancamentos: [], categoriasExtras: {}, ...(db.contabilidade || {}) };
+}
+
+// Default categories plus any the admin created ("+ Nova categoria").
+function getCategorias(conta, setor) {
+  const extras = conta.categoriasExtras?.[setor] || {};
+  const merge = (base, extra) => {
+    const outros = base.filter((c) => c !== 'Outros');
+    return [...outros, ...(extra || []).filter((c) => !base.includes(c)), 'Outros'];
+  };
+  return {
+    custo: merge(SETORES[setor].categoriasCusto, extras.custo),
+    entrada: merge(SETORES[setor].categoriasEntrada, extras.entrada),
+  };
 }
 
 // Pulls the real numbers for each order straight from Mercado Pago (net after
@@ -276,6 +291,7 @@ function registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo
       bilheteria: buildBilheteria(db, conta),
       bar: buildBar(conta),
       mpSyncedAt: conta.mpSyncedAt || null,
+      categorias: ver === 'resumo' ? null : getCategorias(conta, ver),
       editing: editId ? conta.lancamentos.find((l) => l.id === editId) || null : null,
       msg: req.query.msg || null,
     });
@@ -289,10 +305,11 @@ function registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo
       return res.redirect(`/contabilidade?ver=${setor || 'resumo'}&msg=invalido`);
     }
 
+    const novaCategoria = String(req.body.categoriaNova || '').trim().replace(/s+/g, ' ').slice(0, 60);
     const fields = {
       setor,
       tipo,
-      categoria: String(req.body.categoria || 'Outros').trim().slice(0, 80),
+      categoria: novaCategoria || String(req.body.categoria || 'Outros').trim().slice(0, 80),
       descricao: String(req.body.descricao || '').trim().slice(0, 200),
       valor,
       taxa: tipo === 'entrada' ? Math.min(parseValor(req.body.taxa), valor) : 0,
@@ -304,6 +321,10 @@ function registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo
 
     await store.withDb((db) => {
       db.contabilidade = getContabilidade(db);
+      if (novaCategoria && !getCategorias(db.contabilidade, setor)[tipo].includes(novaCategoria)) {
+        const extras = (db.contabilidade.categoriasExtras[setor] = db.contabilidade.categoriasExtras[setor] || {});
+        extras[tipo] = [...(extras[tipo] || []), novaCategoria];
+      }
       const existing = req.body.id && db.contabilidade.lancamentos.find((l) => l.id === req.body.id);
       if (existing) Object.assign(existing, fields);
       else db.contabilidade.lancamentos.push({ id: crypto.randomUUID(), createdAt: fields.updatedAt, ...fields });

@@ -117,6 +117,13 @@
         <p class="hint">Bilheteria = ingressos online (valor líquido que caiu no Mercado Pago, já sem taxas e estornos) + entradas extras lançadas (venda na porta, patrocínio...) − custos da bilheteria. Bar = entradas lançadas no bar (líquido das taxas da maquininha) − custos do bar.</p>
       <% } %>
 
+      <% if (ver !== 'resumo') { %>
+        <div class="btn-row" style="margin:0 0 18px; flex-wrap:wrap">
+          <a href="#form-lancamento" data-tipo="custo" class="atalho-lanc"><button type="button" style="width:auto; margin:0; padding:10px 18px">− Lançar saída (custo)</button></a>
+          <a href="#form-lancamento" data-tipo="entrada" class="atalho-lanc"><button type="button" class="btn-secondary" style="width:auto; margin:0; padding:10px 18px">+ Lançar entrada</button></a>
+        </div>
+      <% } %>
+
       <% if (ver === 'bilheteria') { const b = bilheteria; %>
         <div class="verdict" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap">
           <span>
@@ -246,7 +253,7 @@
         </div>
 
         <div class="section-title">
-          <h3>Custos — <%= setores[setor].label %></h3>
+          <h3>Saídas (custos) — <%= setores[setor].label %></h3>
           <span class="hint" style="margin:0">Total: <strong><%= brl(s.totalCustos) %></strong> · a pagar: <strong><%= brl(s.custosAPagar) %></strong></span>
         </div>
         <div class="table-wrap">
@@ -294,12 +301,15 @@
           <% if (e) { %><input type="hidden" name="id" value="<%= e.id %>" /><% } %>
           <label>Tipo
             <select name="tipo" id="lanc-tipo">
-              <option value="custo" <%= !e || e.tipo === 'custo' ? 'selected' : '' %>>Custo (saída)</option>
-              <option value="entrada" <%= e && e.tipo === 'entrada' ? 'selected' : '' %>>Entrada</option>
+              <option value="custo" <%= !e || e.tipo === 'custo' ? 'selected' : '' %>>Saída (custo)</option>
+              <option value="entrada" <%= e && e.tipo === 'entrada' ? 'selected' : '' %>>Entrada (receita)</option>
             </select>
           </label>
           <label>Categoria
             <select name="categoria" id="lanc-categoria"></select>
+          </label>
+          <label id="lanc-categoria-nova-wrap" style="display:none">Nome da nova categoria
+            <input type="text" name="categoriaNova" id="lanc-categoria-nova" maxlength="60" placeholder="Ex: Aluguel de telão" />
           </label>
           <label style="grid-column: span 2">Descrição
             <input type="text" name="descricao" maxlength="200" placeholder="<%= setor === 'bar' ? 'Ex: 10 fardos de cerveja - Atacadão' : 'Ex: Cachê DJ fulano' %>" value="<%= e ? e.descricao : '' %>" />
@@ -335,7 +345,7 @@
 
         <script>
           (function () {
-            var categorias = <%- JSON.stringify({ custo: setores[setor].categoriasCusto, entrada: setores[setor].categoriasEntrada }) %>;
+            var categorias = <%- JSON.stringify(categorias) %>;
             var atual = <%- JSON.stringify(e ? e.categoria : null) %>;
             var tipo = document.getElementById('lanc-tipo');
             var cat = document.getElementById('lanc-categoria');
@@ -349,11 +359,31 @@
                 if (c === atual) o.selected = true;
                 cat.appendChild(o);
               });
+              var nova = document.createElement('option');
+              nova.value = '__nova__';
+              nova.textContent = '+ Nova categoria…';
+              cat.appendChild(nova);
+              toggleNova();
               document.querySelectorAll('.only-entrada').forEach(function (el) { el.style.display = tipo.value === 'entrada' ? '' : 'none'; });
               document.querySelectorAll('.only-custo').forEach(function (el) { el.style.display = tipo.value === 'custo' ? '' : 'none'; });
             }
+            var novaWrap = document.getElementById('lanc-categoria-nova-wrap');
+            var novaInput = document.getElementById('lanc-categoria-nova');
+            function toggleNova() {
+              var on = cat.value === '__nova__';
+              novaWrap.style.display = on ? '' : 'none';
+              novaInput.required = on;
+              if (on) novaInput.focus(); else novaInput.value = '';
+            }
+            cat.addEventListener('change', toggleNova);
             tipo.addEventListener('change', function () { atual = null; render(); });
             render();
+            document.querySelectorAll('.atalho-lanc').forEach(function (a) {
+              a.addEventListener('click', function () {
+                if (tipo.value !== a.dataset.tipo) { tipo.value = a.dataset.tipo; atual = null; render(); }
+                setTimeout(function () { document.querySelector('#lanc-form [name=valor]').focus(); }, 300);
+              });
+            });
           })();
         </script>
       <% } %>
