@@ -45,7 +45,13 @@ async function approveOrder(orderId, paymentId, eventInfo) {
     });
   });
 
-  await notifyOrderApproved(approvedOrder, tickets);
+  // WhatsApp delivery here would cold-start a conversation the buyer never
+  // initiated (risking a number ban), so the automatic post-payment
+  // notification only goes out by e-mail. WhatsApp is only sent as a reply
+  // within a conversation the buyer started themselves — via the "Receber
+  // ingresso no WhatsApp" button/message (/api/n8n/ingresso-por-telefone)
+  // or an admin-triggered resend — both of which already pass origin: 'reenvio'.
+  await notifyOrderApproved(approvedOrder, tickets, { channel: 'email' });
   // Courtesy tickets aren't sales — don't report them as conversions.
   if (!approvedOrder.isCourtesy) await trackPurchase(approvedOrder, approvedOrder.id);
 
