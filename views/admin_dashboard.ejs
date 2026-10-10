@@ -116,6 +116,13 @@
                       <a href="<%= o.whatsappResendLink %>" target="_blank" rel="noopener"><button type="button" class="btn-secondary" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📲 WhatsApp</button></a>
                       <button type="button" class="btn-danger btn-cancelar" data-order-id="<%= o.id %>" data-nome="<%= o.buyerName %>" data-total="<%= o.totalAmount.toFixed(2).replace('.', ',') %>" data-courtesy="<%= o.isCourtesy ? '1' : '0' %>" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">✖ Cancelar</button>
                     </div>
+                  <% } else if (o.status === 'cancelled') { %>
+                    <div style="display:flex; gap:6px">
+                      <a href="/comprovante/<%= o.id %>" target="_blank" rel="noopener"><button type="button" class="btn-secondary" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">🧾 Comprovante</button></a>
+                      <button type="button" class="btn-secondary btn-comprovante-email" data-order-id="<%= o.id %>" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📧 E-mail</button>
+                      <a href="<%= o.whatsappReceiptLink %>" target="_blank" rel="noopener"><button type="button" class="btn-secondary" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📲 WhatsApp</button></a>
+                    </div>
+                    <% if (o.receiptSentAt) { %><span class="hint" style="margin:4px 0 0;text-align:left">Comprovante enviado em <%= o.receiptSentAtLabel %></span><% } %>
                   <% } %>
                 </td>
               </tr>
@@ -138,8 +145,12 @@
         <label class="radio-row"><input type="radio" name="modo" value="manual" /> <span>Cancelar — <strong>ja reembolsei</strong> manualmente pelo app</span></label>
         <label class="radio-row"><input type="radio" name="modo" value="nenhum" /> <span>Cancelar <strong>sem reembolso</strong></span></label>
       </div>
+      <label class="radio-row">
+        <input type="checkbox" id="cancel-notificar" checked />
+        <span><strong>Avisar o cliente</strong> por e-mail e WhatsApp, com o comprovante em PDF</span>
+      </label>
       <label>
-        Motivo (opcional)
+        Motivo (opcional, uso interno)
         <input type="text" id="cancel-motivo" maxlength="200" placeholder="Ex: pediu reembolso, compra duplicada..." />
       </label>
       <div id="cancel-erro" class="alert" style="display:none"></div>
@@ -201,6 +212,7 @@
         document.getElementById('cancel-opcoes').style.display = cortesia ? 'none' : 'block';
         cancelForm.modo.value = cortesia ? 'nenhum' : 'mp';
         document.getElementById('cancel-motivo').value = '';
+        document.getElementById('cancel-notificar').checked = true;
         cancelErro.style.display = 'none';
         cancelDialog.showModal();
       });
@@ -223,10 +235,14 @@
             reembolsar: modo === 'mp',
             jaReembolsado: modo === 'manual',
             motivo: document.getElementById('cancel-motivo').value,
+            notificar: document.getElementById('cancel-notificar').checked,
           }),
         });
         const data = await res.json();
         if (res.ok) {
+          if (document.getElementById('cancel-notificar').checked && !data.notified) {
+            alert('Pedido cancelado' + (data.refunded ? ' e reembolsado' : '') + ', mas NAO foi possivel avisar o cliente agora. Use os botoes de comprovante na lista para enviar.');
+          }
           window.location.reload();
           return;
         }
@@ -242,6 +258,42 @@
     });
 
     const reenviarResult = document.getElementById('reenviar-result');
+
+    document.querySelectorAll('.btn-comprovante-email').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('Enviar o comprovante de cancelamento/reembolso por e-mail para este cliente?')) return;
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = 'Enviando...';
+        try {
+          const res = await fetch('/api/admin/pedidos/' + btn.dataset.orderId + '/comprovante/enviar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ canal: 'email' }),
+          });
+          const data = await res.json();
+          reenviarResult.style.display = 'block';
+          if (res.ok) {
+            reenviarResult.style.background = 'rgba(34,197,94,0.15)';
+            reenviarResult.style.borderColor = '#22c55e';
+            reenviarResult.style.color = '#86efac';
+            reenviarResult.textContent = 'Comprovante enviado por e-mail!';
+          } else {
+            reenviarResult.style.background = '';
+            reenviarResult.style.borderColor = '';
+            reenviarResult.style.color = '';
+            reenviarResult.textContent = data.error || 'Erro ao enviar.';
+          }
+        } catch (err) {
+          reenviarResult.style.display = 'block';
+          reenviarResult.textContent = 'Erro de conexao.';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = original;
+        }
+      });
+    });
+
     document.querySelectorAll('.btn-reenviar').forEach((btn) => {
       btn.addEventListener('click', async () => {
         if (!confirm('Reenviar o ingresso por e-mail para este comprador?')) return;

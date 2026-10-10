@@ -32,6 +32,7 @@
         ESTE INGRESSO FOI CANCELADO<br />
         <span style="font-weight:400; font-size:13px">Ele nao e mais valido para entrada. Em caso de duvida, fale com a organizacao.</span>
       </div>
+      <% if (order) { %><a href="/comprovante/<%= order.id %>"><button type="button">Ver comprovante de cancelamento</button></a><% } %>
       <% } else { %>
       <div class="alert" style="color:#fecaca; border-color:#ef4444; background:rgba(239,68,68,0.12); font-weight:700; text-align:center">
         INGRESSO PESSOAL E INTRANSFERIVEL<br />

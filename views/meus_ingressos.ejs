@@ -33,8 +33,8 @@
           <p class="hint" style="margin-top:0">Escolha qual pedido voce quer ver:</p>
           <div class="form">
             <% matches.forEach(function(o) { %>
-              <a href="/pedido/<%= o.id %>/participantes">
-                <button type="button" class="btn-secondary"><%= o.loteName %> &middot; <%= o.quantity %> ingresso<%= o.quantity === 1 ? '' : 's' %> &middot; <%= o.createdAtLabel %></button>
+              <a href="<%= o.status === 'cancelled' ? '/comprovante/' + o.id : '/pedido/' + o.id + '/participantes' %>">
+                <button type="button" class="btn-secondary"><%= o.loteName %> &middot; <%= o.quantity %> ingresso<%= o.quantity === 1 ? '' : 's' %> &middot; <%= o.createdAtLabel %><%= o.status === 'cancelled' ? ' · CANCELADO — ver comprovante' : '' %></button>
               </a>
             <% }) %>
           </div>

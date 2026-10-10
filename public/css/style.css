@@ -250,7 +250,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   color: var(--text);
   font-size: 14px;
 }
-.radio-row input { margin-top: 3px; }
+.radio-row input { margin-top: 3px; width: auto; padding: 0; flex: none; }
 
 .btn-row {
   display: flex;
@@ -555,7 +555,16 @@ th {
 
 @media print {
   body * { visibility: hidden; }
-  .ticket-card, .ticket-card * { visibility: visible; }
+  .ticket-card, .ticket-card *, .receipt, .receipt * { visibility: visible; }
+  .receipt {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    margin: 0;
+    border: none;
+    box-shadow: none;
+  }
   .ticket-card {
     position: absolute;
     top: 0;

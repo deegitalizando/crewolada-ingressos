@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Comprovante de cancelamento - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .receipt { text-align: left; }
+    .receipt h2 { margin: 0 0 4px; }
+    .receipt .protocol { color: var(--text-dim); font-size: 13px; margin: 0 0 18px; }
+    .receipt h3 {
+      color: var(--accent);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 22px 0 8px;
+      padding-top: 14px;
+      border-top: 1px solid var(--card-border);
+    }
+    .receipt dl { margin: 0; }
+    .receipt .r-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 6px 0;
+      font-size: 14px;
+    }
+    .receipt dt { color: var(--text-dim); }
+    .receipt dd { margin: 0; text-align: right; font-weight: 700; word-break: break-word; }
+    .refund-box {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid var(--ok);
+      background: rgba(34, 197, 94, 0.12);
+    }
+    .refund-box.none { border-color: var(--card-border); background: #1a1a1a; }
+    .refund-box strong { display: block; font-size: 18px; color: #86efac; }
+    .refund-box.none strong { color: var(--text); }
+    .refund-box p { margin: 6px 0 0; font-size: 13px; color: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm no-print">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <p class="hero-sub"><%= eventInfo.dateLabel %> &middot; <%= eventInfo.venue %></p>
+    </header>
+
+    <main class="card receipt">
+      <h2>Comprovante de cancelamento e reembolso</h2>
+      <p class="protocol">Protocolo <strong><%= receipt.protocol %></strong> &middot; <%= eventInfo.name %> &middot; <%= eventInfo.dateLabel %></p>
+
+      <div class="refund-box <%= receipt.hasRefund ? '' : 'none' %>">
+        <strong><%= receipt.refundTitle %><% if (receipt.hasRefund) { %> &middot; <%= receipt.refundAmountLabel %><% } %></strong>
+        <p><%= receipt.refundNote %></p>
+      </div>
+
+      <h3>Comprador</h3>
+      <dl>
+        <div class="r-row"><dt>Nome</dt><dd><%= receipt.buyerName %></dd></div>
+        <% if (receipt.buyerCpfMasked) { %><div class="r-row"><dt>CPF</dt><dd><%= receipt.buyerCpfMasked %></dd></div><% } %>
+        <div class="r-row"><dt>E-mail</dt><dd><%= receipt.buyerEmail %></dd></div>
+      </dl>
+
+      <h3>Pedido</h3>
+      <dl>
+        <div class="r-row"><dt>Lote</dt><dd><%= receipt.loteName %></dd></div>
+        <div class="r-row"><dt>Quantidade</dt><dd><%= receipt.quantity %> ingresso<%= receipt.quantity === 1 ? '' : 's' %></dd></div>
+        <div class="r-row"><dt>Valor pago</dt><dd><%= receipt.totalLabel %></dd></div>
+        <div class="r-row"><dt>Forma de pagamento</dt><dd><%= receipt.paymentLabel %></dd></div>
+        <div class="r-row"><dt>Data da compra</dt><dd><%= receipt.purchasedAtLabel %></dd></div>
+        <% if (receipt.mpPaymentId) { %><div class="r-row"><dt>ID do pagamento</dt><dd><%= receipt.mpPaymentId %></dd></div><% } %>
+        <div class="r-row"><dt>Ingressos cancelados</dt><dd><%= receipt.ticketCodes.join(', ') %></dd></div>
+      </dl>
+
+      <h3>Cancelamento e reembolso</h3>
+      <dl>
+        <div class="r-row"><dt>Cancelado em</dt><dd><%= receipt.cancelledAtLabel %></dd></div>
+        <% if (receipt.hasRefund) { %>
+          <div class="r-row"><dt>Valor reembolsado</dt><dd><%= receipt.refundAmountLabel %><%= receipt.refundIsFull ? ' (integral)' : '' %></dd></div>
+          <div class="r-row"><dt>Data do reembolso</dt><dd><%= receipt.refundAtLabel %></dd></div>
+          <% if (receipt.refundId) { %><div class="r-row"><dt>ID do reembolso</dt><dd><%= receipt.refundId %></dd></div><% } %>
+        <% } %>
+      </dl>
+
+      <p class="hint" style="text-align:left">Os ingressos listados acima foram cancelados e não são mais válidos para entrada no evento. Guarde este comprovante.</p>
+
+      <div class="btn-row no-print">
+        <a href="/comprovante/<%= receipt.orderId %>/pdf" target="_blank" rel="noopener" style="flex:1"><button type="button" class="btn-secondary">Baixar PDF</button></a>
+        <button type="button" class="btn-secondary" id="btn-imprimir">Imprimir</button>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    document.getElementById('btn-imprimir').addEventListener('click', function () { window.print(); });
+  </script>
+</body>
+</html>

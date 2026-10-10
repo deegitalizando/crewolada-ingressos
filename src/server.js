@@ -28,6 +28,7 @@ function buildWhatsappTicketLink() {
 const { approveOrder } = require('./fulfillment');
 const { registerCortesiaRoutes } = require('./cortesia');
 const { registerContabilidadeRoutes } = require('./contabilidade');
+const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNotification } = require('./comprovante');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
 
@@ -338,7 +339,8 @@ app.post('/meus-ingressos', (req, res) => {
   const db = store.load();
   const orders = Object.values(db.orders)
     .filter((o) => {
-      if (o.status !== 'paid') return false;
+      // Cancelled orders stay searchable so the buyer can pull up the refund receipt.
+      if (o.status !== 'paid' && o.status !== 'cancelled') return false;
       if (isEmail) return String(o.buyerEmail || '').trim().toLowerCase() === termo.toLowerCase();
       if (digits.length === 11) {
         return String(o.buyerCpf || '').replace(/\D/g, '') === digits || phoneSuffix(o.buyerPhone) === digits.slice(-10);
@@ -358,7 +360,7 @@ app.post('/meus-ingressos', (req, res) => {
   }
 
   if (orders.length === 1) {
-    return res.redirect(`/pedido/${orders[0].id}/participantes`);
+    return res.redirect(orders[0].status === 'cancelled' ? `/comprovante/${orders[0].id}` : `/pedido/${orders[0].id}/participantes`);
   }
 
   const matches = orders.map((o) => ({ ...o, createdAtLabel: formatDatetimeBrasiliaDisplay(o.createdAt) }));
@@ -463,6 +465,7 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
     // app): the money is already gone, so invalidate the tickets here too.
     if (payment.status === 'refunded' || payment.status === 'charged_back') {
       const now = new Date().toISOString();
+      let cancelledNow = false;
       await store.withDb((d) => {
         const o = d.orders[orderId];
         // Already cancelled in the panel without a refund, then refunded by
@@ -472,6 +475,7 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
           return;
         }
         if (!o || o.status !== 'paid') return;
+        cancelledNow = true;
         o.status = 'cancelled';
         o.cancelledAt = now;
         o.cancelReason = payment.status === 'charged_back' ? 'Chargeback' : 'Reembolsado no Mercado Pago';
@@ -484,6 +488,13 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
           }
         });
       });
+      // A refund done by hand in the Mercado Pago app: tell the customer too
+      // (fire-and-forget so the webhook answers fast). Chargebacks are the
+      // bank's doing, so no automatic message for those.
+      if (cancelledNow && payment.status === 'refunded') {
+        sendReceiptNotification(orderId, { eventInfo, formatDatetime: formatDatetimeBrasiliaDisplay, channel: 'both' })
+          .catch((err) => console.error(`Erro ao avisar cliente do reembolso do pedido ${orderId}:`, err.message));
+      }
       return res.sendStatus(200);
     }
 
@@ -614,7 +625,9 @@ app.get('/admin', (req, res) => {
   const ordersWithDate = orders.map((o) => ({
     ...o,
     createdAtLabel: formatDatetimeBrasiliaDisplay(o.createdAt),
+    receiptSentAtLabel: o.receiptSentAt ? formatDatetimeBrasiliaDisplay(o.receiptSentAt) : '',
     whatsappResendLink: buildAdminWhatsappResendLink(o),
+    whatsappReceiptLink: o.status === 'cancelled' ? buildAdminWhatsappReceiptLink(o, formatDatetimeBrasiliaDisplay) : null,
   }));
 
   res.render('admin_dashboard', {
@@ -696,6 +709,8 @@ app.post('/api/admin/pedidos/:id/cancelar', requireAdminAuth, async (req, res) =
   const reembolsar = req.body.reembolsar === true || req.body.reembolsar === 'true';
   const jaReembolsado = req.body.jaReembolsado === true || req.body.jaReembolsado === 'true';
   const motivo = String(req.body.motivo || '').trim().slice(0, 200);
+  // Customer is told about the cancellation (e-mail + WhatsApp) unless the admin opts out.
+  const notificar = req.body.notificar !== false && req.body.notificar !== 'false';
 
   const db = store.load();
   const order = db.orders[req.params.id];
@@ -713,24 +728,60 @@ app.post('/api/admin/pedidos/:id/cancelar', requireAdminAuth, async (req, res) =
     if (!/^\d+$/.test(String(order.mpPaymentId || ''))) {
       return res.status(400).json({ error: 'Pedido sem pagamento do Mercado Pago para reembolsar.' });
     }
+    // The refund must always be the FULL amount the customer paid, so look
+    // at the real payment first: never refund twice, and never start from a
+    // payment that was already partially refunded.
+    let payment;
     try {
-      const result = await mp.refundPayment(order.mpPaymentId);
+      payment = await mp.getPayment(order.mpPaymentId);
+    } catch (err) {
+      console.error(`Erro ao consultar pagamento do pedido ${order.id}:`, err.message);
+      return res.status(502).json({ error: 'Nao foi possivel consultar o pagamento no Mercado Pago agora. O pedido NAO foi cancelado. Tente novamente.' });
+    }
+
+    const paidAmount = Number(
+      (payment.transaction_details && payment.transaction_details.total_paid_amount) || payment.transaction_amount || order.totalAmount
+    );
+    const alreadyRefunded = Number(payment.transaction_amount_refunded || 0);
+
+    if (payment.status === 'refunded') {
+      // Already refunded in full (e.g. by hand in the Mercado Pago app): just record it.
       refund = {
-        method: 'mercadopago',
-        id: result && result.id ? String(result.id) : null,
-        amount: result && result.amount != null ? Number(result.amount) : order.totalAmount,
-        status: result && result.status ? result.status : 'approved',
+        method: 'mercadopago-externo',
+        id: null,
+        amount: alreadyRefunded || paidAmount,
+        paidAmount,
+        status: 'refunded',
         at: new Date().toISOString(),
       };
-    } catch (err) {
-      const detail = err && (err.message || (err.cause && err.cause[0] && err.cause[0].description)) || 'erro desconhecido';
-      console.error(`Erro ao reembolsar pedido ${order.id}:`, detail);
-      return res.status(502).json({
-        error: `O Mercado Pago recusou o reembolso (${detail}). O pedido NAO foi cancelado. Se faltar saldo na conta, adicione saldo e tente de novo, ou reembolse pelo app e use "ja reembolsei manualmente".`,
+    } else if (payment.status !== 'approved') {
+      return res.status(400).json({ error: `O pagamento esta com status "${payment.status}" no Mercado Pago e nao pode ser reembolsado.` });
+    } else if (alreadyRefunded > 0) {
+      return res.status(400).json({
+        error: `Este pagamento ja teve reembolso parcial de R$ ${alreadyRefunded.toFixed(2).replace('.', ',')}. Complete o reembolso pelo app do Mercado Pago e use "ja reembolsei manualmente".`,
       });
+    } else {
+      try {
+        const result = await mp.refundPayment(order.mpPaymentId);
+        const refundedAmount = result && result.amount != null ? Number(result.amount) : paidAmount;
+        refund = {
+          method: 'mercadopago',
+          id: result && result.id ? String(result.id) : null,
+          amount: refundedAmount,
+          paidAmount,
+          status: result && result.status ? result.status : 'approved',
+          at: new Date().toISOString(),
+        };
+      } catch (err) {
+        const detail = err && (err.message || (err.cause && err.cause[0] && err.cause[0].description)) || 'erro desconhecido';
+        console.error(`Erro ao reembolsar pedido ${order.id}:`, detail);
+        return res.status(502).json({
+          error: `O Mercado Pago recusou o reembolso (${detail}). O pedido NAO foi cancelado. Se faltar saldo na conta, adicione saldo e tente de novo, ou reembolse pelo app e use "ja reembolsei manualmente".`,
+        });
+      }
     }
   } else if (jaReembolsado && !order.isCourtesy) {
-    refund = { method: 'manual', id: null, amount: order.totalAmount, status: 'approved', at: new Date().toISOString() };
+    refund = { method: 'manual', id: null, amount: order.totalAmount, paidAmount: order.totalAmount, status: 'approved', at: new Date().toISOString() };
   }
 
   const now = new Date().toISOString();
@@ -750,7 +801,24 @@ app.post('/api/admin/pedidos/:id/cancelar', requireAdminAuth, async (req, res) =
     });
   });
 
-  return res.json({ ok: true, refunded: Boolean(refund), refund });
+  let notified = false;
+  let notifyError = null;
+  if (notificar) {
+    try {
+      await sendReceiptNotification(order.id, {
+        eventInfo,
+        formatDatetime: formatDatetimeBrasiliaDisplay,
+        channel: 'both',
+      });
+      notified = true;
+    } catch (err) {
+      // The cancellation (and refund) already happened — a failed notice must not undo it.
+      notifyError = err.message;
+      console.error(`Erro ao avisar cliente do cancelamento do pedido ${order.id}:`, err.message);
+    }
+  }
+
+  return res.json({ ok: true, refunded: Boolean(refund), refund, notified, notifyError });
 });
 
 // Called by n8n when a customer messages the WhatsApp number asking for their
@@ -803,6 +871,7 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
 });
 
 registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
+registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
 
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
