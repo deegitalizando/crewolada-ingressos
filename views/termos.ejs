@@ -30,7 +30,7 @@
       <p>Apos a aprovacao do pagamento, o ingresso (QR Code em PDF) e enviado automaticamente por WhatsApp e por e-mail, alem de ficar disponivel na pagina de confirmacao do pedido.</p>
 
       <h3>5. Cancelamentos e reembolsos</h3>
-      <p>Por se tratar de evento com data e local definidos, ingressos nao sao reembolsaveis apos a compra, exceto em caso de cancelamento do evento pela organizacao, quando o reembolso sera processado integralmente. Em caso de remarcacao de data, o ingresso permanece valido para a nova data.</p>
+      <p>Por se tratar de compra feita pela internet, o comprador pode desistir da compra em ate <strong><%= refundDays %> dias corridos</strong> contados da data da compra, sem precisar justificar, com <strong>reembolso integral</strong> do valor pago (art. 49 do Codigo de Defesa do Consumidor). Passado esse prazo, o ingresso nao e reembolsavel, exceto em caso de cancelamento do evento pela organizacao, quando o reembolso e integral. Em caso de remarcacao de data, o ingresso permanece valido para a nova data. As regras completas estao na <a href="/politica-de-cancelamento">Politica de Cancelamento e Reembolso</a>.</p>
 
       <h3>6. Acesso ao evento</h3>
       <p>A entrada esta sujeita a apresentacao do QR Code (impresso ou no celular) e, quando solicitado, de documento de identificacao com foto. A organizacao pode reservar o direito de admissao conforme as normas do local.</p>
@@ -42,11 +42,13 @@
       <p>E proibido tentar fraudar, duplicar ou revender ingressos fora dos canais oficiais. Ingressos adquiridos de forma fraudulenta poderao ser cancelados sem aviso previo.</p>
 
       <h3>9. Contato</h3>
-      <p>Duvidas sobre a compra ou o evento podem ser tiradas pelo WhatsApp oficial da <%= eventInfo.name %>.</p>
+      <p>Duvidas sobre a compra ou o evento, e pedidos de cancelamento, podem ser feitos pelo WhatsApp oficial da <%= eventInfo.name %> (<a href="<%= contact.whatsappUrl %>"><%= contact.whatsappLabel %></a>) ou pelo e-mail <a href="mailto:<%= contact.email %>"><%= contact.email %></a>.</p>
 
-      <p class="hint">Veja tambem nossa <a href="/politica-de-privacidade">Politica de Privacidade</a>.</p>
+      <p class="hint">Veja tambem nossa <a href="/politica-de-privacidade">Politica de Privacidade</a> e a <a href="/politica-de-cancelamento">Politica de Cancelamento e Reembolso</a>.</p>
       <p class="hint"><a href="/">Voltar para a pagina inicial</a></p>
     </main>
+
+    <%- include('partials/footer_legal') %>
   </div>
 </body>
 </html>

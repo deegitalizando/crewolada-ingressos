@@ -86,6 +86,18 @@ function buildTicketPdf({ eventInfo, order, ticket }) {
         { width: 260, align: 'center', lineGap: 3 }
       );
 
+    const policyHost = String(process.env.BASE_URL || 'crewolada.com').replace(/^https?:\/\//, '');
+    doc
+      .fillColor('#999999')
+      .font('Helvetica')
+      .fontSize(7)
+      .text(
+        `Cancelamento e reembolso integral em ate ${process.env.REFUND_DAYS || 7} dias da compra (art. 49 do CDC). ${policyHost}/politica-de-cancelamento`,
+        30,
+        568,
+        { width: 260, align: 'center', lineGap: 2 }
+      );
+
     doc.end();
   });
 }

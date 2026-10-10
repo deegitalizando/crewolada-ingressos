@@ -1,0 +1,25 @@
+<% if (!(typeof order !== 'undefined' && order && order.isCourtesy)) { %>
+<footer class="legal-footer">
+  <h4>Cancelamento e reembolso em até <%= refundDays %> dias</h4>
+  <p>
+    Você pode desistir da compra e receber o <strong>reembolso integral</strong> em até
+    <strong><%= refundDays %> dias corridos</strong> contados da data da compra, conforme o
+    <a href="https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm" target="_blank" rel="noopener">art. 49 do Código de Defesa do Consumidor (Lei 8.078/1990)</a>.
+  </p>
+  <p>
+    <strong>Como pedir:</strong>
+    WhatsApp <a href="<%= contact.whatsappUrl %>" target="_blank" rel="noopener"><%= contact.whatsappLabel %></a>
+    ou e-mail <a href="mailto:<%= contact.email %>"><%= contact.email %></a>,
+    informando o nome, o CPF e o e-mail usados na compra. O valor total é devolvido pelo mesmo meio de pagamento (Pix ou cartão), sem descontos.
+  </p>
+  <p class="legal-footer-links">
+    <a href="/politica-de-cancelamento">Política de cancelamento e reembolso</a>
+    <a href="/termos-de-uso">Termos de uso</a>
+    <a href="/politica-de-privacidade">Política de privacidade</a>
+    <a href="https://www.consumidor.gov.br" target="_blank" rel="noopener">consumidor.gov.br</a>
+  </p>
+  <p class="legal-footer-small">
+    <%= eventInfo.name %> &middot; <%= eventInfo.dateLabel %> &middot; <%= eventInfo.venue %><% if (contact.sellerName) { %> &middot; Responsável pelo recebimento: <%= contact.sellerName %><% } %><% if (contact.sellerDocument) { %> &middot; <%= contact.sellerDocument %><% } %><% if (contact.sellerAddress) { %> &middot; <%= contact.sellerAddress %><% } %>
+  </p>
+</footer>
+<% } %>

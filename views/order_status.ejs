@@ -60,6 +60,8 @@
         <h2>Pedido: <%= order.status %></h2>
       <% } %>
     </main>
+
+    <%- include('partials/footer_legal') %>
   </div>
 
   <% if (order.status === 'paid' && metaPixelId) { %>

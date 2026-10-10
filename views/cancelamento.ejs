@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Política de Cancelamento e Reembolso - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1 class="sr-only">Política de Cancelamento e Reembolso</h1>
+    </header>
+
+    <main class="card legal">
+      <h2>Política de Cancelamento e Reembolso</h2>
+      <p class="hint">Última atualização: <%= updatedAt %></p>
+
+      <div class="refund-box" style="margin:0 0 8px">
+        <strong style="font-size:17px; color:#86efac">Você tem <%= refundDays %> dias corridos, a partir da compra, para cancelar e receber o valor integral de volta.</strong>
+        <p style="margin-top:8px">É um direito garantido pelo art. 49 do Código de Defesa do Consumidor. Basta pedir pelo WhatsApp ou pelo e-mail abaixo. Sem multa, sem taxa e sem precisar explicar o motivo.</p>
+      </div>
+
+      <h3>1. Direito de arrependimento (art. 49 do CDC)</h3>
+      <p>Os ingressos da <strong><%= eventInfo.name %></strong> são vendidos pela internet, ou seja, fora de um estabelecimento comercial. Por isso, o comprador pode desistir da compra, <strong>sem dar justificativa</strong>, no prazo de <strong><%= refundDays %> dias corridos</strong> contados da data da compra (confirmação do pagamento).</p>
+      <p>Dentro desse prazo, o pedido é cancelado e o valor pago é devolvido <strong>de forma integral e imediata</strong>, sem qualquer desconto, multa ou taxa, nos termos do parágrafo único do art. 49 do CDC.</p>
+
+      <h3>2. Como solicitar</h3>
+      <p>O pedido de cancelamento pode ser feito pelos mesmos canais usados na compra e no atendimento, conforme o art. 5º do Decreto 7.962/2013:</p>
+      <ul>
+        <li><strong>WhatsApp:</strong> <a href="<%= contact.whatsappUrl %>" target="_blank" rel="noopener"><%= contact.whatsappLabel %></a></li>
+        <li><strong>E-mail:</strong> <a href="mailto:<%= contact.email %>"><%= contact.email %></a></li>
+      </ul>
+      <p>Informe o <strong>nome completo</strong>, o <strong>CPF</strong> e o <strong>e-mail ou WhatsApp</strong> usados na compra. Se possível, indique também o código do ingresso. O recebimento do seu pedido é confirmado ao comprador.</p>
+      <p>A data do pedido de cancelamento é a data em que a mensagem foi enviada por um dos canais acima, dentro do prazo de <%= refundDays %> dias.</p>
+
+      <h3>3. Como o reembolso é feito</h3>
+      <ul>
+        <li>O reembolso é do <strong>valor integral pago</strong> pelo comprador, sem desconto de taxas.</li>
+        <li>A devolução é feita <strong>pelo mesmo meio de pagamento</strong> usado na compra, por meio do Mercado Pago.</li>
+        <li><strong>Pix:</strong> o valor é devolvido para a conta que fez o pagamento, em geral em poucos minutos, conforme o banco.</li>
+        <li><strong>Cartão de crédito:</strong> o estorno é lançado na fatura e pode levar até 2 faturas para aparecer, conforme a administradora do cartão.</li>
+        <li>Concluído o cancelamento, o comprador recebe por <strong>e-mail e WhatsApp</strong> o comprovante de cancelamento e reembolso, que também pode ser consultado a qualquer momento em <a href="/meus-ingressos">Meus ingressos</a>, buscando pelo CPF, e-mail ou WhatsApp da compra.</li>
+      </ul>
+
+      <h3>4. O que acontece com o ingresso</h3>
+      <p>Ao cancelar o pedido, <strong>todos os ingressos daquela compra são cancelados</strong> e o QR Code deixa de ser aceito na entrada do evento. Não é possível cancelar parcialmente um pedido nem cancelar um ingresso que já foi utilizado na entrada.</p>
+
+      <h3>5. Depois do prazo de <%= refundDays %> dias</h3>
+      <p>Passado o prazo de <%= refundDays %> dias corridos, o ingresso deixa de ser reembolsável, ressalvados os casos previstos em lei, como os descritos nos itens 6 e 7 abaixo.</p>
+
+      <h3>6. Cancelamento, adiamento ou alteração do evento pela organização</h3>
+      <p>Se o evento for <strong>cancelado</strong> pela organização, todos os compradores têm direito ao <strong>reembolso integral</strong> do valor pago, a qualquer momento, nos termos do art. 35 do CDC.</p>
+      <p>Se o evento for <strong>remarcado</strong>, o ingresso continua válido para a nova data. Quem não puder comparecer na nova data poderá pedir o reembolso integral.</p>
+      <p>Mudanças de horário, atrações ou detalhes operacionais que não alterem a essência do evento não geram, por si só, direito a reembolso.</p>
+
+      <h3>7. Cobrança em duplicidade ou indevida</h3>
+      <p>Se houver cobrança em duplicidade ou em valor diferente do exibido na compra, o valor cobrado indevidamente é devolvido, conforme o parágrafo único do art. 42 do CDC. Fale com a gente pelos canais acima, a qualquer momento.</p>
+
+      <h3>8. Transparência e informações</h3>
+      <ul>
+        <li>O preço exibido no momento da compra é o valor total cobrado. Não há taxas escondidas.</li>
+        <li>Cada pedido gera um <strong>protocolo</strong> e um registro de data e hora, e o ingresso é entregue por e-mail e WhatsApp após a confirmação do pagamento.</li>
+        <li>O pagamento é processado pelo <strong>Mercado Pago</strong>. O nome exibido pelo banco no Pix é o do responsável pelo recebimento<% if (contact.sellerName) { %>: <strong><%= contact.sellerName %></strong><% } %>.</li>
+        <% if (contact.sellerDocument) { %><li>Documento do responsável: <%= contact.sellerDocument %></li><% } %>
+        <% if (contact.sellerAddress) { %><li>Endereço: <%= contact.sellerAddress %></li><% } %>
+      </ul>
+
+      <h3>9. Se não houver solução</h3>
+      <p>Caso o seu pedido não seja resolvido pelos nossos canais, você pode buscar o <strong>Procon</strong> do seu estado ou registrar uma reclamação na plataforma oficial do governo, <a href="https://www.consumidor.gov.br" target="_blank" rel="noopener">consumidor.gov.br</a>.</p>
+
+      <h3>10. Legislação aplicável</h3>
+      <ul>
+        <li><a href="https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm" target="_blank" rel="noopener">Lei 8.078/1990 &mdash; Código de Defesa do Consumidor</a>, em especial os arts. 6º, 31, 35, 42 e 49;</li>
+        <li><a href="https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm" target="_blank" rel="noopener">Decreto 7.962/2013</a> &mdash; contratação no comércio eletrônico;</li>
+        <li><a href="https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm" target="_blank" rel="noopener">Lei 13.709/2018 &mdash; LGPD</a>, tratada na <a href="/politica-de-privacidade">Política de Privacidade</a>.</li>
+      </ul>
+
+      <p class="hint">Veja também os <a href="/termos-de-uso">Termos de Uso</a> e a <a href="/politica-de-privacidade">Política de Privacidade</a>.</p>
+      <p class="hint"><a href="/">Voltar para a página inicial</a></p>
+    </main>
+
+    <%- include('partials/footer_legal') %>
+  </div>
+</body>
+</html>

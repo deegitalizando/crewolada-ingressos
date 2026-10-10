@@ -142,6 +142,20 @@ function buildReceiptPdf({ eventInfo, receipt }) {
         'Guarde este comprovante. Em caso de dúvida, responda o e-mail em que o recebeu ou fale com a organização.',
       left, y, { width: contentW, lineGap: 3 }
     );
+    y += 52;
+
+    const days = process.env.REFUND_DAYS || 7;
+    const policyHost = String(process.env.BASE_URL || 'crewolada.com').replace(/^https?:\/\//, '');
+    doc.moveTo(left, y).lineTo(left + contentW, y).strokeColor('#cccccc').lineWidth(0.5).stroke();
+    y += 10;
+    doc.fillColor(DIM).font('Helvetica-Bold').fontSize(8).text('Política de cancelamento e reembolso', left, y, { width: contentW });
+    y += 14;
+    doc.fillColor(DIM).font('Helvetica').fontSize(8).text(
+      `Direito de arrependimento: a compra pode ser cancelada em até ${days} dias corridos contados da data da compra, ` +
+        'com reembolso integral do valor pago, conforme o art. 49 do Código de Defesa do Consumidor (Lei 8.078/1990). ' +
+        `Regras completas em ${policyHost}/politica-de-cancelamento.`,
+      left, y, { width: contentW, lineGap: 2 }
+    );
 
     doc.end();
   });

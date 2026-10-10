@@ -553,6 +553,33 @@ th {
   font-size: 13px;
 }
 
+.refund-box {
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--ok);
+  background: rgba(34, 197, 94, 0.12);
+}
+.refund-box p { margin: 6px 0 0; font-size: 13px; color: var(--text-dim); }
+
+.legal-footer {
+  margin: 0 16px;
+  padding: 18px 16px;
+  border-top: 1px solid var(--card-border);
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-dim);
+}
+.legal-footer h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--accent);
+}
+.legal-footer p { margin: 0 0 8px; }
+.legal-footer a { color: var(--accent); }
+.legal-footer-links { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.legal-footer-small { font-size: 11px; opacity: 0.8; }
+
 @media print {
   body * { visibility: hidden; }
   .ticket-card, .ticket-card *, .receipt, .receipt * { visibility: visible; }
@@ -574,5 +601,5 @@ th {
     border: none;
     box-shadow: none;
   }
-  .no-print { display: none !important; }
+  .no-print, .legal-footer { display: none !important; }
 }

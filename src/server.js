@@ -61,6 +61,29 @@ app.use(cookieParser());
 // call individually.
 app.locals.metaPixelId = process.env.FACEBOOK_PIXEL_ID || '';
 
+// Consumer-facing contact + seller details shown in the legal footer and the
+// cancellation policy. SELLER_DOCUMENT / SELLER_ADDRESS are optional and only
+// rendered when set.
+const REFUND_DAYS = Number(process.env.REFUND_DAYS || 7);
+app.locals.refundDays = REFUND_DAYS;
+{
+  const ddi = process.env.DEFAULT_COUNTRY_CODE || '55';
+  const digits = (process.env.BUSINESS_WHATSAPP_NUMBER || '2139557816').replace(/\D/g, '');
+  const local = digits.startsWith(ddi) && digits.length > 11 ? digits.slice(ddi.length) : digits;
+  const label = local.length === 11
+    ? `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`
+    : `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+  const text = 'Olá! Quero solicitar o cancelamento e reembolso da minha compra na Crewolada.';
+  app.locals.contact = {
+    whatsappUrl: `https://wa.me/${ddi}${local}?text=${encodeURIComponent(text)}`,
+    whatsappLabel: label,
+    email: process.env.CONTACT_EMAIL || 'contato@crewolada.com',
+    sellerName: process.env.SELLER_NAME || 'Diego Carreiro Moura',
+    sellerDocument: process.env.SELLER_DOCUMENT || '',
+    sellerAddress: process.env.SELLER_ADDRESS || '',
+  };
+}
+
 const eventInfo = {
   name: process.env.EVENT_NAME || 'Crewolada',
   dateLabel: process.env.EVENT_DATE_LABEL || '10/10/2026',
@@ -181,7 +204,7 @@ app.get('/', (req, res) => {
   res.render('index', { eventInfo, lote, maxQty, error: null, soldOutLotes, lowStockThreshold: LOW_STOCK_THRESHOLD });
 });
 
-const LEGAL_UPDATED_AT = '26/08/2026';
+const LEGAL_UPDATED_AT = '09/10/2026';
 
 app.get('/politica-de-privacidade', (req, res) => {
   res.render('privacidade', { eventInfo, updatedAt: LEGAL_UPDATED_AT });
@@ -189,6 +212,10 @@ app.get('/politica-de-privacidade', (req, res) => {
 
 app.get('/termos-de-uso', (req, res) => {
   res.render('termos', { eventInfo, updatedAt: LEGAL_UPDATED_AT });
+});
+
+app.get('/politica-de-cancelamento', (req, res) => {
+  res.render('cancelamento', { eventInfo, updatedAt: LEGAL_UPDATED_AT });
 });
 
 app.get('/checkout/dados', (req, res) => {
