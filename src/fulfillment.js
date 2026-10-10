@@ -13,7 +13,8 @@ async function approveOrder(orderId, paymentId, eventInfo) {
   await store.withDb((db) => {
     const order = db.orders[orderId];
     if (!order) return;
-    if (order.status === 'paid') return;
+    // A cancelled order must never be silently re-approved by a late webhook.
+    if (order.status === 'paid' || order.status === 'cancelled') return;
 
     order.status = 'paid';
     order.mpPaymentId = String(paymentId);

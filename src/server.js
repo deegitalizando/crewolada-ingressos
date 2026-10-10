@@ -390,6 +390,7 @@ app.get('/ingresso/:code/pdf', (req, res) => {
   const db = store.load();
   const ticket = db.tickets[req.params.code];
   if (!ticket || !ticket.pdfBase64) return res.status(404).send('Ingresso nao encontrado.');
+  if (ticket.status === 'cancelled') return res.status(410).send('Ingresso cancelado.');
 
   const buffer = Buffer.from(ticket.pdfBase64, 'base64');
   res.set('Content-Type', 'application/pdf');
@@ -458,6 +459,34 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
     const orderId = payment.external_reference;
     if (!orderId) return res.sendStatus(200);
 
+    // Refund / chargeback done outside the panel (e.g. in the Mercado Pago
+    // app): the money is already gone, so invalidate the tickets here too.
+    if (payment.status === 'refunded' || payment.status === 'charged_back') {
+      const now = new Date().toISOString();
+      await store.withDb((d) => {
+        const o = d.orders[orderId];
+        // Already cancelled in the panel without a refund, then refunded by
+        // hand afterwards: just record that the refund went through.
+        if (o && o.status === 'cancelled' && !o.refund) {
+          o.refund = { method: 'mercadopago-externo', id: null, amount: o.totalAmount, status: payment.status, at: now };
+          return;
+        }
+        if (!o || o.status !== 'paid') return;
+        o.status = 'cancelled';
+        o.cancelledAt = now;
+        o.cancelReason = payment.status === 'charged_back' ? 'Chargeback' : 'Reembolsado no Mercado Pago';
+        o.refund = o.refund || { method: 'mercadopago-externo', id: null, amount: o.totalAmount, status: payment.status, at: now };
+        o.updatedAt = now;
+        Object.values(d.tickets).forEach((t) => {
+          if (t.orderId === orderId && t.status !== 'used') {
+            t.status = 'cancelled';
+            t.cancelledAt = now;
+          }
+        });
+      });
+      return res.sendStatus(200);
+    }
+
     if (payment.status !== 'approved') {
       return res.sendStatus(200);
     }
@@ -514,6 +543,14 @@ app.post('/api/validar', requireValidatorAuth, async (req, res) => {
     return res.json({ result: 'invalido', message: 'Ingresso nao encontrado.' });
   }
 
+  if (ticket.status === 'cancelled') {
+    return res.json({
+      result: 'invalido',
+      message: 'Ingresso CANCELADO. Entrada nao liberada.',
+      code: ticket.code,
+    });
+  }
+
   if (ticket.status === 'used') {
     return res.json({
       result: 'ja_usado',
@@ -528,7 +565,7 @@ app.post('/api/validar', requireValidatorAuth, async (req, res) => {
 
   await store.withDb((d) => {
     const t = d.tickets[code];
-    if (t && t.status !== 'used') {
+    if (t && t.status !== 'used' && t.status !== 'cancelled') {
       t.status = 'used';
       t.usedAt = usedAt;
     }
@@ -650,6 +687,70 @@ app.post('/api/admin/pedidos/:id/reenviar', requireAdminAuth, async (req, res) =
     console.error(`Erro ao reenviar pedido ${order.id}:`, err.message);
     return res.status(500).json({ error: 'Nao foi possivel reenviar. Tente novamente.' });
   }
+});
+
+// Cancels a paid order: invalidates its tickets (the QR stops validating) and,
+// when asked, refunds the full payment through Mercado Pago first. Nothing is
+// deleted — the order and tickets stay on record with status 'cancelled'.
+app.post('/api/admin/pedidos/:id/cancelar', requireAdminAuth, async (req, res) => {
+  const reembolsar = req.body.reembolsar === true || req.body.reembolsar === 'true';
+  const jaReembolsado = req.body.jaReembolsado === true || req.body.jaReembolsado === 'true';
+  const motivo = String(req.body.motivo || '').trim().slice(0, 200);
+
+  const db = store.load();
+  const order = db.orders[req.params.id];
+  if (!order) return res.status(404).json({ error: 'Pedido nao encontrado.' });
+  if (order.status === 'cancelled') return res.status(400).json({ error: 'Este pedido ja foi cancelado.' });
+  if (order.status !== 'paid') return res.status(400).json({ error: 'So e possivel cancelar pedidos pagos.' });
+
+  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
+  if (tickets.some((t) => t.status === 'used')) {
+    return res.status(400).json({ error: 'Este pedido ja tem ingresso utilizado na entrada. Nao e possivel cancelar.' });
+  }
+
+  let refund = null;
+  if (reembolsar && !order.isCourtesy) {
+    if (!/^\d+$/.test(String(order.mpPaymentId || ''))) {
+      return res.status(400).json({ error: 'Pedido sem pagamento do Mercado Pago para reembolsar.' });
+    }
+    try {
+      const result = await mp.refundPayment(order.mpPaymentId);
+      refund = {
+        method: 'mercadopago',
+        id: result && result.id ? String(result.id) : null,
+        amount: result && result.amount != null ? Number(result.amount) : order.totalAmount,
+        status: result && result.status ? result.status : 'approved',
+        at: new Date().toISOString(),
+      };
+    } catch (err) {
+      const detail = err && (err.message || (err.cause && err.cause[0] && err.cause[0].description)) || 'erro desconhecido';
+      console.error(`Erro ao reembolsar pedido ${order.id}:`, detail);
+      return res.status(502).json({
+        error: `O Mercado Pago recusou o reembolso (${detail}). O pedido NAO foi cancelado. Se faltar saldo na conta, adicione saldo e tente de novo, ou reembolse pelo app e use "ja reembolsei manualmente".`,
+      });
+    }
+  } else if (jaReembolsado && !order.isCourtesy) {
+    refund = { method: 'manual', id: null, amount: order.totalAmount, status: 'approved', at: new Date().toISOString() };
+  }
+
+  const now = new Date().toISOString();
+  await store.withDb((d) => {
+    const o = d.orders[order.id];
+    if (!o) return;
+    o.status = 'cancelled';
+    o.cancelledAt = now;
+    o.cancelReason = motivo || null;
+    o.refund = refund;
+    o.updatedAt = now;
+    Object.values(d.tickets).forEach((t) => {
+      if (t.orderId === order.id && t.status !== 'used') {
+        t.status = 'cancelled';
+        t.cancelledAt = now;
+      }
+    });
+  });
+
+  return res.json({ ok: true, refunded: Boolean(refund), refund });
 });
 
 // Called by n8n when a customer messages the WhatsApp number asking for their

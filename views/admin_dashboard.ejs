@@ -100,13 +100,21 @@
                 <td><%= o.loteName %></td>
                 <td><%= o.quantity %></td>
                 <td>R$ <%= o.totalAmount.toFixed(2).replace('.', ',') %></td>
-                <td><%= o.status %></td>
+                <td>
+                  <% if (o.status === 'cancelled') { %>
+                    <span style="color:#fecaca">cancelado</span><br />
+                    <span class="hint" style="margin:0;text-align:left"><%= o.refund ? 'reembolsado' : 'sem reembolso' %><% if (o.cancelReason) { %> &middot; <%= o.cancelReason %><% } %></span>
+                  <% } else { %>
+                    <%= o.status %>
+                  <% } %>
+                </td>
                 <td><%= o.createdAtLabel %></td>
                 <td>
                   <% if (o.status === 'paid') { %>
                     <div style="display:flex; gap:6px">
                       <button type="button" class="btn-secondary btn-reenviar" data-order-id="<%= o.id %>" data-canal="email" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📧 E-mail</button>
                       <a href="<%= o.whatsappResendLink %>" target="_blank" rel="noopener"><button type="button" class="btn-secondary" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">📲 WhatsApp</button></a>
+                      <button type="button" class="btn-danger btn-cancelar" data-order-id="<%= o.id %>" data-nome="<%= o.buyerName %>" data-total="<%= o.totalAmount.toFixed(2).replace('.', ',') %>" data-courtesy="<%= o.isCourtesy ? '1' : '0' %>" style="margin-top:0; width:auto; padding:6px 10px; font-size:12px">✖ Cancelar</button>
                     </div>
                   <% } %>
                 </td>
@@ -120,6 +128,27 @@
       </div>
     </main>
   </div>
+
+  <dialog id="cancel-dialog" class="cancel-dialog">
+    <form method="dialog" id="cancel-form" class="form">
+      <h3 style="margin:0">Cancelar ingressos</h3>
+      <p class="hint" style="margin:0; text-align:left" id="cancel-resumo"></p>
+      <div id="cancel-opcoes">
+        <label class="radio-row"><input type="radio" name="modo" value="mp" checked /> <span>Cancelar e <strong>reembolsar agora</strong> pelo Mercado Pago (valor integral)</span></label>
+        <label class="radio-row"><input type="radio" name="modo" value="manual" /> <span>Cancelar — <strong>ja reembolsei</strong> manualmente pelo app</span></label>
+        <label class="radio-row"><input type="radio" name="modo" value="nenhum" /> <span>Cancelar <strong>sem reembolso</strong></span></label>
+      </div>
+      <label>
+        Motivo (opcional)
+        <input type="text" id="cancel-motivo" maxlength="200" placeholder="Ex: pediu reembolso, compra duplicada..." />
+      </label>
+      <div id="cancel-erro" class="alert" style="display:none"></div>
+      <div class="btn-row">
+        <button type="button" class="btn-secondary" id="cancel-fechar">Voltar</button>
+        <button type="submit" class="btn-danger" id="cancel-confirmar">Confirmar cancelamento</button>
+      </div>
+    </form>
+  </dialog>
 
   <script>
     const form = document.getElementById('broadcast-form');
@@ -154,6 +183,62 @@
       document.querySelectorAll('#leads-table tbody tr[data-search]').forEach((row) => {
         row.hidden = term.length > 0 && !row.dataset.search.includes(term);
       });
+    });
+
+    const cancelDialog = document.getElementById('cancel-dialog');
+    const cancelForm = document.getElementById('cancel-form');
+    const cancelErro = document.getElementById('cancel-erro');
+    const cancelConfirmar = document.getElementById('cancel-confirmar');
+    let cancelOrderId = null;
+
+    document.querySelectorAll('.btn-cancelar').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        cancelOrderId = btn.dataset.orderId;
+        const cortesia = btn.dataset.courtesy === '1';
+        document.getElementById('cancel-resumo').textContent = cortesia
+          ? 'Cortesia de ' + btn.dataset.nome + '. Os ingressos deixam de valer na entrada.'
+          : 'Pedido de ' + btn.dataset.nome + ' (R$ ' + btn.dataset.total + '). Os ingressos deixam de valer na entrada e o QR code passa a ser recusado.';
+        document.getElementById('cancel-opcoes').style.display = cortesia ? 'none' : 'block';
+        cancelForm.modo.value = cortesia ? 'nenhum' : 'mp';
+        document.getElementById('cancel-motivo').value = '';
+        cancelErro.style.display = 'none';
+        cancelDialog.showModal();
+      });
+    });
+
+    document.getElementById('cancel-fechar').addEventListener('click', () => cancelDialog.close());
+
+    cancelForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const modo = cancelForm.modo.value;
+      if (modo === 'mp' && !confirm('Confirma o REEMBOLSO integral pelo Mercado Pago? Esta acao nao pode ser desfeita.')) return;
+      cancelConfirmar.disabled = true;
+      cancelConfirmar.textContent = 'Processando...';
+      cancelErro.style.display = 'none';
+      try {
+        const res = await fetch('/api/admin/pedidos/' + cancelOrderId + '/cancelar', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reembolsar: modo === 'mp',
+            jaReembolsado: modo === 'manual',
+            motivo: document.getElementById('cancel-motivo').value,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          window.location.reload();
+          return;
+        }
+        cancelErro.textContent = data.error || 'Erro ao cancelar.';
+        cancelErro.style.display = 'block';
+      } catch (err) {
+        cancelErro.textContent = 'Erro de conexao.';
+        cancelErro.style.display = 'block';
+      } finally {
+        cancelConfirmar.disabled = false;
+        cancelConfirmar.textContent = 'Confirmar cancelamento';
+      }
     });
 
     const reenviarResult = document.getElementById('reenviar-result');

@@ -12,10 +12,13 @@
     </header>
 
     <main class="card ticket-card">
-      <span class="status-pill <%= ticket.status === 'used' ? 'status-used' : 'status-valid' %>">
-        <%= ticket.status === 'used' ? 'Ja utilizado' : 'Valido' %>
+      <% const cancelled = ticket.status === 'cancelled'; %>
+      <span class="status-pill <%= cancelled || ticket.status === 'used' ? 'status-used' : 'status-valid' %>">
+        <%= cancelled ? 'Cancelado' : (ticket.status === 'used' ? 'Ja utilizado' : 'Valido') %>
       </span>
+      <% if (!cancelled) { %>
       <img class="qr" src="<%= ticket.qrCodeDataUrl %>" alt="QR code do ingresso" />
+      <% } %>
       <p class="ticket-code"><%= ticket.code %></p>
       <% if (order) { %>
         <p class="hint">Participante: <%= ticket.participantName || order.buyerName %></p>
@@ -24,6 +27,12 @@
         <% } %>
       <% } %>
 
+      <% if (cancelled) { %>
+      <div class="alert" style="font-weight:700; text-align:center">
+        ESTE INGRESSO FOI CANCELADO<br />
+        <span style="font-weight:400; font-size:13px">Ele nao e mais valido para entrada. Em caso de duvida, fale com a organizacao.</span>
+      </div>
+      <% } else { %>
       <div class="alert" style="color:#fecaca; border-color:#ef4444; background:rgba(239,68,68,0.12); font-weight:700; text-align:center">
         INGRESSO PESSOAL E INTRANSFERIVEL<br />
         <span style="font-weight:400; font-size:13px">Valido para uma unica entrada. Apresente este QR code na entrada.</span>
@@ -33,9 +42,11 @@
         <button type="button" class="btn-secondary" id="btn-imprimir">Imprimir</button>
         <button type="button" class="btn-secondary" id="btn-compartilhar">Compartilhar</button>
       </div>
+      <% } %>
     </main>
   </div>
 
+  <% if (!cancelled) { %>
   <script>
     document.getElementById('btn-imprimir').addEventListener('click', () => {
       window.print();
@@ -66,5 +77,6 @@
       }
     });
   </script>
+  <% } %>
 </body>
 </html>

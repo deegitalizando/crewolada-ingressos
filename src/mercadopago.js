@@ -1,11 +1,12 @@
 const crypto = require('crypto');
-const { MercadoPagoConfig, Payment } = require('mercadopago');
+const { MercadoPagoConfig, Payment, PaymentRefund } = require('mercadopago');
 
 const client = new MercadoPagoConfig({
   accessToken: process.env.MP_ACCESS_TOKEN,
 });
 
 const paymentApi = new Payment(client);
+const refundApi = new PaymentRefund(client);
 
 // Creates the payment directly (Checkout Transparente / Payment Brick) so the
 // buyer never leaves our site. `formData` is whatever the Payment Brick's
@@ -42,6 +43,17 @@ async function getPayment(paymentId) {
   return paymentApi.get({ id: paymentId });
 }
 
+// Full refund of an approved payment, returned to the buyer's original
+// method (Pix -> account, card -> card statement). Needs available balance
+// in the Mercado Pago account. Uses a fresh idempotency key per call so a
+// retry after a transient failure isn't silently swallowed.
+async function refundPayment(paymentId) {
+  return refundApi.total({
+    payment_id: String(paymentId),
+    requestOptions: { idempotencyKey: crypto.randomUUID() },
+  });
+}
+
 // Validates the x-signature header Mercado Pago sends with webhook calls.
 // See: https://www.mercadopago.com.br/developers/en/docs/your-integrations/notifications/webhooks#editor_5
 function isValidWebhookSignature({ xSignature, xRequestId, dataId }) {
@@ -68,5 +80,6 @@ function isValidWebhookSignature({ xSignature, xRequestId, dataId }) {
 module.exports = {
   createPayment,
   getPayment,
+  refundPayment,
   isValidWebhookSignature,
 };

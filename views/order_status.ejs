@@ -30,6 +30,9 @@
             <a href="/pedido/<%= order.id %>/participantes"><button type="button" class="btn-secondary">Cadastrar participantes</button></a>
           <% } %>
         </div>
+      <% } else if (order.status === 'cancelled') { %>
+        <h2>Pedido cancelado</h2>
+        <p class="hint">Este pedido foi cancelado e os ingressos nao sao mais validos.<% if (order.refund) { %> O reembolso ja foi solicitado — dependendo do banco, pode levar alguns dias para aparecer.<% } %></p>
       <% } else if (order.status === 'rejected') { %>
         <h2>Pagamento nao aprovado</h2>
         <p class="hint">Nao conseguimos confirmar esse pagamento. Tente novamente com outro cartao ou meio de pagamento.</p>
