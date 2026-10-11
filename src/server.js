@@ -28,6 +28,7 @@ function buildWhatsappTicketLink() {
 const { approveOrder } = require('./fulfillment');
 const { registerCortesiaRoutes } = require('./cortesia');
 const { registerContabilidadeRoutes } = require('./contabilidade');
+const { registerRelatorioRoutes } = require('./relatorio');
 const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNotification } = require('./comprovante');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
@@ -900,6 +901,7 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
 registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
+registerRelatorioRoutes(app, { requireAdminAuth, eventInfo });
 
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
   const db = store.load();
