@@ -3,6 +3,7 @@
 <head>
   <title>Obrigado! - <%= eventInfo.name %></title>
   <%- include('partials/head') %>
+  <% if (redirect) { %><noscript><meta http-equiv="refresh" content="4;url=<%= communityUrl %>" /></noscript><% } %>
 </head>
 <body>
   <div class="page">
@@ -13,9 +14,10 @@
     <main class="card" style="text-align:center">
       <h2 style="color:var(--accent)">Recebemos suas respostas!</h2>
       <p class="hint" style="font-size:15px; line-height:1.6; margin-top:0">Muito obrigado por dedicar esse minuto. É assim que a gente aprende a fazer a próxima <strong><%= eventInfo.name %></strong> do jeito certo.</p>
-      <p class="hint" style="font-size:15px; line-height:1.6">Entre na nossa comunidade e receba as novidades em primeira mão:</p>
+      <p class="hint" style="font-size:15px; line-height:1.6">Agora vamos te levar para a nossa comunidade no WhatsApp, onde você recebe as novidades em primeira mão.</p>
+      <% if (redirect) { %><p class="hint" id="redirect-note" style="margin-top:4px">Abrindo a comunidade em <span id="redirect-count">3</span>s...</p><% } %>
       <a class="btn-ja-comprei" style="margin:16px 0 0" href="<%= communityUrl %>" target="_blank" rel="noopener">
-        <button type="button">💬 Entrar na comunidade</button>
+        <button type="button">💬 Entrar na comunidade agora</button>
       </a>
     </main>
 
@@ -25,5 +27,23 @@
       </div>
     </footer>
   </div>
+  <% if (redirect) { %>
+  <script>
+    (function () {
+      var url = <%- JSON.stringify(communityUrl) %>;
+      var left = 3;
+      var count = document.getElementById('redirect-count');
+      var timer = setInterval(function () {
+        left -= 1;
+        if (left <= 0) {
+          clearInterval(timer);
+          window.location.href = url;
+        } else if (count) {
+          count.textContent = left;
+        }
+      }, 1000);
+    })();
+  </script>
+  <% } %>
 </body>
 </html>
