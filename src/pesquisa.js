@@ -199,7 +199,7 @@ function registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
 
   app.post('/pesquisa', async (req, res) => {
     // Honeypot: real people never fill the hidden "website" field.
-    if (req.body.website) return res.render('pesquisa_obrigado', { eventInfo, redirect: false });
+    if (req.body.website) return res.render('pesquisa_obrigado', { eventInfo });
     // Behind the hosting proxy req.ip is the proxy itself, so use the forwarded client address.
     const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
     if (rateLimited(clientIp)) {
@@ -226,7 +226,7 @@ function registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
       }
     });
 
-    return res.render('pesquisa_obrigado', { eventInfo, redirect: true });
+    return res.render('pesquisa_obrigado', { eventInfo });
   });
 
   app.get('/admin/pesquisa', requireAdminAuth, (req, res) => {

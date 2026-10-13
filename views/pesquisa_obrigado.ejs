@@ -3,7 +3,24 @@
 <head>
   <title>Obrigado! - <%= eventInfo.name %></title>
   <%- include('partials/head') %>
-  <% if (redirect) { %><noscript><meta http-equiv="refresh" content="4;url=<%= communityUrl %>" /></noscript><% } %>
+  <style>
+    .invite { text-align: center; }
+    .invite .tag {
+      display: inline-block; background: var(--accent); color: #1a1200; font-size: 12px; font-weight: 800;
+      letter-spacing: 0.04em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 12px;
+    }
+    .invite h2 { margin: 0 0 8px; font-size: 22px; }
+    .invite .lead { margin: 0 0 16px; color: var(--text-dim); font-size: 15px; line-height: 1.6; }
+    .invite ul { list-style: none; padding: 0; margin: 0 0 20px; text-align: left; }
+    .invite li {
+      display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 8px;
+      background: #1a1a1a; border: 1px solid var(--card-border); border-radius: 12px; font-size: 14px; line-height: 1.45;
+    }
+    .invite li span.i { flex: none; font-size: 18px; line-height: 1.2; }
+    .invite .btn-community { display: block; text-decoration: none; }
+    .invite .btn-community button { background: var(--ok); color: #06210f; font-size: 17px; padding: 18px; margin-top: 0; }
+    .invite .small { margin: 12px 0 0; font-size: 12px; color: var(--text-dim); }
+  </style>
 </head>
 <body>
   <div class="page">
@@ -12,14 +29,24 @@
     </header>
 
     <main class="card" style="text-align:center">
-      <h2 style="color:var(--accent)">Recebemos suas respostas!</h2>
+      <h2 style="color:var(--accent); margin-top:0">Recebemos suas respostas!</h2>
       <p class="hint" style="font-size:15px; line-height:1.6; margin-top:0">Muito obrigado por dedicar esse minuto. É assim que a gente aprende a fazer a próxima <strong><%= eventInfo.name %></strong> do jeito certo.</p>
-      <p class="hint" style="font-size:15px; line-height:1.6">Agora vamos te levar para a nossa comunidade no WhatsApp, onde você recebe as novidades em primeira mão.</p>
-      <% if (redirect) { %><p class="hint" id="redirect-note" style="margin-top:4px">Abrindo a comunidade em <span id="redirect-count">3</span>s...</p><% } %>
-      <a class="btn-ja-comprei" style="margin:16px 0 0" href="<%= communityUrl %>" target="_blank" rel="noopener">
-        <button type="button">💬 Entrar na comunidade agora</button>
-      </a>
     </main>
+
+    <section class="card invite">
+      <span class="tag">Convite</span>
+      <h2>Faça parte da comunidade <%= eventInfo.name %></h2>
+      <p class="lead">Entre no nosso grupo do WhatsApp e receba tudo em primeira mão, antes de todo mundo.</p>
+      <ul>
+        <li><span class="i">🎟️</span><span>Saiba quando abrir a venda de ingressos e de cada lote.</span></li>
+        <li><span class="i">📣</span><span>Fique por dentro da data, do local e das atrações dos próximos eventos.</span></li>
+        <li><span class="i">🤝</span><span>Faça parte de quem vive a <%= eventInfo.name %> junto com a gente.</span></li>
+      </ul>
+      <a class="btn-community" href="<%= communityUrl %>" target="_blank" rel="noopener">
+        <button type="button">💬 Entrar na comunidade</button>
+      </a>
+      <p class="small">Você entra pelo WhatsApp e pode sair quando quiser.</p>
+    </section>
 
     <footer class="footer">
       <div class="footer-links">
@@ -27,23 +54,5 @@
       </div>
     </footer>
   </div>
-  <% if (redirect) { %>
-  <script>
-    (function () {
-      var url = <%- JSON.stringify(communityUrl) %>;
-      var left = 3;
-      var count = document.getElementById('redirect-count');
-      var timer = setInterval(function () {
-        left -= 1;
-        if (left <= 0) {
-          clearInterval(timer);
-          window.location.href = url;
-        } else if (count) {
-          count.textContent = left;
-        }
-      }, 1000);
-    })();
-  </script>
-  <% } %>
 </body>
 </html>
