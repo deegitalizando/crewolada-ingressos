@@ -114,7 +114,7 @@
           </thead>
           <tbody>
             <% s.rows.forEach(function(r) { %>
-              <tr data-search="<%= [r.nome, r.whatsapp, r.cidade, r.bairro, r.igreja].join(' ').toLowerCase() %>">
+              <tr data-search="<%= [r.nome, r.whatsapp, r.cidade, r.estado, r.bairro, r.igreja].join(' ').toLowerCase() %>">
                 <td><%= r.createdAtLabel %></td>
                 <td><%= r.nome %></td>
                 <td><%= r.whatsapp %></td>
@@ -122,7 +122,7 @@
                 <td><%= r.genero %></td>
                 <td><%= r.cristao %></td>
                 <td><%= r.frequentaIgreja === 'Sim' ? (r.igreja || 'Sim') : 'Não' %></td>
-                <td><%= r.cidade %><%= r.bairro ? ' / ' + r.bairro : '' %></td>
+                <td><%= r.cidade %><%= r.estado ? ' - ' + r.estado : '' %><%= r.bairro ? ' / ' + r.bairro : '' %></td>
                 <td><%= r.conheceFesta %></td>
                 <td><%= r.edicoes %></td>
                 <td><%= r.isBuyer ? (r.attended ? 'Sim · foi' : 'Sim') : 'Não' %></td>

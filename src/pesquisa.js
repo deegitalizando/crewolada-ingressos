@@ -14,10 +14,16 @@ const OPCOES = {
   comoConheceu: ['Instagram', 'Amigos ou família', 'Igreja', 'WhatsApp', 'Anúncio pago', 'Outro'],
 };
 
-const CIDADES_SUGERIDAS = [
-  'Rio de Janeiro', 'Duque de Caxias', 'Nova Iguaçu', 'São Gonçalo', 'Niterói', 'Belford Roxo',
-  'São João de Meriti', 'Mesquita', 'Nilópolis', 'Queimados', 'Japeri', 'Itaguaí', 'Seropédica',
+// Every Brazilian state: the survey is national, not only for Rio de Janeiro.
+const ESTADOS = [
+  ['AC', 'Acre'], ['AL', 'Alagoas'], ['AP', 'Amapá'], ['AM', 'Amazonas'], ['BA', 'Bahia'], ['CE', 'Ceará'],
+  ['DF', 'Distrito Federal'], ['ES', 'Espírito Santo'], ['GO', 'Goiás'], ['MA', 'Maranhão'], ['MT', 'Mato Grosso'],
+  ['MS', 'Mato Grosso do Sul'], ['MG', 'Minas Gerais'], ['PA', 'Pará'], ['PB', 'Paraíba'], ['PR', 'Paraná'],
+  ['PE', 'Pernambuco'], ['PI', 'Piauí'], ['RJ', 'Rio de Janeiro'], ['RN', 'Rio Grande do Norte'],
+  ['RS', 'Rio Grande do Sul'], ['RO', 'Rondônia'], ['RR', 'Roraima'], ['SC', 'Santa Catarina'],
+  ['SP', 'São Paulo'], ['SE', 'Sergipe'], ['TO', 'Tocantins'],
 ];
+const UF_CODES = ESTADOS.map(([uf]) => uf);
 
 const RATE_WINDOW_MS = 60 * 60 * 1000;
 const RATE_MAX = 20;
@@ -33,9 +39,17 @@ function rateLimited(ip) {
 const digits = (v) => String(v || '').replace(/\D/g, '');
 const clean = (v, max) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, max);
 const pick = (v, list) => (list.includes(String(v || '')) ? String(v) : '');
+// Brazilian mobile/landline number without country code or trunk zero:
+// 2-digit DDD + 8 or 9 digits. The whole number (DDD included) is the identity,
+// so the same subscriber number in two different states is never merged.
+const normalizePhone = (v) => {
+  let d = digits(v).replace(/^0+/, '');
+  if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
+  return d;
+};
 const phoneKey = (v) => {
-  const d = digits(v);
-  return d.length >= 10 ? d.slice(-10) : '';
+  const d = normalizePhone(v);
+  return d.length >= 10 && d.length <= 11 ? d : '';
 };
 const csvCell = (v) => {
   const s = String(v ?? '');
@@ -45,13 +59,14 @@ const csvCell = (v) => {
 function validate(body) {
   const v = {
     nome: clean(body.nome, 80),
-    whatsapp: digits(body.whatsapp),
+    whatsapp: normalizePhone(body.whatsapp),
     email: clean(body.email, 120).toLowerCase(),
     faixaEtaria: pick(body.faixaEtaria, OPCOES.faixaEtaria),
     genero: pick(body.genero, OPCOES.genero),
     cristao: pick(body.cristao, OPCOES.cristao),
     frequentaIgreja: pick(body.frequentaIgreja, OPCOES.frequentaIgreja),
     igreja: clean(body.igreja, 80),
+    estado: pick(String(body.estado || '').toUpperCase(), UF_CODES),
     cidade: clean(body.cidade, 60),
     bairro: clean(body.bairro, 60),
     conheceFesta: pick(body.conheceFesta, OPCOES.conheceFesta),
@@ -76,12 +91,13 @@ function validate(body) {
 
   const errors = [];
   if (v.nome.length < 2) errors.push('Informe seu nome.');
-  if (v.whatsapp.length < 10 || v.whatsapp.length > 13) errors.push('Informe um WhatsApp válido, com DDD.');
+  if (!/^[1-9][1-9]\d{8,9}$/.test(v.whatsapp)) errors.push('Informe um WhatsApp válido, com DDD (de qualquer estado do Brasil).');
   if (v.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email)) errors.push('O e-mail informado não parece válido.');
   if (!v.faixaEtaria) errors.push('Escolha sua faixa etária.');
   if (!v.genero) errors.push('Escolha uma opção em "Você é".');
   if (!v.cristao) errors.push('Responda se você é cristão.');
   if (!v.frequentaIgreja) errors.push('Responda se você frequenta alguma igreja.');
+  if (!v.estado) errors.push('Escolha o estado onde você mora.');
   if (!v.cidade) errors.push('Informe a cidade onde você mora.');
   if (!v.conheceFesta) errors.push('Conte se você já conhece a festa.');
   if (v.conheceFesta === 'Já participei' && !v.edicoes) errors.push('Escolha em quantas edições você já participou.');
@@ -175,6 +191,7 @@ function buildSummary(db) {
       { title: 'Já conhece a festa?', rows: withPct(tally(list, 'conheceFesta', OPCOES.conheceFesta), total) },
       { title: 'Edições que já participou', rows: withPct(tally(list, 'edicoes', OPCOES.edicoes), total) },
       { title: 'Como conheceu', rows: withPct(tally(list, 'comoConheceu', OPCOES.comoConheceu), total) },
+      { title: 'Estado onde mora', rows: withPct(tally(list, 'estado'), total) },
       { title: 'Cidade onde mora (top 10)', rows: withPct(tallyFreeText(list, 'cidade', 10), total) },
       { title: 'Bairro (top 10)', rows: withPct(tallyFreeText(list, 'bairro', 10), total) },
       { title: 'Igreja (top 10)', rows: withPct(tallyFreeText(list, 'igreja', 10), total) },
@@ -190,7 +207,7 @@ function buildSummary(db) {
 // ---------------------------------------------------------------------------
 
 function registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay }) {
-  const formBase = { eventInfo, opcoes: OPCOES, cidades: CIDADES_SUGERIDAS };
+  const formBase = { eventInfo, opcoes: OPCOES, estados: ESTADOS };
 
   app.get('/pesquisa', (req, res) => {
     const origem = clean(req.query.o || req.query.origem, 30).toLowerCase().replace(/[^a-z0-9_-]/g, '');
@@ -241,14 +258,14 @@ function registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
     const { rows } = buildSummary(db);
     const head = [
       'Data', 'Nome', 'WhatsApp', 'E-mail', 'Faixa etária', 'Gênero', 'Cristão', 'Frequenta igreja', 'Igreja',
-      'Cidade', 'Bairro', 'Conhece a festa', 'Edições', 'Como conheceu', 'Nota (0-10)', 'O que quer ver', 'Crítica ou sugestão', 'Instagram',
+      'Estado', 'Cidade', 'Bairro', 'Conhece a festa', 'Edições', 'Como conheceu', 'Nota (0-10)', 'O que quer ver', 'Crítica ou sugestão', 'Instagram',
       'Aceita novidades', 'Comprou ingresso', 'Compareceu', 'Origem do link',
     ];
     const lines = [head.map(csvCell).join(';')];
     rows.forEach((r) => {
       lines.push([
         formatDatetimeBrasiliaDisplay(r.createdAt), r.nome, r.whatsapp, r.email, r.faixaEtaria, r.genero, r.cristao,
-        r.frequentaIgreja, r.igreja, r.cidade, r.bairro, r.conheceFesta, r.edicoes, r.comoConheceu,
+        r.frequentaIgreja, r.igreja, r.estado, r.cidade, r.bairro, r.conheceFesta, r.edicoes, r.comoConheceu,
         r.nps === null || r.nps === undefined ? '' : r.nps, r.sugestao, r.critica, r.instagram,
         r.aceitaNovidades ? 'Sim' : 'Não', r.isBuyer ? 'Sim' : 'Não', r.attended ? 'Sim' : 'Não', r.origem,
       ].map(csvCell).join(';'));

@@ -48,6 +48,11 @@
     .step label.f { display: block; margin-top: 12px; font-size: 13px; color: var(--text-dim); }
     .step label.f input { display: block; width: 100%; margin-top: 6px; }
     .step .big-input { width: 100%; margin-top: 8px; padding: 16px; font-size: 17px; border-radius: 12px; }
+    .step select {
+      display: block; width: 100%; margin-top: 6px; padding: 12px 14px; font-size: 16px; color: var(--text);
+      background: #1a1a1a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px; font-family: inherit;
+    }
+    .step select:focus { outline: none; border-color: var(--accent); }
 
     .check { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--text-dim); margin-top: 14px; }
     .check input { width: auto; padding: 0; margin-top: 3px; flex: none; }
@@ -115,9 +120,14 @@
 
         <section class="step" data-id="cidade">
           <h3 class="q">Onde você mora?</h3>
+          <label class="f">Estado
+            <select name="estado" required autocomplete="address-level1">
+              <option value="">Selecione o estado</option>
+              <% estados.forEach(function(e) { %><option value="<%= e[0] %>" <%= val('estado') === e[0] ? 'selected' : '' %>><%= e[1] %> (<%= e[0] %>)</option><% }) %>
+            </select>
+          </label>
           <label class="f">Cidade
-            <input type="text" name="cidade" required maxlength="60" list="cidades" autocomplete="address-level2" value="<%= val('cidade') %>" />
-            <datalist id="cidades"><% cidades.forEach(function(c) { %><option value="<%= c %>"></option><% }) %></datalist>
+            <input type="text" name="cidade" required maxlength="60" autocomplete="address-level2" value="<%= val('cidade') %>" />
           </label>
           <label class="f">Bairro <span class="opt">(opcional)</span>
             <input type="text" name="bairro" maxlength="60" value="<%= val('bairro') %>" />
@@ -193,7 +203,7 @@
             <input type="text" name="nome" required maxlength="80" autocomplete="name" value="<%= val('nome') %>" />
           </label>
           <label class="f">WhatsApp (com DDD)
-            <input type="tel" name="whatsapp" required inputmode="numeric" autocomplete="tel" placeholder="(21) 99999-9999" value="<%= val('whatsapp') %>" />
+            <input type="tel" name="whatsapp" required inputmode="numeric" autocomplete="tel" placeholder="(DDD) 99999-9999" value="<%= val('whatsapp') %>" />
           </label>
           <label class="f">E-mail <span class="opt">(opcional)</span>
             <input type="email" name="email" maxlength="120" autocomplete="email" value="<%= val('email') %>" />
@@ -257,7 +267,7 @@
       }
       function active() { return steps.filter(applicable); }
       function firstBad(s) {
-        var els = s.querySelectorAll('input, textarea');
+        var els = s.querySelectorAll('input, textarea, select');
         for (var i = 0; i < els.length; i++) {
           if (els[i].willValidate && !els[i].checkValidity()) return els[i];
         }
