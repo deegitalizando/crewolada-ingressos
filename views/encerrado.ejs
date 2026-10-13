@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title><%= eventInfo.name %> - Obrigado!</title>
+  <meta name="description" content="Obrigado por fazer parte da última <%= eventInfo.name %>. Entre na nossa comunidade e fique por dentro das novidades em primeira mão." />
+  <%- include('partials/head') %>
+  <style>
+    .thanks { text-align: center; padding: 24px 22px 24px; margin-top: 16px; }
+    .thanks .logo-big {
+      width: 120px;
+      height: 120px;
+      object-fit: contain;
+      border-radius: 22px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      margin: 0 auto 16px;
+      display: block;
+    }
+    .thanks h1 { margin: 0 0 10px; font-size: 28px; line-height: 1.15; color: var(--accent); font-weight: 900; letter-spacing: -0.02em; }
+    .thanks .lead { margin: 0 0 8px; font-size: 15px; line-height: 1.6; color: var(--text); }
+    .thanks .tagline { margin: 12px 0 0; font-size: 13px; color: var(--text-dim); letter-spacing: 0.04em; text-transform: uppercase; }
+    .community { text-align: center; }
+    .community h2 { margin: 0 0 8px; font-size: 20px; }
+    .community p { margin: 0 0 18px; color: var(--text-dim); font-size: 15px; line-height: 1.55; }
+    .btn-community {
+      display: block;
+      text-decoration: none;
+    }
+    .btn-community button { background: var(--ok); color: #06210f; font-size: 17px; padding: 18px; margin-top: 0; }
+    .community .small { margin: 14px 0 0; font-size: 12px; color: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <main class="card thanks">
+      <img class="logo-big" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Obrigado por fazer parte!</h1>
+      <p class="lead">Muito obrigado por ter participado da última <strong><%= eventInfo.name %></strong>. A noite foi de música, cultura, fé e identidade, e só aconteceu por causa de você.</p>
+      <p class="lead">Cada presença, cada voz e cada abraço fizeram essa festa ser o que ela foi.</p>
+      <p class="tagline">Uma noite. Uma cultura. Uma família.</p>
+    </main>
+
+    <section class="card community">
+      <h2>Fique por dentro das novidades</h2>
+      <p>Entre na nossa comunidade no WhatsApp e receba em primeira mão os avisos dos próximos eventos, os lançamentos de ingressos e as novidades da <%= eventInfo.name %>.</p>
+      <a class="btn-community" href="<%= communityUrl %>" target="_blank" rel="noopener">
+        <button type="button">💬 Entrar na comunidade</button>
+      </a>
+      <p class="small">Você entra pelo WhatsApp e pode sair quando quiser.</p>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="/meus-ingressos">Meus ingressos e comprovantes</a>
+        <a href="/politica-de-privacidade">Politica de Privacidade</a>
+        <a href="/termos-de-uso">Termos de Uso</a>
+        <a href="/politica-de-cancelamento">Politica de Cancelamento</a>
+      </div>
+    </footer>
+  </div>
+
+</body>
+</html>

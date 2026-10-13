@@ -65,6 +65,10 @@ app.locals.metaPixelId = process.env.FACEBOOK_PIXEL_ID || '';
 // Consumer-facing contact + seller details shown in the legal footer and the
 // cancellation policy. SELLER_DOCUMENT / SELLER_ADDRESS are optional and only
 // rendered when set.
+// Sales are closed by default now that the event is over. Set SALES_OPEN=true
+// (in the environment) to bring the ticket page and checkout back for the next event.
+app.locals.salesOpen = process.env.SALES_OPEN === 'true';
+app.locals.communityUrl = process.env.COMMUNITY_URL || 'https://chat.whatsapp.com/IfH31ObCm3o66OHOM46oup';
 const REFUND_DAYS = Number(process.env.REFUND_DAYS || 7);
 app.locals.refundDays = REFUND_DAYS;
 {
@@ -197,6 +201,7 @@ function requireAdminAuth(req, res, next) {
 // ---------------------------------------------------------------------
 
 app.get('/', (req, res) => {
+  if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
   const db = store.load();
   const lotes = getLotes(db);
   const soldCount = getSoldCount(db);
@@ -220,6 +225,7 @@ app.get('/politica-de-cancelamento', (req, res) => {
 });
 
 app.get('/checkout/dados', (req, res) => {
+  if (!app.locals.salesOpen) return res.redirect('/');
   const db = store.load();
   const lote = getCurrentLote(getLotes(db), getSoldCount(db));
   if (!lote) return res.redirect('/');
@@ -235,6 +241,9 @@ app.get('/checkout/dados', (req, res) => {
 });
 
 app.post('/api/pagamentos', async (req, res) => {
+  if (!app.locals.salesOpen) {
+    return res.status(403).json({ error: 'As vendas de ingressos estão encerradas.' });
+  }
   try {
     const { buyerName, buyerEmail, buyerPhone, buyerCpf, quantity, formData } = req.body;
 
