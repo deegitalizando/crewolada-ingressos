@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Pesquisa do público - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .p-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+    .p-kpi { background: #1a1a1a; border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 14px; }
+    .p-kpi .l { font-size: 12px; color: var(--text-dim); }
+    .p-kpi .v { font-size: 24px; font-weight: 800; color: var(--text); margin: 2px 0; }
+    .p-kpi .s { font-size: 12px; color: var(--text-dim); }
+    .p-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 820px) { .p-grid { grid-template-columns: 1fr 1fr; } }
+    .p-block { background: #1a1a1a; border: 1px solid var(--card-border); border-radius: 14px; padding: 14px 16px; }
+    .p-block h3 { margin: 0 0 10px; font-size: 14px; }
+    .p-row { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) 62px; gap: 10px; align-items: center; margin: 7px 0; font-size: 13px; }
+    .p-row .lab { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .p-row .track { height: 12px; border-radius: 6px; background: rgba(57, 135, 229, 0.18); overflow: hidden; }
+    .p-row .fill { height: 100%; border-radius: 6px; background: #3987e5; }
+    .p-row .num { color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
+    .sug { border-left: 3px solid var(--accent); padding: 8px 12px; margin: 8px 0; background: #1a1a1a; border-radius: 8px; font-size: 13px; color: var(--text-dim); }
+    .sug strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/lotes" class="tab">Lotes</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab active">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+    </nav>
+
+    <main class="card">
+      <h3 style="margin-top:0">Pesquisa do público</h3>
+      <p class="hint" style="margin-top:0; text-align:left">
+        Link para divulgar: <strong><%= typeof baseUrl !== 'undefined' ? baseUrl : '' %>/pesquisa</strong>
+        &middot; para saber de onde vem cada resposta, acrescente <code>?o=stories</code>, <code>?o=grupo</code>, <code>?o=email</code>...
+      </p>
+
+      <% if (s.total === 0) { %>
+        <p class="hint">Ainda não há respostas.</p>
+      <% } else { %>
+        <div class="p-kpis">
+          <div class="p-kpi"><div class="l">Respostas</div><div class="v"><%= s.kpis.total %></div><div class="s">uma por WhatsApp</div></div>
+          <div class="p-kpi"><div class="l">Já compraram ingresso</div><div class="v"><%= s.kpis.buyers %></div><div class="s"><%= s.kpis.attended %> compareceram</div></div>
+          <div class="p-kpi"><div class="l">Aceitam novidades</div><div class="v"><%= s.kpis.optIn %></div><div class="s">podem receber divulgação</div></div>
+          <div class="p-kpi"><div class="l">Cristãos</div><div class="v"><%= String(s.kpis.christianPct).replace('.', ',') %>%</div><div class="s">de quem respondeu</div></div>
+          <div class="p-kpi"><div class="l">Frequentam igreja</div><div class="v"><%= String(s.kpis.churchPct).replace('.', ',') %>%</div><div class="s">do total</div></div>
+          <div class="p-kpi"><div class="l">NPS</div><div class="v"><%= s.kpis.nps === null ? '-' : s.kpis.nps %></div><div class="s"><%= s.kpis.npsCount %> avaliações (-100 a 100)</div></div>
+        </div>
+      <% } %>
+    </main>
+
+    <% if (s.total > 0) { %>
+    <section class="p-grid" style="margin:0 16px">
+      <% s.blocks.forEach(function(b) { %>
+        <div class="p-block">
+          <h3><%= b.title %></h3>
+          <% b.rows.forEach(function(r) { %>
+            <div class="p-row" title="<%= r.label %>: <%= r.count %> (<%= String(r.pct).replace('.', ',') %>%)">
+              <span class="lab"><%= r.label %></span>
+              <span class="track"><span class="fill" style="display:block;width:<%= r.pct %>%"></span></span>
+              <span class="num"><%= r.count %> &middot; <%= String(Math.round(r.pct)) %>%</span>
+            </div>
+          <% }) %>
+        </div>
+      <% }) %>
+    </section>
+
+    <% if (s.sugestoes.length) { %>
+    <main class="card">
+      <h3 style="margin-top:0">O que o público quer ver</h3>
+      <% s.sugestoes.forEach(function(x) { %>
+        <div class="sug"><strong><%= x.nome %></strong> &mdash; <%= x.texto %></div>
+      <% }) %>
+    </main>
+    <% } %>
+
+    <main class="card">
+      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center">
+        <h3 style="margin:0">Respostas</h3>
+        <a href="/admin/pesquisa/exportar.csv"><button type="button" class="btn-secondary" style="margin:0; width:auto; padding:8px 14px; font-size:13px">Baixar CSV</button></a>
+      </div>
+      <label style="margin:14px 0; display:block">
+        Buscar por nome, WhatsApp, cidade ou igreja
+        <input type="text" id="p-search" placeholder="Digite para filtrar..." />
+      </label>
+      <div class="table-wrap">
+        <table id="p-table">
+          <thead>
+            <tr><th>Data</th><th>Nome</th><th>WhatsApp</th><th>Idade</th><th>Gênero</th><th>Cristão</th><th>Igreja</th><th>Cidade</th><th>Festa</th><th>Edições</th><th>Comprou</th><th></th></tr>
+          </thead>
+          <tbody>
+            <% s.rows.forEach(function(r) { %>
+              <tr data-search="<%= [r.nome, r.whatsapp, r.cidade, r.bairro, r.igreja].join(' ').toLowerCase() %>">
+                <td><%= r.createdAtLabel %></td>
+                <td><%= r.nome %></td>
+                <td><%= r.whatsapp %></td>
+                <td><%= r.faixaEtaria %></td>
+                <td><%= r.genero %></td>
+                <td><%= r.cristao %></td>
+                <td><%= r.frequentaIgreja === 'Sim' ? (r.igreja || 'Sim') : 'Não' %></td>
+                <td><%= r.cidade %><%= r.bairro ? ' / ' + r.bairro : '' %></td>
+                <td><%= r.conheceFesta %></td>
+                <td><%= r.edicoes %></td>
+                <td><%= r.isBuyer ? (r.attended ? 'Sim · foi' : 'Sim') : 'Não' %></td>
+                <td>
+                  <form action="/admin/pesquisa/<%= r.id %>/excluir" method="POST" onsubmit="return confirm('Excluir esta resposta?')">
+                    <button type="submit" class="btn-secondary" style="margin:0; width:auto; padding:5px 10px; font-size:12px">Excluir</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+    <% } %>
+  </div>
+
+  <script>
+    var search = document.getElementById('p-search');
+    if (search) {
+      search.addEventListener('input', function (e) {
+        var term = e.target.value.trim().toLowerCase();
+        document.querySelectorAll('#p-table tbody tr[data-search]').forEach(function (row) {
+          row.hidden = term.length > 0 && row.dataset.search.indexOf(term) === -1;
+        });
+      });
+    }
+  </script>
+</body>
+</html>

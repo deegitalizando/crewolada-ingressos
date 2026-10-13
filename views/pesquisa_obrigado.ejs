@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Obrigado! - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+    </header>
+
+    <main class="card" style="text-align:center">
+      <h2 style="color:var(--accent)">Recebemos suas respostas!</h2>
+      <p class="hint" style="font-size:15px; line-height:1.6; margin-top:0">Muito obrigado por dedicar esse minuto. É assim que a gente aprende a fazer a próxima <strong><%= eventInfo.name %></strong> do jeito certo.</p>
+      <p class="hint" style="font-size:15px; line-height:1.6">Entre na nossa comunidade e receba as novidades em primeira mão:</p>
+      <a class="btn-ja-comprei" style="margin:16px 0 0" href="<%= communityUrl %>" target="_blank" rel="noopener">
+        <button type="button">💬 Entrar na comunidade</button>
+      </a>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="/">Voltar para a página inicial</a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
