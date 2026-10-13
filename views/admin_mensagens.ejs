@@ -47,7 +47,7 @@
         </div>
 
         <h3>Lembretes automaticos</h3>
-        <p class="hint" style="margin-top:0">Enviados uma unica vez para todos os compradores pagos. Use {{nome}} na mensagem.</p>
+        <p class="hint" style="margin-top:0">Enviados uma unica vez para todos os compradores pagos. Use {{nome}} na mensagem. Pode escrever variações separadas por <code>|||</code> para variar o texto entre destinatários.</p>
 
         <div class="template-box">
           <label>
@@ -84,7 +84,7 @@
 
     <main class="card">
       <h3>Campanhas agendadas</h3>
-      <p class="hint" style="margin-top:0">Crie uma mensagem avulsa (WhatsApp + e-mail) com data/hora livre para disparar para todos os compradores pagos. Use {{nome}} na mensagem.</p>
+      <p class="hint" style="margin-top:0">Crie uma mensagem avulsa (WhatsApp + e-mail) com data/hora livre para disparar para todos os compradores pagos. Use {{nome}} na mensagem. Para reduzir risco de bloqueio no WhatsApp, escreva 3-5 variações do mesmo texto separadas por <code>|||</code> — uma é sorteada por destinatário.</p>
 
       <form action="/api/admin/campanhas" method="POST" class="form">
         <label>

@@ -31,6 +31,19 @@ function getMilestoneDates(eventStartAt) {
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Lets an admin write a few rewordings of the same message separated by
+// "|||" (same convention as the AI-generated variations in the n8n
+// broadcast flow) so a bulk send doesn't fire the exact same text to every
+// recipient — another signal WhatsApp's spam detection weighs heavily.
+function pickVariation(messageTemplate) {
+  const variations = String(messageTemplate || '')
+    .split('|||')
+    .map((v) => v.trim())
+    .filter(Boolean);
+  if (variations.length === 0) return messageTemplate;
+  return variations[Math.floor(Math.random() * variations.length)];
+}
+
 // Spaced out and jittered on purpose: firing a WhatsApp send per buyer
 // back-to-back, with identical timing, is exactly the burst pattern that
 // gets a business number flagged/banned. 4-9s between sends keeps this
@@ -39,7 +52,7 @@ async function sendToAllPaidBuyers(db, messageTemplate) {
   const buyers = Object.values(db.orders).filter((o) => o.status === 'paid');
   for (let i = 0; i < buyers.length; i++) {
     const order = buyers[i];
-    const mensagem = renderTemplate(messageTemplate, { nome: order.buyerName });
+    const mensagem = renderTemplate(pickVariation(messageTemplate), { nome: order.buyerName });
     try {
       await sendReminder({
         nome: order.buyerName,
