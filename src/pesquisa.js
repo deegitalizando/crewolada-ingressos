@@ -59,6 +59,7 @@ function validate(body) {
     comoConheceu: pick(body.comoConheceu, OPCOES.comoConheceu),
     nps: body.nps !== undefined && body.nps !== '' && Number.isInteger(Number(body.nps)) && Number(body.nps) >= 0 && Number(body.nps) <= 10 ? Number(body.nps) : null,
     sugestao: clean(body.sugestao, 400),
+    critica: clean(body.critica, 600),
     instagram: clean(body.instagram, 40).replace(/^@+/, ''),
     aceitaNovidades: body.aceitaNovidades === 'on' || body.aceitaNovidades === '1',
     consent: body.consent === 'on' || body.consent === '1',
@@ -180,6 +181,7 @@ function buildSummary(db) {
       { title: 'Origem do link', rows: withPct(tally(list, 'origem'), total) },
     ].filter((b) => b.rows.length > 0),
     sugestoes: list.filter((r) => r.sugestao).slice(0, 30).map((r) => ({ nome: r.nome, texto: r.sugestao, createdAt: r.createdAt })),
+    criticas: list.filter((r) => r.critica).slice(0, 50).map((r) => ({ nome: r.nome, texto: r.critica, nps: r.nps, createdAt: r.createdAt })),
   };
 }
 
@@ -239,7 +241,7 @@ function registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
     const { rows } = buildSummary(db);
     const head = [
       'Data', 'Nome', 'WhatsApp', 'E-mail', 'Faixa etária', 'Gênero', 'Cristão', 'Frequenta igreja', 'Igreja',
-      'Cidade', 'Bairro', 'Conhece a festa', 'Edições', 'Como conheceu', 'Nota (0-10)', 'Sugestão', 'Instagram',
+      'Cidade', 'Bairro', 'Conhece a festa', 'Edições', 'Como conheceu', 'Nota (0-10)', 'O que quer ver', 'Crítica ou sugestão', 'Instagram',
       'Aceita novidades', 'Comprou ingresso', 'Compareceu', 'Origem do link',
     ];
     const lines = [head.map(csvCell).join(';')];
@@ -247,7 +249,7 @@ function registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
       lines.push([
         formatDatetimeBrasiliaDisplay(r.createdAt), r.nome, r.whatsapp, r.email, r.faixaEtaria, r.genero, r.cristao,
         r.frequentaIgreja, r.igreja, r.cidade, r.bairro, r.conheceFesta, r.edicoes, r.comoConheceu,
-        r.nps === null || r.nps === undefined ? '' : r.nps, r.sugestao, r.instagram,
+        r.nps === null || r.nps === undefined ? '' : r.nps, r.sugestao, r.critica, r.instagram,
         r.aceitaNovidades ? 'Sim' : 'Não', r.isBuyer ? 'Sim' : 'Não', r.attended ? 'Sim' : 'Não', r.origem,
       ].map(csvCell).join(';'));
     });

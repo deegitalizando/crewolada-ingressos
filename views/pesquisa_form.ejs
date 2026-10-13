@@ -3,35 +3,68 @@
 <head>
   <title>Pesquisa do público - <%= eventInfo.name %></title>
   <%- include('partials/head') %>
+  <script>document.documentElement.classList.add('js');</script>
   <style>
     .survey h2 { margin: 0 0 6px; }
-    .survey .intro { margin: 0 0 18px; color: var(--text-dim); font-size: 14px; line-height: 1.55; }
-    .survey fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
-    .survey legend { padding: 0; font-size: 14px; color: var(--text); font-weight: 700; margin-bottom: 8px; }
+    .survey .intro { margin: 0 0 16px; color: var(--text-dim); font-size: 14px; line-height: 1.55; }
     .survey .opt { color: var(--text-dim); font-weight: 400; font-size: 12px; }
-    .survey .form > label:not(.chip):not(.check) { display: block; }
-    .survey .form > label:not(.chip):not(.check) > input,
-    .survey .form > label:not(.chip):not(.check) > textarea { display: block; width: 100%; margin-top: 6px; }
-    .survey .block { margin-bottom: 20px; }
-    .survey .section-title { color: var(--accent); font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; margin: 26px 0 12px; padding-top: 16px; border-top: 1px solid var(--card-border); }
-    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
-    .chip { position: relative; display: block; flex-direction: unset; }
+
+    /* One question per screen when JS is available; every question is shown
+       stacked otherwise, so the form still works without it. */
+    .step { margin-bottom: 22px; }
+    .js .step { display: none; margin-bottom: 0; }
+    .js .step.active { display: block; animation: stepIn 0.2s ease-out; }
+    @keyframes stepIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: none; } }
+    @media (prefers-reduced-motion: reduce) { .js .step.active { animation: none; } }
+    .step .q { margin: 0 0 6px; font-size: 20px; line-height: 1.3; color: var(--text); }
+    .step .hint-q { margin: 0 0 16px; font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+    .step fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .step legend { padding: 0; margin: 0 0 6px; font-size: 20px; line-height: 1.3; color: var(--text); font-weight: 700; }
+
+    .progress { display: none; margin-bottom: 18px; }
+    .js .progress { display: block; }
+    .progress .p-text { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; }
+    .progress .p-bar { height: 6px; border-radius: 3px; background: #262626; overflow: hidden; }
+    .progress .p-bar span { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; transition: width 0.25s ease; }
+
+    .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .chip { position: relative; display: block; }
     .chip input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
     .chip span {
-      display: block; padding: 11px 14px; border-radius: 999px; font-size: 14px; color: var(--text);
+      display: block; padding: 14px 18px; border-radius: 14px; font-size: 16px; color: var(--text);
       background: #1a1a1a; border: 1px solid rgba(255, 255, 255, 0.14);
     }
     .chip input:checked + span { background: var(--accent); color: #1a1200; border-color: var(--accent); font-weight: 700; }
     .chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
-    .nps .chip span { padding: 11px 0; width: 42px; text-align: center; border-radius: 10px; }
+    .nps .chips { gap: 8px; }
+    .nps .chip span { padding: 14px 0; width: 46px; text-align: center; border-radius: 12px; }
+    .nps-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+
     .survey textarea {
-      background: #1a1a1a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px;
-      padding: 12px 14px; color: var(--text); font-size: 16px; font-family: inherit; min-height: 84px;
+      width: 100%; background: #1a1a1a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
+      padding: 14px; color: var(--text); font-size: 16px; font-family: inherit; min-height: 130px; margin-top: 8px;
     }
-    .check { flex-direction: row; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+    .survey textarea:focus { outline: none; border-color: var(--accent); }
+    .step label.f { display: block; margin-top: 12px; font-size: 13px; color: var(--text-dim); }
+    .step label.f input { display: block; width: 100%; margin-top: 6px; }
+    .step .big-input { width: 100%; margin-top: 8px; padding: 16px; font-size: 17px; border-radius: 12px; }
+
+    .check { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--text-dim); margin-top: 14px; }
     .check input { width: auto; padding: 0; margin-top: 3px; flex: none; }
+
+    .wizard-nav { display: flex; gap: 10px; margin-top: 24px; }
+    .wizard-nav button { margin-top: 0; }
+    .wizard-nav .btn-secondary { flex: 0 0 38%; }
+    .skip-note { font-size: 12px; color: var(--text-dim); margin: 10px 0 0; text-align: center; }
+
+    /* Without JS: show the plain stacked form and its real submit button. */
+    html:not(.js) #btn-back, html:not(.js) #btn-next, html:not(.js) .skip-note { display: none; }
+    .js #btn-submit { display: none; }
+    .js .on-last #btn-submit { display: block; }
+    .js .on-last #btn-next { display: none; }
+    .js .on-first #btn-back { display: none; }
+
     .hp { position: absolute; left: -9999px; top: -9999px; height: 0; overflow: hidden; }
-    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -50,118 +83,149 @@
 
       <%
         const val = function (k) { return v && v[k] !== undefined && v[k] !== null && v[k] !== false ? v[k] : ''; };
+        const esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); };
         const chip = function (name, option, required) {
-          return '<label class="chip"><input type="radio" name="' + name + '" value="' + option.replace(/"/g, '&quot;') + '"' +
-            (String(val(name)) === String(option) ? ' checked' : '') + (required ? ' required' : '') + ' /><span>' + option.replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</span></label>';
+          return '<label class="chip"><input type="radio" name="' + name + '" value="' + esc(option) + '"' +
+            (String(val(name)) === String(option) ? ' checked' : '') + (required ? ' required' : '') + ' /><span>' + esc(option) + '</span></label>';
         };
       %>
 
-      <form action="/pesquisa" method="POST" class="form" id="survey-form" autocomplete="on">
+      <form action="/pesquisa" method="POST" class="form" id="survey-form" autocomplete="on" novalidate data-has-errors="<%= errors && errors.length ? '1' : '0' %>">
         <input type="hidden" name="origem" value="<%= val('origem') %>" />
         <div class="hp" aria-hidden="true"><label>Não preencha este campo <input type="text" name="website" tabindex="-1" autocomplete="off" /></label></div>
 
-        <h3 class="section-title" style="margin-top:0;border-top:0;padding-top:0">Sobre você</h3>
-        <label>
-          Nome
-          <input type="text" name="nome" required maxlength="80" autocomplete="name" value="<%= val('nome') %>" />
-        </label>
-        <label>
-          WhatsApp (com DDD)
-          <input type="tel" name="whatsapp" required inputmode="numeric" autocomplete="tel" placeholder="(21) 99999-9999" value="<%= val('whatsapp') %>" />
-        </label>
-        <label>
-          E-mail <span class="opt">(opcional)</span>
-          <input type="email" name="email" maxlength="120" autocomplete="email" value="<%= val('email') %>" />
-        </label>
+        <div class="progress" aria-live="polite">
+          <div class="p-text" id="p-text"></div>
+          <div class="p-bar"><span id="p-fill"></span></div>
+        </div>
 
-        <fieldset class="block">
-          <legend>Faixa etária</legend>
-          <div class="chips"><% opcoes.faixaEtaria.forEach(function(o, i) { %><%- chip('faixaEtaria', o, i === 0) %><% }) %></div>
-        </fieldset>
+        <section class="step auto" data-id="faixaEtaria">
+          <fieldset>
+            <legend>Qual a sua faixa etária?</legend>
+            <div class="chips"><% opcoes.faixaEtaria.forEach(function(o, i) { %><%- chip('faixaEtaria', o, i === 0) %><% }) %></div>
+          </fieldset>
+        </section>
 
-        <fieldset class="block">
-          <legend>Você é</legend>
-          <div class="chips"><% opcoes.genero.forEach(function(o, i) { %><%- chip('genero', o, i === 0) %><% }) %></div>
-        </fieldset>
+        <section class="step auto" data-id="genero">
+          <fieldset>
+            <legend>Você é</legend>
+            <div class="chips"><% opcoes.genero.forEach(function(o, i) { %><%- chip('genero', o, i === 0) %><% }) %></div>
+          </fieldset>
+        </section>
 
-        <h3 class="section-title">Fé</h3>
-        <p class="intro" style="margin-top:-4px">Estas perguntas são opcionais de verdade: você pode marcar "Prefiro não responder".</p>
+        <section class="step" data-id="cidade">
+          <h3 class="q">Onde você mora?</h3>
+          <label class="f">Cidade
+            <input type="text" name="cidade" required maxlength="60" list="cidades" autocomplete="address-level2" value="<%= val('cidade') %>" />
+            <datalist id="cidades"><% cidades.forEach(function(c) { %><option value="<%= c %>"></option><% }) %></datalist>
+          </label>
+          <label class="f">Bairro <span class="opt">(opcional)</span>
+            <input type="text" name="bairro" maxlength="60" value="<%= val('bairro') %>" />
+          </label>
+        </section>
 
-        <fieldset class="block">
-          <legend>Você é cristão?</legend>
-          <div class="chips"><% opcoes.cristao.forEach(function(o, i) { %><%- chip('cristao', o, i === 0) %><% }) %></div>
-        </fieldset>
+        <section class="step auto" data-id="conheceFesta">
+          <fieldset>
+            <legend>Você já conhece a <%= eventInfo.name %>?</legend>
+            <div class="chips"><% opcoes.conheceFesta.forEach(function(o, i) { %><%- chip('conheceFesta', o, i === 0) %><% }) %></div>
+          </fieldset>
+        </section>
 
-        <fieldset class="block">
-          <legend>Frequenta alguma igreja?</legend>
-          <div class="chips"><% opcoes.frequentaIgreja.forEach(function(o, i) { %><%- chip('frequentaIgreja', o, i === 0) %><% }) %></div>
-        </fieldset>
+        <section class="step auto" data-id="edicoes" data-if="conheceFesta=Já participei">
+          <fieldset>
+            <legend>Em quantas edições você já participou?</legend>
+            <div class="chips"><% opcoes.edicoes.forEach(function(o, i) { %><%- chip('edicoes', o, i === 0) %><% }) %></div>
+          </fieldset>
+        </section>
 
-        <label id="igreja-wrap" class="<%= val('frequentaIgreja') === 'Sim' ? '' : 'hidden' %>">
-          Qual igreja? <span class="opt">(opcional)</span>
-          <input type="text" name="igreja" maxlength="80" value="<%= val('igreja') %>" />
-        </label>
+        <section class="step auto nps" data-id="nps" data-if="conheceFesta=Já participei" data-optional="1">
+          <fieldset>
+            <legend>De 0 a 10, o quanto você indicaria a festa para um amigo? <span class="opt">(opcional)</span></legend>
+            <div class="chips">
+              <% for (var n = 0; n <= 10; n++) { %><label class="chip"><input type="radio" name="nps" value="<%= n %>" <%= String(val('nps')) === String(n) && val('nps') !== '' ? 'checked' : '' %> /><span><%= n %></span></label><% } %>
+            </div>
+            <div class="nps-scale"><span>Nada provável</span><span>Muito provável</span></div>
+          </fieldset>
+        </section>
 
-        <h3 class="section-title">Onde você mora</h3>
-        <label>
-          Cidade
-          <input type="text" name="cidade" required maxlength="60" list="cidades" autocomplete="address-level2" value="<%= val('cidade') %>" />
-          <datalist id="cidades"><% cidades.forEach(function(c) { %><option value="<%= c %>"></option><% }) %></datalist>
-        </label>
-        <label>
-          Bairro <span class="opt">(opcional)</span>
-          <input type="text" name="bairro" maxlength="60" value="<%= val('bairro') %>" />
-        </label>
+        <section class="step auto" data-id="comoConheceu" data-optional="1">
+          <fieldset>
+            <legend>Como você conheceu a festa? <span class="opt">(opcional)</span></legend>
+            <div class="chips"><% opcoes.comoConheceu.forEach(function(o) { %><%- chip('comoConheceu', o, false) %><% }) %></div>
+          </fieldset>
+        </section>
 
-        <h3 class="section-title">A festa</h3>
-        <fieldset class="block">
-          <legend>Você já conhece a <%= eventInfo.name %>?</legend>
-          <div class="chips"><% opcoes.conheceFesta.forEach(function(o, i) { %><%- chip('conheceFesta', o, i === 0) %><% }) %></div>
-        </fieldset>
+        <section class="step auto" data-id="cristao">
+          <fieldset>
+            <legend>Você é cristão?</legend>
+            <p class="hint-q">Se preferir, é só marcar "Prefiro não responder".</p>
+            <div class="chips"><% opcoes.cristao.forEach(function(o, i) { %><%- chip('cristao', o, i === 0) %><% }) %></div>
+          </fieldset>
+        </section>
 
-        <fieldset class="block <%= val('conheceFesta') === 'Já participei' ? '' : 'hidden' %>" id="edicoes-wrap">
-          <legend>Em quantas edições você já participou?</legend>
-          <div class="chips"><% opcoes.edicoes.forEach(function(o) { %><%- chip('edicoes', o, false) %><% }) %></div>
-        </fieldset>
+        <section class="step auto" data-id="frequentaIgreja">
+          <fieldset>
+            <legend>Você frequenta alguma igreja?</legend>
+            <div class="chips"><% opcoes.frequentaIgreja.forEach(function(o, i) { %><%- chip('frequentaIgreja', o, i === 0) %><% }) %></div>
+          </fieldset>
+        </section>
 
-        <fieldset class="block <%= val('conheceFesta') === 'Já participei' ? '' : 'hidden' %> nps" id="nps-wrap">
-          <legend>De 0 a 10, o quanto você indicaria a festa para um amigo? <span class="opt">(opcional)</span></legend>
-          <div class="chips">
-            <% for (var n = 0; n <= 10; n++) { %><label class="chip"><input type="radio" name="nps" value="<%= n %>" <%= String(val('nps')) === String(n) && val('nps') !== '' ? 'checked' : '' %> /><span><%= n %></span></label><% } %>
-          </div>
-        </fieldset>
+        <section class="step" data-id="igreja" data-if="frequentaIgreja=Sim" data-optional="1">
+          <h3 class="q">Qual igreja? <span class="opt">(opcional)</span></h3>
+          <input class="big-input" type="text" name="igreja" maxlength="80" value="<%= val('igreja') %>" />
+        </section>
 
-        <fieldset class="block">
-          <legend>Como você conheceu a festa? <span class="opt">(opcional)</span></legend>
-          <div class="chips"><% opcoes.comoConheceu.forEach(function(o) { %><%- chip('comoConheceu', o, false) %><% }) %></div>
-        </fieldset>
+        <section class="step" data-id="sugestao" data-optional="1">
+          <h3 class="q">O que você gostaria de ver nas próximas edições? <span class="opt">(opcional)</span></h3>
+          <p class="hint-q">Artistas, estilos, estrutura, horário, comida... pode falar à vontade.</p>
+          <textarea name="sugestao" maxlength="400"><%= val('sugestao') %></textarea>
+        </section>
 
-        <label>
-          O que você gostaria de ver nas próximas edições? <span class="opt">(opcional)</span>
-          <textarea name="sugestao" maxlength="400" placeholder="Artistas, estilos, estrutura, horário..."><%= val('sugestao') %></textarea>
-        </label>
+        <section class="step" data-id="critica" data-optional="1">
+          <h3 class="q">Tem alguma crítica ou sugestão para a gente? <span class="opt">(opcional)</span></h3>
+          <p class="hint-q">O que foi bom, o que pode melhorar, o que faltou. Sua sinceridade ajuda muito.</p>
+          <textarea name="critica" maxlength="600"><%= val('critica') %></textarea>
+        </section>
 
-        <label>
-          Seu Instagram <span class="opt">(opcional)</span>
-          <input type="text" name="instagram" maxlength="40" placeholder="@seuusuario" value="<%= val('instagram') %>" />
-        </label>
+        <section class="step" data-id="contato">
+          <h3 class="q">Para finalizar, como falamos com você?</h3>
+          <label class="f">Nome
+            <input type="text" name="nome" required maxlength="80" autocomplete="name" value="<%= val('nome') %>" />
+          </label>
+          <label class="f">WhatsApp (com DDD)
+            <input type="tel" name="whatsapp" required inputmode="numeric" autocomplete="tel" placeholder="(21) 99999-9999" value="<%= val('whatsapp') %>" />
+          </label>
+          <label class="f">E-mail <span class="opt">(opcional)</span>
+            <input type="email" name="email" maxlength="120" autocomplete="email" value="<%= val('email') %>" />
+          </label>
+          <label class="f">Instagram <span class="opt">(opcional)</span>
+            <input type="text" name="instagram" maxlength="40" placeholder="@seuusuario" value="<%= val('instagram') %>" />
+          </label>
+        </section>
 
-        <h3 class="section-title">Autorização</h3>
-        <label class="check">
-          <input type="checkbox" name="consent" required <%= val('consent') ? 'checked' : '' %> />
-          <span>
-            Concordo que a organização da <%= eventInfo.name %> use as informações acima para conhecer o perfil do público e melhorar os próximos eventos.
-            Sei que informações sobre religião são dados sensíveis, que responder é opcional e que posso pedir a exclusão dos meus dados a qualquer momento.
-            Se tenho menos de 18 anos, estou preenchendo com a autorização do meu responsável.
-            Veja a <a href="/politica-de-privacidade" target="_blank">Política de Privacidade</a>.
-          </span>
-        </label>
-        <label class="check">
-          <input type="checkbox" name="aceitaNovidades" <%= val('aceitaNovidades') ? 'checked' : '' %> />
-          <span>Quero receber novidades, avisos de ingressos e promoções da <%= eventInfo.name %> pelo WhatsApp e e-mail. <span class="opt">(opcional)</span></span>
-        </label>
+        <section class="step" data-id="autorizacao">
+          <h3 class="q">Autorização</h3>
+          <label class="check">
+            <input type="checkbox" name="consent" required <%= val('consent') ? 'checked' : '' %> />
+            <span>
+              Concordo que a organização da <%= eventInfo.name %> use as informações acima para conhecer o perfil do público e melhorar os próximos eventos.
+              Sei que informações sobre religião são dados sensíveis, que responder é opcional e que posso pedir a exclusão dos meus dados a qualquer momento.
+              Se tenho menos de 18 anos, estou preenchendo com a autorização do meu responsável.
+              Veja a <a href="/politica-de-privacidade" target="_blank">Política de Privacidade</a>.
+            </span>
+          </label>
+          <label class="check">
+            <input type="checkbox" name="aceitaNovidades" <%= val('aceitaNovidades') ? 'checked' : '' %> />
+            <span>Quero receber novidades, avisos de ingressos e promoções da <%= eventInfo.name %> pelo WhatsApp e e-mail. <span class="opt">(opcional)</span></span>
+          </label>
+        </section>
 
-        <button type="submit">Enviar minhas respostas</button>
+        <div class="wizard-nav" id="wizard-nav">
+          <button type="button" class="btn-secondary" id="btn-back">Voltar</button>
+          <button type="button" id="btn-next">Continuar</button>
+          <button type="submit" id="btn-submit">Enviar minhas respostas</button>
+        </div>
+        <p class="skip-note" id="skip-note"></p>
       </form>
     </main>
 
@@ -176,18 +240,108 @@
   <script>
     (function () {
       var form = document.getElementById('survey-form');
-      function toggle() {
-        var igreja = form.querySelector('input[name="frequentaIgreja"]:checked');
-        document.getElementById('igreja-wrap').classList.toggle('hidden', !(igreja && igreja.value === 'Sim'));
-        var conhece = form.querySelector('input[name="conheceFesta"]:checked');
-        var participou = conhece && conhece.value === 'Já participei';
-        document.getElementById('edicoes-wrap').classList.toggle('hidden', !participou);
-        document.getElementById('nps-wrap').classList.toggle('hidden', !participou);
-        // A hidden required field would block submit, so only require it while visible.
-        form.querySelectorAll('#edicoes-wrap input').forEach(function (i, idx) { i.required = participou && idx === 0; });
+      var steps = Array.prototype.slice.call(form.querySelectorAll('.step'));
+      var nav = document.getElementById('wizard-nav');
+      var current = steps[0];
+      var advanceTimer = null;
+
+      function value(name) {
+        var c = form.querySelector('input[name="' + name + '"]:checked');
+        return c ? c.value : '';
       }
-      form.addEventListener('change', toggle);
-      toggle();
+      function applicable(s) {
+        var cond = s.getAttribute('data-if');
+        if (!cond) return true;
+        var parts = cond.split('=');
+        return value(parts[0]) === parts[1];
+      }
+      function active() { return steps.filter(applicable); }
+      function firstBad(s) {
+        var els = s.querySelectorAll('input, textarea');
+        for (var i = 0; i < els.length; i++) {
+          if (els[i].willValidate && !els[i].checkValidity()) return els[i];
+        }
+        return null;
+      }
+
+      function show(step) {
+        var list = active();
+        if (list.indexOf(step) === -1) step = list[0];
+        current = step;
+        var idx = list.indexOf(step);
+        steps.forEach(function (s) { s.classList.toggle('active', s === step); });
+        document.getElementById('p-text').textContent = 'Pergunta ' + (idx + 1) + ' de ' + list.length;
+        document.getElementById('p-fill').style.width = Math.round(((idx + 1) / list.length) * 100) + '%';
+        nav.classList.toggle('on-first', idx === 0);
+        nav.classList.toggle('on-last', idx === list.length - 1);
+        document.getElementById('skip-note').textContent = step.getAttribute('data-optional') ? 'Esta pergunta é opcional. Pode pular.' : '';
+        var field = step.querySelector('input[type="text"], input[type="tel"], input[type="email"], textarea');
+        if (field && !field.value) { try { field.focus({ preventScroll: true }); } catch (e) { field.focus(); } }
+      }
+
+      function next() {
+        clearTimeout(advanceTimer);
+        var bad = firstBad(current);
+        if (bad) { bad.reportValidity(); return; }
+        var list = active();
+        var idx = list.indexOf(current);
+        if (idx < list.length - 1) show(list[idx + 1]);
+      }
+      function back() {
+        clearTimeout(advanceTimer);
+        var list = active();
+        var idx = list.indexOf(current);
+        if (idx > 0) show(list[idx - 1]);
+      }
+
+      document.getElementById('btn-next').addEventListener('click', next);
+      document.getElementById('btn-back').addEventListener('click', back);
+
+      // Single-choice questions move on by themselves after a tap.
+      form.addEventListener('change', function (e) {
+        var t = e.target;
+        if (t.type !== 'radio') return;
+        var step = t.closest('.step');
+        if (!step || step !== current || !step.classList.contains('auto')) return;
+        clearTimeout(advanceTimer);
+        advanceTimer = setTimeout(next, 220);
+      });
+
+      // Enter on a one-line field goes to the next question instead of submitting.
+      form.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA') return;
+        var list = active();
+        if (list.indexOf(current) < list.length - 1) {
+          e.preventDefault();
+          next();
+        } else if (e.target.type !== 'submit' && e.target.type !== 'checkbox') {
+          e.preventDefault();
+        }
+      });
+
+      form.addEventListener('submit', function (e) {
+        var list = active();
+        for (var i = 0; i < list.length; i++) {
+          var bad = firstBad(list[i]);
+          if (bad) {
+            e.preventDefault();
+            show(list[i]);
+            bad.reportValidity();
+            return;
+          }
+        }
+      });
+
+      var list0 = active();
+      var start = list0[0];
+      if (form.getAttribute('data-has-errors') === '1') {
+        // Coming back from a server-side error: land on the first unanswered question.
+        start = list0[list0.length - 1];
+        for (var i = 0; i < list0.length; i++) {
+          if (firstBad(list0[i])) { start = list0[i]; break; }
+        }
+      }
+      show(start);
     })();
   </script>
 </body>

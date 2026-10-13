@@ -80,6 +80,15 @@
       <% }) %>
     </section>
 
+    <% if (s.criticas.length) { %>
+    <main class="card">
+      <h3 style="margin-top:0">Críticas e sugestões</h3>
+      <% s.criticas.forEach(function(x) { %>
+        <div class="sug"><strong><%= x.nome %></strong><%= x.nps !== null && x.nps !== undefined ? ' (nota ' + x.nps + ')' : '' %> &mdash; <%= x.texto %></div>
+      <% }) %>
+    </main>
+    <% } %>
+
     <% if (s.sugestoes.length) { %>
     <main class="card">
       <h3 style="margin-top:0">O que o público quer ver</h3>
