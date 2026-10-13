@@ -29,9 +29,16 @@ function getMilestoneDates(eventStartAt) {
   };
 }
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Spaced out and jittered on purpose: firing a WhatsApp send per buyer
+// back-to-back, with identical timing, is exactly the burst pattern that
+// gets a business number flagged/banned. 4-9s between sends keeps this
+// broadcast at a human-plausible pace.
 async function sendToAllPaidBuyers(db, messageTemplate) {
   const buyers = Object.values(db.orders).filter((o) => o.status === 'paid');
-  for (const order of buyers) {
+  for (let i = 0; i < buyers.length; i++) {
+    const order = buyers[i];
     const mensagem = renderTemplate(messageTemplate, { nome: order.buyerName });
     try {
       await sendReminder({
@@ -43,6 +50,7 @@ async function sendToAllPaidBuyers(db, messageTemplate) {
     } catch (err) {
       console.error(`Falha ao enviar mensagem para ${order.buyerEmail}:`, err.message);
     }
+    if (i < buyers.length - 1) await wait(4000 + Math.random() * 5000);
   }
 }
 
