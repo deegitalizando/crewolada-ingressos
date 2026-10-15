@@ -1,4 +1,5 @@
 <% const priceLabel = lote ? (Number.isInteger(lote.price) ? String(lote.price) : lote.price.toFixed(2).replace('.', ',')) : ''; %>
+<% const left = Math.max(0, (totalCapacity || 0) - soldCount); %>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -9,436 +10,251 @@
   <meta property="og:description" content="Lote único e limitado a <%= totalCapacity || 300 %> ingressos. Churrasco, música, família e comunidade." />
   <meta property="og:image" content="<%= baseUrl %>/img/flyer-tardezinha.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="theme-color" content="#0A0F1A" />
+  <meta name="theme-color" content="#56B9FF" />
   <%- include('partials/head') %>
   <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/fonts/fonts.css" />
-  <link rel="stylesheet" href="/vendor/lenis.css" />
   <style>
     :root { --accent: #FFD21E; }
     html { scroll-behavior: smooth; }
-    body.v2 {
-      --bg: #0A0F1A; --bg2: #0F1726; --surface: #151E31; --ink: #F4F1E8; --muted: #9AA7BD;
-      --line: rgba(255, 255, 255, 0.12); --sky: #38B6FF; --ease: cubic-bezier(0.22, 1, 0.36, 1);
-      margin: 0; background: var(--bg); color: var(--ink);
-      font-family: 'DM Sans', system-ui, sans-serif; font-size: 17px; line-height: 1.6; overflow-x: hidden;
-      -webkit-font-smoothing: antialiased;
+    body.v3 {
+      --ink: #0E1626; --muted: #5B667A; --line: rgba(14, 22, 38, 0.1); --paper: #FFFDF4; --yellow: #FFD21E; --sky: #1E90E8;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      margin: 0; background: var(--paper); color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif;
+      font-size: 17px; line-height: 1.6; overflow-x: hidden; -webkit-font-smoothing: antialiased;
     }
-    .v2 *, .v2 *::before, .v2 *::after { box-sizing: border-box; }
-    .v2 h1, .v2 h2, .v2 h3 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; margin: 0; letter-spacing: -0.025em; line-height: 1.02; }
-    .v2 p { margin: 0; }
-    .v2 a { color: inherit; }
-    .v2 main button { all: unset; box-sizing: border-box; cursor: pointer; }
-    .wrap { width: min(1120px, 100% - 40px); margin-inline: auto; }
-    .v2 svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-    .eyebrow { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-
-    /* ---------- announcement marquee (full bleed, seamless) ---------- */
-    .ann { background: var(--accent); color: #0A0F1A; overflow: hidden; white-space: nowrap; height: 40px; display: flex; align-items: center; }
-    .ann-track { display: inline-flex; animation: ann 38s linear infinite; will-change: transform; }
-    .ann-group { display: inline-flex; flex: none; }
-    .ann-item { font-weight: 700; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; padding: 0 22px; display: inline-flex; align-items: center; gap: 22px; }
-    .ann-item::after { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #0A0F1A; }
-    @keyframes ann { to { transform: translateX(-50%); } }
-
-    /* ---------- nav ---------- */
-    .nav { position: sticky; top: 0; z-index: 30; background: rgba(10, 15, 26, 0.8); backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
-    .nav .wrap { display: flex; align-items: center; justify-content: space-between; height: 64px; }
-    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
-    .brand img { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+    .v3 *, .v3 *::before, .v3 *::after { box-sizing: border-box; }
+    .v3 h1, .v3 h2, .v3 h3 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; margin: 0; letter-spacing: -0.03em; line-height: 1.02; }
+    .v3 p { margin: 0; }
+    .v3 a { color: inherit; }
+    .v3 main button { all: unset; box-sizing: border-box; cursor: pointer; }
+    .wrap { width: min(1040px, 100% - 40px); margin-inline: auto; }
 
     /* ---------- buttons ---------- */
     .btn {
-      display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none;
-      background: var(--accent); color: #0A0F1A; font-weight: 700; font-size: 16px; letter-spacing: 0.01em;
-      padding: 16px 28px; border-radius: 999px; transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease), background-color 0.3s;
-      box-shadow: 0 0 0 0 rgba(255, 210, 30, 0.5);
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; cursor: pointer;
+      background: var(--yellow); color: var(--ink); font-weight: 700; font-size: 17px; padding: 17px 30px; border-radius: 999px;
+      transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease);
+      box-shadow: 0 10px 30px -12px rgba(14, 22, 38, 0.4);
     }
-    .btn svg.i { width: 18px; height: 18px; stroke-width: 2; transition: transform 0.4s var(--ease); }
-    .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 40px -12px rgba(255, 210, 30, 0.6); }
-    .btn:hover svg.i { transform: translateX(4px); }
+    .btn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 18px 40px -14px rgba(14, 22, 38, 0.5); }
+    .btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.4s var(--ease); }
+    .btn:hover svg { transform: translateX(4px); }
     .btn.pulse { animation: halo 2.6s ease-out infinite; }
-    @keyframes halo { 0% { box-shadow: 0 0 0 0 rgba(255, 210, 30, 0.55); } 70%, 100% { box-shadow: 0 0 0 16px rgba(255, 210, 30, 0); } }
-    .btn-ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
-    .btn-ghost:hover { border-color: var(--ink); box-shadow: none; }
-    .btn-sm { padding: 10px 18px; font-size: 14px; }
+    @keyframes halo { 0% { box-shadow: 0 10px 30px -12px rgba(14,22,38,.4), 0 0 0 0 rgba(255, 210, 30, 0.7); } 70%, 100% { box-shadow: 0 10px 30px -12px rgba(14,22,38,.4), 0 0 0 18px rgba(255, 210, 30, 0); } }
+    .btn-line { background: transparent; box-shadow: none; border: 1.5px solid var(--ink); }
+    .btn-line:hover { background: var(--ink); color: #fff; box-shadow: none; }
     .btn-block { display: flex; width: 100%; }
     .btn[disabled] { opacity: 0.4; cursor: not-allowed; animation: none; }
 
-    /* ---------- hero ---------- */
-    .v2-hero { padding-block: 32px 60px; text-align: left; }
-    .hero-grid { display: grid; gap: 40px; align-items: center; }
-    .frame {
-      order: -1; position: relative; border-radius: 24px; overflow: hidden; border: 1px solid var(--line); background: var(--surface);
-      box-shadow: 0 50px 120px -50px rgba(255, 210, 30, 0.35); aspect-ratio: 1; width: 100%; max-width: 560px; justify-self: center;
+    /* ---------- hero: living sky ---------- */
+    .hero {
+      position: relative; min-height: 100svh; overflow: hidden; display: flex; flex-direction: column;
+      background: linear-gradient(180deg, #4FB4FF 0%, #8CD0FF 34%, #CFEBFF 62%, #FFF6CF 100%);
     }
-    .frame video, .frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-    .rays {
-      position: absolute; width: 260%; aspect-ratio: 1; left: 90%; top: 6%; margin: -130% 0 0 -130%; pointer-events: none;
-      background: repeating-conic-gradient(from 0deg, rgba(255, 244, 170, 0.5) 0 4deg, transparent 4deg 16deg);
-      -webkit-mask-image: radial-gradient(circle, #000 0, transparent 52%); mask-image: radial-gradient(circle, #000 0, transparent 52%);
-      mix-blend-mode: screen; animation: spin 50s linear infinite;
+    .sunglow { position: absolute; right: -8%; top: -10%; width: 62vmin; height: 62vmin; border-radius: 50%; pointer-events: none;
+      background: radial-gradient(circle, rgba(255, 244, 170, 0.95) 0, rgba(255, 244, 170, 0.35) 38%, transparent 70%); animation: glow 7s ease-in-out infinite alternate; }
+    @keyframes glow { from { transform: scale(1); opacity: 0.85; } to { transform: scale(1.12); opacity: 1; } }
+    .cloud { position: absolute; left: -30%; width: var(--w, 180px); opacity: var(--o, 0.9); filter: blur(var(--b, 0px)); animation: drift var(--d, 90s) linear var(--delay, 0s) infinite; pointer-events: none; }
+    @keyframes drift { to { transform: translateX(160vw); } }
+    .layer { position: absolute; inset: 0; pointer-events: none; transition: transform 0.4s var(--ease); }
+    .fl { position: absolute; left: var(--x); bottom: -14vh; width: var(--s); opacity: var(--o, 1); animation: rise var(--d) linear var(--delay) infinite; will-change: transform; }
+    .fl svg { display: block; width: 100%; height: auto; overflow: visible; animation: sway var(--sw, 4s) ease-in-out infinite alternate; filter: blur(var(--b, 0px)); }
+    @keyframes rise { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(var(--dx, 0px), -128vh, 0); } }
+    @keyframes sway { from { transform: rotate(-9deg) translateX(-14px); } to { transform: rotate(9deg) translateX(14px); } }
+
+    .topbar { position: relative; z-index: 5; }
+    .topbar .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 19px; letter-spacing: -0.02em; }
+    .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 4px 14px -4px rgba(14, 22, 38, 0.5); }
+    .link-pill { text-decoration: none; font-weight: 700; font-size: 14px; padding: 10px 18px; border-radius: 999px; background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(8px); transition: background-color 0.3s, transform 0.4s var(--ease); }
+    .link-pill:hover { background: #fff; transform: translateY(-2px); }
+
+    .hero-inner { position: relative; z-index: 4; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 8px 20px 56px; }
+    .eyebrow { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; color: rgba(14, 22, 38, 0.75); margin-bottom: 20px; }
+    .stage { position: relative; width: min(86vw, 500px); }
+    .card-video {
+      position: relative; width: 100%; aspect-ratio: 1; border-radius: 28px; overflow: hidden; background: #fff;
+      box-shadow: 0 40px 80px -30px rgba(14, 22, 38, 0.55), 0 0 0 5px #fff; animation: bob 7s ease-in-out infinite;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .badge-live {
-      position: absolute; left: 14px; bottom: 14px; z-index: 2; display: inline-flex; align-items: center; gap: 8px;
-      background: rgba(10, 15, 26, 0.82); backdrop-filter: blur(8px); border: 1px solid var(--line); color: var(--ink);
-      font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 14px; border-radius: 999px;
-    }
-    .dot-live { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); animation: blink 1.4s ease-in-out infinite; }
+    @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-0.6deg); } 50% { transform: translateY(-12px) rotate(0.6deg); } }
+    .card-video video, .card-video img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+    .card-video::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.45) 50%, transparent 62%); transform: translateX(-120%); animation: shine 6.5s ease-in-out infinite; }
+    @keyframes shine { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+
+    .badge { position: absolute; z-index: 3; font-weight: 800; animation: bob2 var(--bd, 5s) ease-in-out var(--bdl, 0s) infinite; }
+    @keyframes bob2 { 0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); } 50% { transform: translateY(-10px) rotate(calc(var(--r, 0deg) + 3deg)); } }
+    .badge-price { left: -26px; top: 41%; --r: -10deg; width: 96px; height: 96px; border-radius: 50%; background: var(--yellow); color: var(--ink);
+      display: grid; place-items: center; text-align: center; line-height: 1; box-shadow: 0 16px 30px -12px rgba(14, 22, 38, 0.5); border: 3px solid #fff; }
+    .badge-price b { font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; letter-spacing: -0.04em; display: block; }
+    .badge-price small { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .badge-limit { right: 4%; bottom: -28px; --r: 4deg; --bd: 6s; --bdl: -2s; background: var(--ink); color: #fff; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 10px 16px; border-radius: 999px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 16px 30px -12px rgba(14, 22, 38, 0.6); }
+    .badge-cap { right: -10px; top: 6%; --r: 8deg; --bd: 4.4s; --bdl: -1s; background: #fff; color: var(--ink); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+      padding: 9px 14px; border-radius: 999px; box-shadow: 0 12px 24px -12px rgba(14, 22, 38, 0.5); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); animation: blink 1.4s ease-in-out infinite; flex: none; }
     @keyframes blink { 50% { opacity: 0.25; } }
 
-    .v2-h1 { font-size: clamp(2.5rem, 7vw, 5.25rem); font-weight: 800; margin: 16px 0 20px; }
-    .v2-h1 .thin { font-weight: 200; font-style: italic; color: var(--accent); }
-    .lead { font-size: clamp(1.0625rem, 1.5vw, 1.25rem); color: #d6d9e0; max-width: 34em; }
-    .chip-urg {
-      display: inline-flex; align-items: center; gap: 10px; border: 1px solid rgba(255, 210, 30, 0.5); color: var(--accent);
-      font-weight: 700; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; padding: 8px 16px; border-radius: 999px; margin-top: 24px;
-    }
-    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
-    .meta-row { display: grid; gap: 14px; margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); }
-    .meta { display: flex; gap: 14px; align-items: flex-start; color: #d6d9e0; font-size: 15px; }
-    .meta svg.i { color: var(--accent); margin-top: 2px; }
-    .meta strong { display: block; color: var(--ink); font-weight: 700; }
-
-    /* ---------- scroll type ---------- */
-    .bigtype { overflow: hidden; padding-block: 28px; border-block: 1px solid var(--line); background: var(--bg2); }
-    .bigtype .row { width: max-content; white-space: nowrap; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; letter-spacing: -0.03em; line-height: 1; font-size: clamp(3rem, 11vw, 9rem); text-transform: uppercase; will-change: transform; }
-    .bigtype .row.o { color: transparent; -webkit-text-stroke: 1.5px rgba(244, 241, 232, 0.5); }
-    .bigtype .row span { margin-right: 0.4em; }
-    .bigtype .row i { font-style: normal; color: var(--accent); margin-right: 0.4em; }
-
-    /* ---------- sections ---------- */
-    section.s { padding-block: 60px; }
-    @media (min-width: 768px) { section.s { padding-block: 96px; } }
-    @media (min-width: 1024px) { section.s { padding-block: 140px; } }
-    .s-title { font-size: clamp(1.75rem, 4vw, 3.5rem); font-weight: 800; margin: 12px 0 0; max-width: 16em; }
-    .s-title .thin { font-weight: 200; font-style: italic; }
-
-    .stats { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 20px; overflow: hidden; background: var(--bg2); }
-    .stat { padding: 32px; border-bottom: 1px solid var(--line); }
-    .stat:last-child { border-bottom: 0; }
-    .stat .n { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(2.5rem, 6vw, 4.25rem); letter-spacing: -0.04em; line-height: 1; }
-    .stat .n em { font-style: normal; color: var(--accent); }
-    .stat .l { margin-top: 8px; color: var(--muted); font-size: 14px; }
-
-    .rows { margin-top: 48px; border-top: 1px solid var(--line); }
-    .row-item { display: grid; grid-template-columns: 48px 1fr; gap: 8px 20px; padding: 28px 0; border-bottom: 1px solid var(--line); transition: padding-left 0.5s var(--ease), background-color 0.3s; }
-    .row-item:hover { padding-left: 12px; }
-    .row-item .num { font-size: 13px; color: var(--muted); letter-spacing: 0.1em; padding-top: 8px; }
-    .row-item h3 { font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 800; display: flex; align-items: center; gap: 14px; }
-    .row-item h3 svg.i { color: var(--accent); opacity: 0.85; }
-    .row-item p { grid-column: 2; color: var(--muted); max-width: 36em; }
+    .hero-cta { margin-top: 40px; }
+    .hero-note { margin-top: 16px; font-size: 14px; color: rgba(14, 22, 38, 0.7); }
+    .hero-note strong { color: var(--ink); }
+    .scroll-hint { position: absolute; z-index: 4; left: 50%; bottom: 18px; width: 22px; height: 36px; margin-left: -11px; border: 1.5px solid rgba(14, 22, 38, 0.45); border-radius: 12px; }
+    .scroll-hint::after { content: ''; position: absolute; left: 50%; top: 7px; width: 3px; height: 7px; margin-left: -1.5px; border-radius: 2px; background: rgba(14, 22, 38, 0.6); animation: wheel 1.8s ease-in-out infinite; }
+    @keyframes wheel { 0% { opacity: 0; transform: translateY(0); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(12px); } }
 
     /* ---------- buy ---------- */
-    .buy-grid { display: grid; gap: 40px; }
-    .buy-list { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 14px; }
-    .buy-list li { display: flex; gap: 12px; color: #d6d9e0; align-items: flex-start; }
-    .buy-list svg.i { color: var(--accent); margin-top: 2px; width: 20px; height: 20px; }
-    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 32px; }
-    .price { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(3.5rem, 9vw, 5.5rem); letter-spacing: -0.05em; line-height: 0.95; margin-top: 12px; }
-    .price small { display: block; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 400; letter-spacing: 0; color: var(--muted); margin-top: 8px; }
-    .scarce { margin: 24px 0 8px; display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); }
-    .scarce strong { color: var(--accent); font-weight: 700; }
-    .bar { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
-    .bar b { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 3px; }
-    .qty { display: flex; align-items: center; justify-content: space-between; margin: 28px 0 8px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 16px; }
-    .qty .lab { color: var(--muted); font-size: 14px; }
-    .qty-ctrl { display: flex; align-items: center; gap: 18px; }
-    .qty-btn { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; font-size: 20px; transition: border-color 0.3s, transform 0.3s var(--ease); }
-    .qty-btn:hover { border-color: var(--accent); transform: scale(1.06); }
-    .qty-btn[disabled] { opacity: 0.35; cursor: not-allowed; transform: none; }
-    .qty-val { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 24px; min-width: 28px; text-align: center; }
-    .total { display: flex; justify-content: space-between; margin: 16px 4px 20px; color: var(--muted); }
-    .total strong { color: var(--ink); font-size: 20px; }
-    .alert-v2 { border: 1px solid #ef4444; color: #fecaca; border-radius: 12px; padding: 12px 16px; margin-top: 16px; }
-    .soldout-v2 { border: 1px solid var(--line); border-radius: 16px; padding: 20px; color: #d6d9e0; margin-top: 16px; }
+    .buy { padding-block: 80px 40px; }
+    @media (min-width: 768px) { .buy { padding-block: 120px 60px; } }
+    .buy-card { width: min(520px, 100%); margin-inline: auto; text-align: center; }
+    .kicker { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+    .price { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(4.5rem, 16vw, 7rem); letter-spacing: -0.06em; line-height: 0.95; margin: 12px 0 4px; }
+    .price span { font-size: 0.38em; letter-spacing: 0; vertical-align: 0.9em; margin-right: 6px; font-weight: 700; }
+    .per { color: var(--muted); }
+    .meter { margin: 28px auto 0; max-width: 360px; }
+    .meter .row { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+    .meter .row strong { color: var(--ink); }
+    .bar { height: 5px; border-radius: 3px; background: rgba(14, 22, 38, 0.1); overflow: hidden; }
+    .bar b { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 3px; transition: width 1.4s var(--ease); }
+    .qty { display: flex; align-items: center; justify-content: center; gap: 28px; margin: 36px 0 8px; }
+    .qty-btn { width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 22px; transition: border-color 0.3s, transform 0.4s var(--ease), background-color 0.3s; }
+    .qty-btn:hover { border-color: var(--ink); transform: scale(1.08); }
+    .qty-btn[disabled] { opacity: 0.3; cursor: not-allowed; transform: none; }
+    .qty-val { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 40px; min-width: 48px; letter-spacing: -0.04em; }
+    .total { color: var(--muted); margin-bottom: 24px; }
+    .total strong { color: var(--ink); font-size: 20px; margin-left: 6px; }
+    .trust { margin-top: 20px; font-size: 13px; color: var(--muted); }
+    .alert-v3 { border: 1px solid #e11d48; color: #9f1239; border-radius: 12px; padding: 12px 16px; margin-top: 16px; }
 
-    /* ---------- steps / faq / community ---------- */
-    .steps { display: grid; gap: 0; margin-top: 48px; border-top: 1px solid var(--line); }
-    .step { display: grid; grid-template-columns: 56px 1fr; gap: 4px 20px; padding: 28px 0; border-bottom: 1px solid var(--line); }
-    .step .k { font-family: 'Bricolage Grotesque', sans-serif; font-size: 40px; font-weight: 200; color: var(--accent); line-height: 1; }
-    .step h3 { font-size: 1.375rem; font-weight: 800; }
-    .step p { grid-column: 2; color: var(--muted); }
+    .more { padding-block: 40px 100px; text-align: center; }
+    .more p { color: var(--muted); max-width: 30em; margin: 12px auto 24px; }
 
-    .faq { margin-top: 40px; border-top: 1px solid var(--line); }
-    .faq details { border-bottom: 1px solid var(--line); }
-    .faq summary { list-style: none; cursor: pointer; padding: 22px 0; display: flex; justify-content: space-between; align-items: center; gap: 16px; font-weight: 700; font-size: 18px; transition: color 0.3s; }
-    .faq summary::-webkit-details-marker { display: none; }
-    .faq summary:hover { color: var(--accent); }
-    .faq summary svg.i { transition: transform 0.4s var(--ease); }
-    .faq details[open] summary svg.i { transform: rotate(180deg); }
-    .faq details p { color: var(--muted); padding: 0 0 22px; max-width: 40em; }
+    .foot { border-top: 1px solid var(--line); padding-block: 28px; }
+    .foot .links { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--muted); }
+    .foot .links a { text-decoration: none; transition: color 0.3s; }
+    .foot .links a:hover { color: var(--ink); }
+    .v3 .legal-footer { margin: 0; padding: 24px 0 120px; border-top: 0; color: var(--muted); }
+    .v3 .legal-footer a { color: var(--ink); }
+    .v3 .legal-footer h4 { color: var(--ink); }
 
-    .cta-final { text-align: center; background: var(--bg2); border-block: 1px solid var(--line); }
-    .cta-final .s-title { margin-inline: auto; }
-    .cd { display: inline-grid; grid-template-columns: repeat(4, auto); gap: 28px; margin: 36px 0; }
-    .cd div { text-align: center; }
-    .cd .num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(2.25rem, 7vw, 3.75rem); letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; display: block; }
-    .cd .lab { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
-    .cd-mini { display: flex; gap: 16px; margin-top: 8px; color: var(--muted); font-size: 14px; }
-    .cd-mini b { color: var(--ink); font-variant-numeric: tabular-nums; }
-
-    .community { display: grid; gap: 24px; align-items: center; }
-    .links { display: flex; flex-wrap: wrap; gap: 8px 24px; margin-top: 8px; font-size: 14px; color: var(--muted); }
-    .links a { text-decoration: none; position: relative; }
-    .links a::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 1px; background: currentColor; transform: scaleX(0); transform-origin: left; transition: transform 0.4s var(--ease); }
-    .links a:hover { color: var(--ink); }
-    .links a:hover::after { transform: scaleX(1); }
-
-    .v2 .legal-footer { margin: 0; padding: 40px 0 120px; border-top: 1px solid var(--line); color: var(--muted); }
-    .v2 .legal-footer a { color: var(--ink); }
-
-    .sticky-cta { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); background: rgba(10, 15, 26, 0.92); backdrop-filter: blur(12px); border-top: 1px solid var(--line); transform: translateY(110%); transition: transform 0.5s var(--ease); }
+    .sticky-cta { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 12px 20px calc(12px + env(safe-area-inset-bottom)); background: rgba(255, 253, 244, 0.94); backdrop-filter: blur(12px); border-top: 1px solid var(--line); transform: translateY(110%); transition: transform 0.5s var(--ease); }
     .sticky-cta.show { transform: none; }
     .sticky-cta .btn { width: 100%; }
 
-    @media (min-width: 768px) {
-      .meta-row { grid-template-columns: repeat(3, 1fr); }
-      .stats { grid-template-columns: repeat(3, 1fr); }
-      .stat { border-bottom: 0; border-right: 1px solid var(--line); }
-      .stat:last-child { border-right: 0; }
-      .community { grid-template-columns: 1.4fr auto; }
+    @media (max-width: 560px) {
+      .badge-price { left: -12px; width: 80px; height: 80px; }
+      .badge-price b { font-size: 24px; }
+      .badge-limit { right: 2%; }
     }
-    @media (min-width: 1024px) {
-      .hero-grid { grid-template-columns: 1.05fr 0.95fr; gap: 72px; }
-      .frame { order: 0; }
-      .buy-grid { grid-template-columns: 1fr 1fr; gap: 80px; align-items: start; }
-      .sticky-cta { display: none; }
-    }
+    @media (min-width: 1024px) { .sticky-cta { display: none; } }
     @media (prefers-reduced-motion: reduce) {
-      .ann-track, .rays, .btn.pulse, .dot-live { animation: none !important; }
+      .fl, .cloud, .card-video, .badge, .sunglow, .btn.pulse, .dot, .scroll-hint::after, .card-video::after { animation: none !important; }
+      .fl svg { animation: none !important; }
       html { scroll-behavior: auto; }
     }
   </style>
 </head>
-<body class="v2">
-  <!-- announcement: urgency triggers, full-bleed -->
-  <div class="ann" aria-label="Lote único e limitado">
-    <div class="ann-track" aria-hidden="true">
-      <% for (var g = 0; g < 2; g++) { %>
-        <div class="ann-group">
-          <% for (var r = 0; r < 3; r++) { %>
-            <span class="ann-item">Lote único e limitado</span>
-            <span class="ann-item"><%= totalCapacity || 300 %> ingressos</span>
-            <% if (lote) { %><span class="ann-item">R$ <%= priceLabel %></span><% } %>
-            <span class="ann-item"><%= eventInfo.dateLabel.slice(0, 5) %> · <%= eventInfo.timeLabel %></span>
-            <span class="ann-item"><%= eventInfo.venue %></span>
-            <span class="ann-item">Quando acabar, acabou</span>
-          <% } %>
-        </div>
-      <% } %>
-    </div>
-  </div>
+<body class="v3">
+  <section class="hero" id="hero">
+    <div class="sunglow" aria-hidden="true"></div>
+    <div id="clouds" aria-hidden="true"></div>
+    <div class="layer" id="layer-back" aria-hidden="true"></div>
 
-  <header class="nav">
-    <div class="wrap">
-      <a class="brand" href="/"><img src="/img/logo.jpg" alt="" width="36" height="36" /> Crewolada</a>
-      <a class="btn btn-sm" href="#ingressos">Ingressos</a>
-    </div>
-  </header>
+    <header class="topbar">
+      <div class="wrap">
+        <a class="brand" href="/"><img src="/img/logo.jpg" alt="" width="38" height="38" /> Crewolada</a>
+        <a class="link-pill" href="#ingressos">Ingressos</a>
+      </div>
+    </header>
 
-  <main>
-    <section class="v2-hero">
-      <div class="wrap hero-grid">
-        <div class="hero-copy">
-          <p class="eyebrow" data-hero><%= eventInfo.dateLabel %> · <%= eventInfo.venue %></p>
-          <h1 class="v2-h1">Tardezinha <span class="thin">Crewolada</span></h1>
-          <p class="lead" data-hero>Diversão, comunhão e muito Black Music Cristã. Churrasco, música, família e comunidade em uma tarde para viver junto.</p>
+    <div class="hero-inner">
+      <p class="eyebrow"><%= eventInfo.dateLabel.slice(0, 5) %> · <%= eventInfo.timeLabel %> · <%= eventInfo.venue %></p>
 
-          <p class="chip-urg" data-hero>
-            <span class="dot-live"></span>
-            Lote único e limitado<% if (!comingSoon && lote) { %> · restam <%= Math.max(0, (totalCapacity || 0) - soldCount) %> de <%= totalCapacity %><% } else { %> · <%= totalCapacity || 300 %> ingressos<% } %>
-          </p>
-
-          <div class="hero-actions" data-hero>
-            <% if (lote && !comingSoon) { %>
-              <a class="btn pulse" href="#ingressos">Garantir ingresso · R$ <%= priceLabel %>
-                <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
-            <% } else if (comingSoon) { %>
-              <a class="btn" href="#comunidade">Avisar quando abrir</a>
-            <% } else { %>
-              <a class="btn" href="#comunidade">Ingressos esgotados · entrar na comunidade</a>
-            <% } %>
-            <a class="btn btn-ghost" href="#experiencia">Ver o que te espera</a>
-          </div>
-
-          <div class="meta-row" data-hero>
-            <div class="meta">
-              <svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              <span><strong><%= eventInfo.dateLabel.slice(0, 5) %></strong><%= eventInfo.timeLabel %></span>
-            </div>
-            <div class="meta">
-              <svg class="i" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              <span><strong><%= eventInfo.venue.split(' - ')[0] %></strong><%= eventInfo.venue.split(' - ')[1] || '' %></span>
-            </div>
-            <div class="meta">
-              <svg class="i" viewBox="0 0 24 24"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2M13 11v2M13 17v2"/></svg>
-              <span><strong>Limite de <%= totalCapacity || 300 %></strong>ingressos</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="frame" id="frame">
+      <div class="stage" id="stage">
+        <div class="card-video">
           <video autoplay muted loop playsinline preload="auto" poster="/img/flyer-tardezinha.webp" aria-label="<%= eventInfo.name %> — <%= eventInfo.dateLabel %>, <%= eventInfo.timeLabel %>, <%= eventInfo.venue %>">
             <source src="/video/tardezinha-loop.mp4" type="video/mp4" />
           </video>
-          <div class="rays" aria-hidden="true"></div>
-          <span class="badge-live"><span class="dot-live"></span> Lote único</span>
         </div>
+        <% if (lote && !comingSoon) { %><div class="badge badge-price"><div><b>R$ <%= priceLabel %></b><small>por pessoa</small></div></div><% } %>
+        <div class="badge badge-limit"><span class="dot"></span> Lote único e limitado</div>
       </div>
-    </section>
 
-    <div class="bigtype" aria-hidden="true">
-      <div class="row" id="bt1"><span>Tardezinha</span><i>●</i><span>Crewolada</span><i>●</i><span>Tardezinha</span><i>●</i><span>Crewolada</span><i>●</i></div>
-      <div class="row o" id="bt2"><span>14.11</span><i>●</i><span>Rio da Prata</span><i>●</i><span>14.11</span><i>●</i><span>Rio da Prata</span><i>●</i></div>
+      <% if (lote && !comingSoon) { %>
+        <a class="btn pulse hero-cta" href="#ingressos">Garantir meu ingresso
+          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <p class="hero-note">Restam <strong><%= left %></strong> de <%= totalCapacity %> · <span id="days-left"></span></p>
+      <% } else if (comingSoon) { %>
+        <a class="btn hero-cta" href="#comunidade">Avisar quando abrir</a>
+      <% } else { %>
+        <a class="btn hero-cta" href="#comunidade">Ingressos esgotados · entrar na comunidade</a>
+      <% } %>
     </div>
 
-    <section class="s" data-reveal>
+    <div class="layer" id="layer-front" aria-hidden="true"></div>
+    <span class="scroll-hint" aria-hidden="true"></span>
+  </section>
+
+  <main>
+    <section class="buy" id="ingressos">
       <div class="wrap">
-        <div class="stats">
-          <div class="stat" data-item><div class="n"><span data-count="<%= totalCapacity || 300 %>">0</span></div><div class="l">ingressos disponíveis no total</div></div>
-          <div class="stat" data-item><div class="n">1<em> lote</em></div><div class="l">único, sem segundo lote com desconto</div></div>
-          <div class="stat" data-item><div class="n"><% if (lote) { %><em>R$</em> <span data-count="<%= Math.round(lote.price) %>">0</span><% } else { %>—<% } %></div><div class="l">por pessoa</div></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="s" id="experiencia" data-reveal style="padding-top:0">
-      <div class="wrap">
-        <p class="eyebrow" data-item>O que te espera</p>
-        <h2 class="s-title" data-item>Uma tarde inteira para <span class="thin">viver junto.</span></h2>
-        <div class="rows">
-          <div class="row-item" data-item>
-            <span class="num">01</span>
-            <h3><svg class="i" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Churrasco</h3>
-            <p>Uma tarde para comer bem, conversar e estar junto com quem você ama.</p>
-          </div>
-          <div class="row-item" data-item>
-            <span class="num">02</span>
-            <h3><svg class="i" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Black Music Cristã</h3>
-            <p>Música boa, do jeito Crewolada: para louvar, dançar e cantar junto.</p>
-          </div>
-          <div class="row-item" data-item>
-            <span class="num">03</span>
-            <h3><svg class="i" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>Família e comunidade</h3>
-            <p>Diversão e comunhão para a família toda, em um ambiente de gente que caminha junto.</p>
-          </div>
-          <div class="row-item" data-item>
-            <span class="num">04</span>
-            <h3><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>Brinquedos para crianças</h3>
-            <p>A criançada se diverte nos brinquedos enquanto os adultos aproveitam a tarde.</p>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="s" id="ingressos" style="background: var(--bg2); border-block: 1px solid var(--line)">
-      <div class="wrap buy-grid" data-reveal>
-        <div>
-          <p class="eyebrow" data-item>Ingressos</p>
-          <h2 class="s-title" data-item>Lote único <span class="thin">e limitado.</span></h2>
-          <ul class="buy-list" data-item>
-            <li><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Pagamento por Pix ou cartão, processado pelo Mercado Pago.</li>
-            <li><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Ingresso com QR Code enviado para o seu e-mail.</li>
-            <li><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Ingresso pessoal e intransferível, válido para uma entrada.</li>
-            <li><svg class="i" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Você pode desistir em até <%= refundDays %> dias, com reembolso integral.</li>
-          </ul>
-        </div>
-
-        <div class="panel" data-item>
+        <div class="buy-card">
           <% if (comingSoon) { %>
-            <p class="eyebrow">Em breve</p>
-            <h3 style="font-size:2rem; font-weight:800; margin-top:12px">Ingressos em breve</h3>
-            <p style="color:var(--muted); margin-top:12px">A venda ainda não abriu. Entre na comunidade e seja avisado em primeira mão.</p>
-            <a class="btn btn-block" style="margin-top:24px" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
+            <p class="kicker">Em breve</p>
+            <h2 style="font-size:clamp(2rem,6vw,3rem); margin-top:12px">Ingressos em breve</h2>
+            <p class="per" style="margin-top:12px">A venda ainda não abriu. Entre na comunidade e seja avisado em primeira mão.</p>
+            <a class="btn btn-block" style="margin-top:28px" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
           <% } else if (lote) { %>
-            <p class="eyebrow"><%= lote.name %> · limitado a <%= totalCapacity %></p>
-            <p class="price">R$ <%= priceLabel %><small>por pessoa</small></p>
+            <p class="kicker"><%= lote.name %> · limitado</p>
+            <p class="price"><span>R$</span><%= priceLabel %></p>
+            <p class="per">por pessoa</p>
 
-            <div class="scarce">
-              <span><strong><%= Math.max(0, totalCapacity - soldCount) %></strong> de <%= totalCapacity %> disponíveis</span>
-              <span><%= soldCount > 0 ? Math.min(100, Math.round((soldCount / totalCapacity) * 100)) + '% garantidos' : 'Venda aberta' %></span>
+            <div class="meter">
+              <div class="row"><span><strong><%= left %></strong> de <%= totalCapacity %> disponíveis</span><span><%= soldCount > 0 ? Math.min(100, Math.round((soldCount / totalCapacity) * 100)) + '% garantidos' : 'Venda aberta' %></span></div>
+              <div class="bar" aria-hidden="true"><b data-pct="<%= totalCapacity ? Math.min(100, Math.round((soldCount / totalCapacity) * 100)) : 0 %>"></b></div>
             </div>
-            <div class="bar" aria-hidden="true"><b data-pct="<%= totalCapacity ? Math.min(100, Math.round((soldCount / totalCapacity) * 100)) : 0 %>"></b></div>
 
-            <% if (error) { %><div class="alert-v2"><%= error %></div><% } %>
+            <% if (error) { %><div class="alert-v3"><%= error %></div><% } %>
 
             <form action="/checkout/dados" method="GET" id="qty-form">
               <input type="hidden" name="qty" id="qty-input" value="1" />
               <div class="qty">
-                <span class="lab">Quantidade</span>
-                <div class="qty-ctrl">
-                  <button type="button" class="qty-btn" id="qty-minus" aria-label="Menos um ingresso">−</button>
-                  <span class="qty-val" id="qty-value">1</span>
-                  <button type="button" class="qty-btn" id="qty-plus" aria-label="Mais um ingresso">+</button>
-                </div>
+                <button type="button" class="qty-btn" id="qty-minus" aria-label="Menos um ingresso">−</button>
+                <span class="qty-val" id="qty-value">1</span>
+                <button type="button" class="qty-btn" id="qty-plus" aria-label="Mais um ingresso">+</button>
               </div>
-              <div class="total"><span>Total</span><strong id="qty-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></strong></div>
-              <button type="submit" class="btn btn-block pulse">Garantir meu ingresso
-                <svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+              <p class="total">Total <strong id="qty-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></strong></p>
+              <button type="submit" class="btn btn-block pulse">Ir para o pagamento
+                <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
             </form>
+            <p class="trust">Pix ou cartão · QR Code por e-mail · Desista em até <%= refundDays %> dias</p>
           <% } else { %>
-            <p class="eyebrow">Esgotado</p>
-            <h3 style="font-size:2rem; font-weight:800; margin-top:12px">Ingressos esgotados</h3>
-            <p class="soldout-v2">Os <%= totalCapacity || 300 %> ingressos acabaram. Entre na comunidade para saber dos próximos eventos em primeira mão.</p>
-            <a class="btn btn-block" style="margin-top:20px" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
+            <p class="kicker">Esgotado</p>
+            <h2 style="font-size:clamp(2rem,6vw,3rem); margin-top:12px">Ingressos esgotados</h2>
+            <p class="per" style="margin-top:12px">Os <%= totalCapacity || 300 %> ingressos acabaram. Entre na comunidade para saber dos próximos eventos em primeira mão.</p>
+            <a class="btn btn-block" style="margin-top:28px" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
           <% } %>
         </div>
       </div>
     </section>
 
-    <section class="s" data-reveal>
+    <section class="more" id="comunidade">
       <div class="wrap">
-        <p class="eyebrow" data-item>Como funciona</p>
-        <h2 class="s-title" data-item>Três passos, <span class="thin">sem complicação.</span></h2>
-        <div class="steps">
-          <div class="step" data-item><span class="k">1</span><h3>Escolha a quantidade</h3><p>Selecione quantos ingressos você quer e informe seus dados.</p></div>
-          <div class="step" data-item><span class="k">2</span><h3>Pague com Pix ou cartão</h3><p>Pagamento seguro pelo Mercado Pago. A confirmação é automática.</p></div>
-          <div class="step" data-item><span class="k">3</span><h3>Receba o QR Code</h3><p>O ingresso chega por e-mail e fica disponível em "Meus ingressos". É só apresentar na entrada.</p></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="s" data-reveal style="padding-top:0">
-      <div class="wrap">
-        <p class="eyebrow" data-item>Dúvidas</p>
-        <h2 class="s-title" data-item>Perguntas <span class="thin">frequentes.</span></h2>
-        <div class="faq" data-item>
-          <details><summary>Como recebo meu ingresso?<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><p>Depois da confirmação do pagamento, o ingresso com QR Code é enviado para o e-mail informado e fica disponível na página do pedido e em "Meus ingressos".</p></details>
-          <details><summary>Quais são as formas de pagamento?<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><p>Pix e cartão de crédito, processados pelo Mercado Pago.</p></details>
-          <details><summary>O ingresso é pessoal?<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><p>Sim. O ingresso é pessoal e intransferível, válido para uma única entrada. O QR Code só pode ser validado uma vez.</p></details>
-          <details><summary>Posso desistir da compra?<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></summary><p>Sim. Você pode desistir em até <%= refundDays %> dias corridos da compra, com reembolso integral, conforme o art. 49 do Código de Defesa do Consumidor. Veja a <a href="/politica-de-cancelamento" style="color:var(--accent)">política de cancelamento</a>.</p></details>
-        </div>
-      </div>
-    </section>
-
-    <section class="s cta-final" id="comunidade" data-reveal>
-      <div class="wrap">
-        <p class="eyebrow" data-item>Falta pouco</p>
-        <h2 class="s-title" data-item>Nos vemos <span class="thin">lá.</span></h2>
-        <div class="cd" id="countdown" data-start="<%= eventInfo.startAt || '' %>" data-item>
-          <div><span class="num" data-u="d">--</span><span class="lab">dias</span></div>
-          <div><span class="num" data-u="h">--</span><span class="lab">horas</span></div>
-          <div><span class="num" data-u="m">--</span><span class="lab">min</span></div>
-          <div><span class="num" data-u="s">--</span><span class="lab">seg</span></div>
-        </div>
-        <div style="display:flex; flex-wrap:wrap; gap:12px; justify-content:center" data-item>
-          <% if (lote && !comingSoon) { %><a class="btn" href="#ingressos">Garantir ingresso<svg class="i" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a><% } %>
-          <a class="btn btn-ghost" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
-        </div>
+        <h2 style="font-size:clamp(1.5rem,4vw,2.25rem)">Fique por dentro</h2>
+        <p>Entre na comunidade no WhatsApp e receba as novidades em primeira mão.</p>
+        <a class="btn btn-line" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
       </div>
     </section>
   </main>
 
-  <footer>
+  <footer class="foot">
     <div class="wrap">
-      <div class="links" style="padding-block: 28px">
-        <a href="/meus-ingressos">Já comprei, ver meus ingressos</a>
-        <a href="/pesquisa">Responder a pesquisa</a>
-        <a href="/politica-de-privacidade">Política de privacidade</a>
-        <a href="/termos-de-uso">Termos de uso</a>
-        <a href="/politica-de-cancelamento">Política de cancelamento</a>
+      <div class="links">
+        <a href="/meus-ingressos">Meus ingressos</a>
+        <a href="/pesquisa">Pesquisa</a>
+        <a href="/politica-de-privacidade">Privacidade</a>
+        <a href="/termos-de-uso">Termos</a>
+        <a href="/politica-de-cancelamento">Cancelamento</a>
       </div>
       <%- include('partials/footer_legal') %>
     </div>
@@ -452,127 +268,124 @@
 
   <%- include('partials/lgpd_banner') %>
 
-  <script src="/vendor/gsap.min.js"></script>
-  <script src="/vendor/ScrollTrigger.min.js"></script>
-  <script src="/vendor/lenis.min.js"></script>
-  <script src="/vendor/split-type.min.js"></script>
   <script>
     (function () {
-      var isMobile = window.matchMedia('(max-width: 768px)').matches || 'ontouchstart' in window;
       var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      var hasGsap = typeof gsap !== 'undefined';
-      var hasST = hasGsap && typeof ScrollTrigger !== 'undefined';
-      var lenis = null;
-      if (hasST) gsap.registerPlugin(ScrollTrigger);
+      var fine = window.matchMedia('(hover: hover)').matches;
+      var SVG = {
+        balloon: function (c) { return '<svg viewBox="0 0 40 64"><ellipse cx="20" cy="22" rx="16" ry="20" fill="' + c + '"/><path d="M20 42l-3.5 5.5h7z" fill="' + c + '"/><path d="M20 47.5c-6 6 5 9 0 16" stroke="#0E1626" stroke-opacity=".45" stroke-width="1.2" fill="none"/><ellipse cx="13" cy="14" rx="3.6" ry="6" fill="#fff" fill-opacity=".5"/></svg>'; },
+        note: function (c) { return '<svg viewBox="0 0 24 24"><path d="M9 18V5l11-2v13" fill="none" stroke="' + c + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" fill="' + c + '"/><circle cx="17" cy="16" r="3" fill="' + c + '"/></svg>'; },
+        star: function (c) { return '<svg viewBox="0 0 24 24"><path d="M12 1l2.6 8.4L23 12l-8.4 2.6L12 23l-2.6-8.4L1 12l8.4-2.6z" fill="' + c + '"/></svg>'; },
+        cloud: function () { return '<svg viewBox="0 0 120 50"><g fill="#fff"><circle cx="30" cy="32" r="16"/><circle cx="52" cy="22" r="20"/><circle cx="80" cy="30" r="16"/><rect x="26" y="30" width="64" height="18" rx="9"/></g></svg>'; }
+      };
+      var COLORS = ['#FFD21E', '#FFFFFF', '#1E90E8', '#FF9F1C', '#0E1626'];
+      function rnd(a, b) { return a + Math.random() * (b - a); }
+      function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-      // ----- smooth scroll (desktop only, never required)
-      if (typeof Lenis !== 'undefined' && !isMobile && !reduce) {
-        try {
-          lenis = new Lenis({ duration: 1.1, smoothWheel: true, syncTouch: false });
-          if (hasST) {
-            lenis.on('scroll', ScrollTrigger.update);
-            gsap.ticker.add(function (t) { lenis.raf(t * 1000); });
-            gsap.ticker.lagSmoothing(0);
-          } else {
-            var raf = function (t) { lenis.raf(t); requestAnimationFrame(raf); };
-            requestAnimationFrame(raf);
-          }
-        } catch (e) { lenis = null; }
+      // ----- drifting clouds
+      var clouds = document.getElementById('clouds');
+      if (clouds) {
+        for (var i = 0; i < 5; i++) {
+          var c = document.createElement('div');
+          c.className = 'cloud';
+          c.innerHTML = SVG.cloud();
+          c.style.top = rnd(8, 62) + '%';
+          c.style.setProperty('--w', rnd(120, 260) + 'px');
+          c.style.setProperty('--o', rnd(0.55, 0.95).toFixed(2));
+          c.style.setProperty('--b', i % 2 ? '2px' : '0px');
+          c.style.setProperty('--d', rnd(70, 130) + 's');
+          c.style.setProperty('--delay', (-rnd(0, 120)) + 's');
+          clouds.appendChild(c);
+        }
       }
-      document.querySelectorAll('a[href^="#"]').forEach(function (a) {
-        a.addEventListener('click', function (e) {
-          var target = document.querySelector(a.getAttribute('href'));
-          if (!target) return;
-          e.preventDefault();
-          if (lenis) lenis.scrollTo(target, { offset: -70 }); else target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
-        });
-      });
 
-      // ----- hero video (poster stays if autoplay is blocked or motion is reduced)
-      var vid = document.querySelector('.frame video');
+      // ----- floating things: balloons, notes and sparkles on two depth layers
+      function fill(layerId, count, depth) {
+        var layer = document.getElementById(layerId);
+        if (!layer) return;
+        var kinds = ['balloon', 'balloon', 'note', 'note', 'star'];
+        for (var i = 0; i < count; i++) {
+          var kind = pick(kinds);
+          var el = document.createElement('div');
+          el.className = 'fl';
+          var size = kind === 'balloon' ? rnd(30, 56) : kind === 'note' ? rnd(22, 36) : rnd(12, 22);
+          if (depth === 'front') size *= 1.35;
+          el.style.setProperty('--x', rnd(2, 96) + '%');
+          el.style.setProperty('--s', size + 'px');
+          el.style.setProperty('--d', rnd(16, 34) + 's');
+          el.style.setProperty('--delay', (-rnd(0, 34)) + 's');
+          el.style.setProperty('--dx', rnd(-90, 90) + 'px');
+          el.style.setProperty('--sw', rnd(2.6, 5.2) + 's');
+          el.style.setProperty('--o', depth === 'front' ? rnd(0.75, 0.95).toFixed(2) : rnd(0.6, 0.9).toFixed(2));
+          if (depth === 'front') el.style.setProperty('--b', '1.5px');
+          el.innerHTML = SVG[kind](pick(COLORS));
+          layer.appendChild(el);
+        }
+      }
+      var small = window.matchMedia('(max-width: 560px)').matches;
+      if (!reduce) {
+        fill('layer-back', small ? 8 : 14, 'back');
+        fill('layer-front', small ? 3 : 5, 'front');
+      }
+
+      // ----- pointer + scroll parallax (desktop pointer only; cheap transforms)
+      var stage = document.getElementById('stage');
+      var back = document.getElementById('layer-back');
+      var front = document.getElementById('layer-front');
+      var px = 0, py = 0, sy = 0, ticking = false;
+      function apply() {
+        ticking = false;
+        if (back) back.style.transform = 'translate3d(' + (px * -14) + 'px,' + (py * -10 - sy * 0.04) + 'px,0)';
+        if (front) front.style.transform = 'translate3d(' + (px * 26) + 'px,' + (py * 18 - sy * 0.12) + 'px,0)';
+        if (stage) stage.style.transform = 'translate3d(' + (px * 8) + 'px,' + (py * 6 - sy * 0.06) + 'px,0)';
+      }
+      function req() { if (!ticking) { ticking = true; requestAnimationFrame(apply); } }
+      if (!reduce) {
+        window.addEventListener('scroll', function () { sy = Math.min(window.scrollY, 700); req(); }, { passive: true });
+        if (fine) {
+          window.addEventListener('pointermove', function (e) {
+            px = (e.clientX / window.innerWidth - 0.5) * 2;
+            py = (e.clientY / window.innerHeight - 0.5) * 2;
+            req();
+          }, { passive: true });
+        }
+      }
+
+      // ----- hero video (poster stays when autoplay is blocked / motion reduced)
+      var vid = document.querySelector('.card-video video');
       if (vid) {
         if (reduce) { vid.pause(); vid.removeAttribute('autoplay'); }
-        else { var p = vid.play(); if (p && p.catch) p.catch(function () {}); }
+        else { var pr = vid.play(); if (pr && pr.catch) pr.catch(function () {}); }
       }
 
-      // ----- hero choreography
-      if (hasGsap && !reduce) {
-        var h1 = document.querySelector('.v2-h1');
-        if (typeof SplitType !== 'undefined' && h1) {
-          try {
-            var split = new SplitType(h1, { types: 'words' });
-            gsap.from(split.words, { opacity: 0, y: 40, duration: 1.1, stagger: 0.09, ease: 'expo.out' });
-          } catch (e) {}
-        }
-        gsap.from('[data-hero]', { opacity: 0, y: 24, duration: 0.9, stagger: 0.1, delay: 0.3, ease: 'expo.out' });
-        gsap.from('.frame', { opacity: 0, scale: 0.95, duration: 1.2, ease: 'expo.out' });
+      // ----- days left
+      var dl = document.getElementById('days-left');
+      var startAt = Date.parse('<%= eventInfo.startAt || '' %>');
+      if (dl && !Number.isNaN(startAt)) {
+        var days = Math.ceil((startAt - Date.now()) / 86400000);
+        dl.textContent = days > 1 ? 'faltam ' + days + ' dias' : days === 1 ? 'é amanhã' : 'é hoje';
       }
 
-      // ----- section reveals (content is visible by default; GSAP animates from)
-      if (hasST && !reduce) {
-        gsap.utils.toArray('[data-reveal]').forEach(function (sec) {
-          var items = sec.querySelectorAll('[data-item]');
-          gsap.from(items.length ? items : sec, {
-            opacity: 0, y: 40, duration: 0.9, stagger: 0.1, ease: 'expo.out',
-            scrollTrigger: { trigger: sec, start: 'top 82%', toggleActions: 'play none none none' }
-          });
-        });
-        // one scroll-linked moment: the big type drifts in opposite directions
-        if (!isMobile) {
-          gsap.to('#bt1', { xPercent: -22, ease: 'none', scrollTrigger: { trigger: '.bigtype', start: 'top bottom', end: 'bottom top', scrub: true } });
-          gsap.fromTo('#bt2', { xPercent: -22 }, { xPercent: 0, ease: 'none', scrollTrigger: { trigger: '.bigtype', start: 'top bottom', end: 'bottom top', scrub: true } });
-        }
-      }
-      if (!hasST || reduce || isMobile) {
-        // mobile / fallback: a gentle CSS drift keeps the type alive without scrub
-        var bt = document.getElementById('bt1');
-        if (bt && !reduce) bt.style.animation = 'ann 40s linear infinite';
-      }
-
-      // ----- count-up numbers + progress bar
-      function countUp(el) {
-        var to = parseFloat(el.getAttribute('data-count')) || 0;
-        if (!hasGsap || reduce) { el.textContent = Math.round(to); return; }
-        var o = { v: 0 };
-        gsap.to(o, { v: to, duration: 1.6, ease: 'expo.out', onUpdate: function () { el.textContent = Math.round(o.v); } });
-      }
-      var counts = document.querySelectorAll('[data-count]');
+      // ----- availability bar
       var bar = document.querySelector('.bar b');
-      function onView(el, fn) {
-        if (!('IntersectionObserver' in window)) { fn(); return; }
-        var io = new IntersectionObserver(function (en) { if (en[0].isIntersecting) { fn(); io.disconnect(); } }, { threshold: 0.4 });
-        io.observe(el);
-      }
-      counts.forEach(function (el) { onView(el, function () { countUp(el); }); });
       if (bar) {
-        bar.style.transition = reduce ? 'none' : 'width 1.4s cubic-bezier(0.22, 1, 0.36, 1)';
-        onView(bar, function () { bar.style.width = bar.getAttribute('data-pct') + '%'; });
+        if (reduce) bar.style.transition = 'none';
+        var go = function () { bar.style.width = bar.getAttribute('data-pct') + '%'; };
+        if ('IntersectionObserver' in window) {
+          var bo = new IntersectionObserver(function (en) { if (en[0].isIntersecting) { go(); bo.disconnect(); } }, { threshold: 0.5 });
+          bo.observe(bar);
+        } else { go(); }
       }
 
-      // ----- countdown
-      var cd = document.getElementById('countdown');
-      var start = cd && cd.getAttribute('data-start') ? Date.parse(cd.getAttribute('data-start')) : NaN;
-      function tick() {
-        var left = Math.max(0, start - Date.now());
-        var s = Math.floor(left / 1000);
-        var map = { d: Math.floor(s / 86400), h: Math.floor((s % 86400) / 3600), m: Math.floor((s % 3600) / 60), s: s % 60 };
-        Object.keys(map).forEach(function (k) {
-          var el = cd.querySelector('[data-u="' + k + '"]');
-          if (el) el.textContent = k === 'd' ? String(map[k]) : String(map[k]).padStart(2, '0');
-        });
-      }
-      if (cd && !Number.isNaN(start)) { tick(); setInterval(tick, 1000); }
-      else if (cd) { cd.style.display = 'none'; }
-
-      // ----- sticky buy bar (mobile): after the hero, hidden while the buy panel is on screen
+      // ----- sticky buy bar on phones: after the hero, hidden while buying
       var sticky = document.getElementById('sticky-cta');
       var buy = document.getElementById('ingressos');
-      var heroEl = document.querySelector('.hero-actions');
-      if (sticky && buy && heroEl && 'IntersectionObserver' in window) {
+      var hero = document.getElementById('hero');
+      if (sticky && buy && hero && 'IntersectionObserver' in window) {
         var heroOut = false, buyIn = false;
-        var update = function () { sticky.classList.toggle('show', heroOut && !buyIn); };
-        new IntersectionObserver(function (en) { heroOut = !en[0].isIntersecting; update(); }, { threshold: 0.05 }).observe(heroEl);
-        new IntersectionObserver(function (en) { buyIn = en[0].isIntersecting; update(); }, { threshold: 0.15 }).observe(buy);
+        var upd = function () { sticky.classList.toggle('show', heroOut && !buyIn); };
+        new IntersectionObserver(function (en) { heroOut = !en[0].isIntersecting; upd(); }, { threshold: 0.15 }).observe(hero);
+        new IntersectionObserver(function (en) { buyIn = en[0].isIntersecting; upd(); }, { threshold: 0.2 }).observe(buy);
       }
     })();
   </script>
