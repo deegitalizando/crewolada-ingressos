@@ -16,6 +16,7 @@
 
     <nav class="tabs-row">
       <a href="/admin" class="tab active">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
       <a href="/admin/lotes" class="tab">Lotes</a>
       <a href="/admin/cortesias" class="tab">Cortesias</a>
       <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
@@ -25,6 +26,7 @@
       <a href="/downloads" class="tab">Músicas</a>
     </nav>
 
+    <%- include('partials/event_switcher') %>
     <main class="card">
       <div class="stats-row">
         <div class="stat-box">

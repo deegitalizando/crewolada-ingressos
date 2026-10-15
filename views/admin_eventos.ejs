@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Eventos - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .ev-group { margin: 0 16px; }
+    .ev-group > h3 { margin: 4px 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); }
+    .ev-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+    .ev-card.atual { border-color: var(--ok); box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.35); }
+    .ev-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; justify-content: space-between; }
+    .ev-top h4 { margin: 0; font-size: 18px; }
+    .badge-st { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; }
+    .badge-st.atual { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .badge-st.futuro { background: rgba(57, 135, 229, 0.2); color: #9ec5f4; }
+    .badge-st.anterior { background: rgba(255, 255, 255, 0.1); color: var(--text-dim); }
+    .ev-meta { margin: 6px 0 12px; color: var(--text-dim); font-size: 13px; }
+    .ev-nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .ev-num { background: #1a1a1a; border-radius: 10px; padding: 8px 10px; }
+    .ev-num .l { font-size: 11px; color: var(--text-dim); }
+    .ev-num .v { font-size: 18px; font-weight: 800; }
+    .ev-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .ev-actions a, .ev-actions form { display: inline-block; }
+    .ev-actions button, .ev-actions a button { margin: 0; width: auto; padding: 8px 14px; font-size: 13px; }
+    .ev-form { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
+    @media (min-width: 640px) { .ev-form { grid-template-columns: 1fr 1fr; } }
+    .ev-form .full { grid-column: 1 / -1; }
+    details.ev-edit summary { cursor: pointer; color: var(--text-dim); font-size: 13px; }
+    .empty-g { color: var(--text-dim); font-size: 13px; margin: 0 0 14px; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab active">Eventos</a>
+      <a href="/admin/lotes" class="tab">Lotes</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+    </nav>
+
+    <% if (msg) { %>
+      <div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac">
+        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
+      </div>
+    <% } %>
+
+    <%
+      const money = function (n) { return 'R$ ' + (Math.round(n * 100) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
+    %>
+
+    <% [{ key: 'atual', title: 'Evento atual (à venda no site)', list: atual },
+        { key: 'futuro', title: 'Próximos eventos', list: futuros },
+        { key: 'anterior', title: 'Eventos anteriores', list: anteriores }].forEach(function(g) { %>
+      <section class="ev-group">
+        <h3><%= g.title %></h3>
+        <% if (g.list.length === 0) { %>
+          <p class="empty-g"><%= g.key === 'futuro' ? 'Nenhum evento futuro cadastrado. Crie um abaixo.' : 'Nenhum evento aqui.' %></p>
+        <% } %>
+        <% g.list.forEach(function(c) { %>
+          <article class="ev-card <%= c.status %>">
+            <div class="ev-top">
+              <h4><%= c.name %></h4>
+              <span class="badge-st <%= c.status %>"><%= c.status === 'atual' ? 'Atual' : (c.status === 'futuro' ? 'Futuro' : 'Anterior') %></span>
+            </div>
+            <p class="ev-meta">
+              <%= c.dateLabel %><%= c.timeLabel ? ' · ' + c.timeLabel : '' %> &middot; <%= c.venue || 'Local a definir' %>
+            </p>
+            <div class="ev-nums">
+              <div class="ev-num"><div class="l">Ingressos vendidos</div><div class="v"><%= c.stats.tickets %><%= (c.capacity || c.lotesCapacity) ? ' / ' + (c.capacity || c.lotesCapacity) : '' %></div></div>
+              <div class="ev-num"><div class="l">Receita bruta</div><div class="v"><%= money(c.stats.revenue) %></div></div>
+              <div class="ev-num"><div class="l">Compareceram</div><div class="v"><%= c.stats.attended %></div></div>
+              <div class="ev-num"><div class="l">Cortesias</div><div class="v"><%= c.stats.courtesy %></div></div>
+            </div>
+            <div class="ev-actions">
+              <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas</button></a>
+              <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
+              <a href="/admin/lotes?evento=<%= c.id %>"><button type="button" class="btn-secondary">Lotes</button></a>
+              <% if (c.status !== 'atual') { %>
+                <form action="/admin/eventos/<%= c.id %>/atual" method="POST" onsubmit="return confirm('Definir este evento como atual? O site passa a vender os ingressos dele.')">
+                  <button type="submit">Definir como atual</button>
+                </form>
+              <% } %>
+              <% if (!c.isSeed && c.status !== 'atual' && !c.hasOrders) { %>
+                <form action="/admin/eventos/<%= c.id %>/excluir" method="POST" onsubmit="return confirm('Excluir este evento?')">
+                  <button type="submit" class="btn-secondary">Excluir</button>
+                </form>
+              <% } %>
+            </div>
+            <details class="ev-edit" style="margin-top:12px">
+              <summary>Editar dados do evento</summary>
+              <form action="/admin/eventos/<%= c.id %>/editar" method="POST" class="ev-form">
+                <label>Nome <input type="text" name="name" value="<%= c.name %>" required maxlength="60" /></label>
+                <label>Data e hora de início <input type="datetime-local" name="startAt" value="<%= c.startAtLocal %>" required /></label>
+                <label>Horário (texto exibido) <input type="text" name="timeLabel" value="<%= c.timeLabel %>" maxlength="40" placeholder="Das 15h às 22h" /></label>
+                <label>Capacidade (ingressos) <input type="number" name="capacity" value="<%= c.capacity || '' %>" min="0" /></label>
+                <label class="full">Local <input type="text" name="venue" value="<%= c.venue %>" maxlength="100" /></label>
+                <div class="full"><button type="submit">Salvar alterações</button></div>
+              </form>
+            </details>
+          </article>
+        <% }) %>
+      </section>
+    <% }) %>
+
+    <main class="card">
+      <h3 style="margin-top:0">Novo evento</h3>
+      <p class="hint" style="margin-top:0; text-align:left">Crie o evento futuro, programe os lotes dele na aba Lotes e, quando for a hora de vender, use "Definir como atual".</p>
+      <form action="/admin/eventos" method="POST" class="ev-form">
+        <label>Nome <input type="text" name="name" required maxlength="60" placeholder="Ex: Crewolada Natal" /></label>
+        <label>Data e hora de início <input type="datetime-local" name="startAt" required /></label>
+        <label>Horário (texto exibido) <input type="text" name="timeLabel" maxlength="40" placeholder="Das 15h às 22h" /></label>
+        <label>Capacidade (ingressos) <input type="number" name="capacity" min="0" /></label>
+        <label class="full">Local <input type="text" name="venue" maxlength="100" placeholder="Nome do local - Cidade/UF" /></label>
+        <div class="full"><button type="submit">Criar evento</button></div>
+      </form>
+    </main>
+  </div>
+</body>
+</html>

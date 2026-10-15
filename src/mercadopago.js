@@ -17,7 +17,7 @@ async function createPayment(order, formData) {
     body: {
       transaction_amount: Number(order.totalAmount),
       token: formData.token,
-      description: `Ingresso ${process.env.EVENT_NAME} - ${order.loteName}`,
+      description: `Ingresso ${require('./event').currentEvent.name} - ${order.loteName}`,
       installments: Number(formData.installments) || 1,
       payment_method_id: formData.payment_method_id,
       issuer_id: formData.issuer_id,

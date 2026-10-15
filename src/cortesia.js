@@ -85,6 +85,7 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
       mpPaymentId: null,
       paymentMethodId: 'cortesia',
       isCourtesy: true,
+      eventId: require('./event').currentEvent.id,
       courtesyLinkId: token,
       pixQrCode: null,
       pixQrCodeBase64: null,

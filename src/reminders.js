@@ -1,6 +1,7 @@
 const store = require('./store');
 const { sendReminder } = require('./n8n');
 const { getTemplates, renderTemplate } = require('./templates');
+const { currentEvent, inEvent, eventTemplateVars } = require('./event');
 
 const MILESTONES = ['dias5', 'dia1', 'diaEvento', 'hora1'];
 
@@ -49,10 +50,10 @@ function pickVariation(messageTemplate) {
 // gets a business number flagged/banned. 4-9s between sends keeps this
 // broadcast at a human-plausible pace.
 async function sendToAllPaidBuyers(db, messageTemplate) {
-  const buyers = Object.values(db.orders).filter((o) => o.status === 'paid');
+  const buyers = Object.values(db.orders).filter((o) => o.status === 'paid' && inEvent(o, currentEvent.id));
   for (let i = 0; i < buyers.length; i++) {
     const order = buyers[i];
-    const mensagem = renderTemplate(pickVariation(messageTemplate), { nome: order.buyerName });
+    const mensagem = renderTemplate(pickVariation(messageTemplate), { ...eventTemplateVars(), nome: order.buyerName });
     try {
       await sendReminder({
         nome: order.buyerName,
@@ -68,6 +69,15 @@ async function sendToAllPaidBuyers(db, messageTemplate) {
 }
 
 async function checkAndSendReminders() {
+  // First run for a new event: point the milestones at its start time and
+  // clear the "already sent" flags left over from the previous event.
+  if (store.load().remindersEventId !== currentEvent.id) {
+    await store.withDb((d) => {
+      d.remindersEventId = currentEvent.id;
+      if (currentEvent.startAt) d.eventStartAt = currentEvent.startAt;
+      d.remindersSent = {};
+    });
+  }
   const db = store.load();
 
   // Fixed milestones tied to the event date.

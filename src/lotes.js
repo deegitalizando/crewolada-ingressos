@@ -7,11 +7,21 @@ const DEFAULT_LOTES = [
   { name: '3o Lote', quantity: 800, price: 25.0 },
 ];
 
-function getLotes(db) {
-  if (Array.isArray(db.lotes) && db.lotes.length > 0) {
-    return db.lotes.map((l) => ({ name: l.name, quantity: Number(l.quantity), price: Number(l.price) }));
+const { currentEvent, LEGACY_EVENT, getEventById } = require('./event');
+
+const normalize = (list) => list.map((l) => ({ name: l.name, quantity: Number(l.quantity), price: Number(l.price) }));
+
+// Lotes belong to an event. The first event keeps using db.lotes (with the
+// built-in defaults); every later event uses the lotes saved in /admin/lotes,
+// falling back to the event's own defaultLotes (never the previous event's).
+function getLotes(db, eventId = currentEvent.id) {
+  if (eventId === LEGACY_EVENT.id) {
+    if (Array.isArray(db.lotes) && db.lotes.length > 0) return normalize(db.lotes);
+    return DEFAULT_LOTES;
   }
-  return DEFAULT_LOTES;
+  const list = (db.eventLotes || {})[eventId];
+  if (Array.isArray(list) && list.length > 0) return normalize(list);
+  return normalize(getEventById(eventId).defaultLotes || []);
 }
 
 // Ticket price follows how many have already sold: the first lote's

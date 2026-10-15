@@ -1,0 +1,8 @@
+<% if (typeof events !== 'undefined' && events && events.length > 0) { %>
+<div class="tabs-row" style="margin:0 16px 8px">
+  <% events.forEach(function(e) { %>
+    <a href="?evento=<%= e.id %>" class="tab <%= e.id === selectedEventId ? 'active' : '' %>"><%= e.name %> &middot; <%= e.dateLabel %> <span style="opacity:.75">(<%= e.statusLabel %>)</span></a>
+  <% }) %>
+  <a href="/admin/eventos" class="tab">Gerenciar eventos</a>
+</div>
+<% } %>

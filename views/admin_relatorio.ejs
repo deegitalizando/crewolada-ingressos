@@ -104,6 +104,7 @@
 
     <nav class="tabs-row no-print">
       <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
       <a href="/admin/lotes" class="tab">Lotes</a>
       <a href="/admin/cortesias" class="tab">Cortesias</a>
       <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
@@ -122,6 +123,7 @@
       <button type="button" class="btn-secondary no-print" onclick="window.print()">Imprimir / salvar PDF</button>
     </div>
 
+    <%- include('partials/event_switcher') %>
     <% if (!report.hasData) { %>
       <main class="card">
         <p class="empty">Ainda não há vendas pagas para montar o relatório.</p>

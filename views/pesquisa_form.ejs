@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <title>Pesquisa do público - <%= eventInfo.name %></title>
+  <title>Pesquisa do público - <%= eventInfo.brand || eventInfo.name %></title>
   <%- include('partials/head') %>
   <script>document.documentElement.classList.add('js');</script>
   <style>
@@ -75,12 +75,12 @@
 <body>
   <div class="page">
     <header class="hero hero-sm">
-      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.brand || eventInfo.name %>" />
     </header>
 
     <main class="card survey">
       <h2>Queremos conhecer você</h2>
-      <p class="intro">Leva cerca de 1 minuto. Suas respostas ajudam a montar a próxima <%= eventInfo.name %> do jeito que a nossa comunidade merece.</p>
+      <p class="intro">Leva cerca de 1 minuto. Suas respostas ajudam a montar a próxima <%= eventInfo.brand || eventInfo.name %> do jeito que a nossa comunidade merece.</p>
 
       <% if (errors && errors.length) { %>
         <div class="alert"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div>
@@ -136,7 +136,7 @@
 
         <section class="step auto" data-id="conheceFesta">
           <fieldset>
-            <legend>Você já conhece a <%= eventInfo.name %>?</legend>
+            <legend>Você já conhece a <%= eventInfo.brand || eventInfo.name %>?</legend>
             <div class="chips"><% opcoes.conheceFesta.forEach(function(o, i) { %><%- chip('conheceFesta', o, i === 0) %><% }) %></div>
           </fieldset>
         </section>
@@ -218,7 +218,7 @@
           <label class="check">
             <input type="checkbox" name="consent" required <%= val('consent') ? 'checked' : '' %> />
             <span>
-              Concordo que a organização da <%= eventInfo.name %> use as informações acima para conhecer o perfil do público e melhorar os próximos eventos.
+              Concordo que a organização da <%= eventInfo.brand || eventInfo.name %> use as informações acima para conhecer o perfil do público e melhorar os próximos eventos.
               Sei que informações sobre religião são dados sensíveis, que responder é opcional e que posso pedir a exclusão dos meus dados a qualquer momento.
               Se tenho menos de 18 anos, estou preenchendo com a autorização do meu responsável.
               Veja a <a href="/politica-de-privacidade" target="_blank">Política de Privacidade</a>.
@@ -226,7 +226,7 @@
           </label>
           <label class="check">
             <input type="checkbox" name="aceitaNovidades" <%= val('aceitaNovidades') ? 'checked' : '' %> />
-            <span>Quero receber novidades, avisos de ingressos e promoções da <%= eventInfo.name %> pelo WhatsApp e e-mail. <span class="opt">(opcional)</span></span>
+            <span>Quero receber novidades, avisos de ingressos e promoções da <%= eventInfo.brand || eventInfo.name %> pelo WhatsApp e e-mail. <span class="opt">(opcional)</span></span>
           </label>
         </section>
 

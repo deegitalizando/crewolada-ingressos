@@ -1,6 +1,7 @@
 const axios = require('axios');
 const store = require('./store');
 const { getTemplates, renderTemplate } = require('./templates');
+const { eventForOrder, eventTemplateVars } = require('./event');
 
 function normalizePhone(rawPhone) {
   const digits = String(rawPhone || '').replace(/\D/g, '');
@@ -39,6 +40,7 @@ async function notifyOrderApproved(order, tickets, { origin = 'compra', channel 
     const numeroSorteio = ticket.drawNumber ? String(ticket.drawNumber).padStart(6, '0') : '';
     const mensagemPersonalizada = templates.compra
       ? renderTemplate(templates.compra, {
+          ...eventTemplateVars(eventForOrder(order)),
           nome: order.buyerName,
           nomeLote: order.loteName,
           codigo: ticket.code,

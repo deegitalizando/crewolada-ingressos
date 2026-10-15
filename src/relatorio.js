@@ -1,5 +1,6 @@
 const store = require('./store');
 const { getLotes } = require('./lotes');
+const { currentEvent, EVENTS, inEvent, getEventById, eventStatus } = require('./event');
 
 // Brasilia has had no DST since 2019, so a fixed -3h shift is exact.
 const BRT_MS = 3 * 60 * 60 * 1000;
@@ -64,12 +65,19 @@ function dddOf(phone) {
   return d.length >= 10 ? Number(d.slice(0, 2)) : null;
 }
 
-function buildReport(db, eventInfo) {
-  const orders = Object.values(db.orders || {});
-  const tickets = Object.values(db.tickets || {});
-  const lotes = getLotes(db);
-  const orderById = db.orders || {};
-  const startIso = eventStart(db, eventInfo);
+function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
+  const ev = getEventById(eventId);
+  const scopedOrders = {};
+  Object.values(rawDb.orders || {}).forEach((o) => { if (inEvent(o, eventId)) scopedOrders[o.id] = o; });
+  const scopedTickets = {};
+  Object.values(rawDb.tickets || {}).forEach((t) => { if (scopedOrders[t.orderId]) scopedTickets[t.code] = t; });
+  const db = { ...rawDb, orders: scopedOrders, tickets: scopedTickets };
+
+  const orders = Object.values(db.orders);
+  const tickets = Object.values(db.tickets);
+  const lotes = getLotes(rawDb, eventId);
+  const orderById = db.orders;
+  const startIso = ev.startAt || eventStart(db, eventInfo);
   const startBrt = startIso ? brt(startIso) : null;
 
   // ---- populations -------------------------------------------------
@@ -502,7 +510,7 @@ function buildReport(db, eventInfo) {
 
   return {
     generatedAt: new Date().toISOString(),
-    event: { name: eventInfo.name, dateLabel: eventInfo.dateLabel, venue: eventInfo.venue, startIso },
+    event: { name: ev.name, dateLabel: ev.dateLabel, venue: ev.venue, startIso },
     kpis,
     charts,
     payment: [
@@ -534,7 +542,11 @@ function buildReport(db, eventInfo) {
 function registerRelatorioRoutes(app, { requireAdminAuth, eventInfo }) {
   app.get('/admin/relatorio', requireAdminAuth, (req, res) => {
     const db = store.load();
-    res.render('admin_relatorio', { eventInfo, report: buildReport(db, eventInfo) });
+    const eventId = EVENTS.some((e) => e.id === req.query.evento) ? req.query.evento : currentEvent.id;
+    const events = EVENTS
+      .filter((e) => e.id === currentEvent.id || Object.values(db.orders || {}).some((o) => inEvent(o, e.id)))
+      .map((e) => ({ id: e.id, name: e.name, dateLabel: e.dateLabel, statusLabel: eventStatus(e) }));
+    res.render('admin_relatorio', { eventInfo, report: buildReport(db, eventInfo, eventId), events, selectedEventId: eventId });
   });
 }
 

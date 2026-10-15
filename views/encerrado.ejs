@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <title><%= eventInfo.name %> - Obrigado!</title>
-  <meta name="description" content="Obrigado por fazer parte da última <%= eventInfo.name %>. Entre na nossa comunidade e fique por dentro das novidades em primeira mão." />
+  <title><%= eventInfo.brand || eventInfo.name %> - Obrigado!</title>
+  <meta name="description" content="Obrigado por fazer parte da última <%= eventInfo.brand || eventInfo.name %>. Entre na nossa comunidade e fique por dentro das novidades em primeira mão." />
   <%- include('partials/head') %>
   <style>
     .thanks { text-align: center; padding: 24px 22px 24px; margin-top: 16px; }
@@ -32,16 +32,16 @@
 <body>
   <div class="page">
     <main class="card thanks">
-      <img class="logo-big" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <img class="logo-big" src="/img/logo.jpg" alt="<%= eventInfo.brand || eventInfo.name %>" />
       <h1>Obrigado por fazer parte!</h1>
-      <p class="lead">Muito obrigado por ter participado da última <strong><%= eventInfo.name %></strong>. A noite foi de música, cultura, fé e identidade, e só aconteceu por causa de você.</p>
+      <p class="lead">Muito obrigado por ter participado da última <strong><%= eventInfo.brand || eventInfo.name %></strong>. A noite foi de música, cultura, fé e identidade, e só aconteceu por causa de você.</p>
       <p class="lead">Cada presença, cada voz e cada abraço fizeram essa festa ser o que ela foi.</p>
       <p class="tagline">Uma noite. Uma cultura. Uma família.</p>
     </main>
 
     <section class="card community">
       <h2>Fique por dentro das novidades</h2>
-      <p>Entre na nossa comunidade no WhatsApp e receba em primeira mão os avisos dos próximos eventos, os lançamentos de ingressos e as novidades da <%= eventInfo.name %>.</p>
+      <p>Entre na nossa comunidade no WhatsApp e receba em primeira mão os avisos dos próximos eventos, os lançamentos de ingressos e as novidades da <%= eventInfo.brand || eventInfo.name %>.</p>
       <a class="btn-community" href="<%= communityUrl %>" target="_blank" rel="noopener">
         <button type="button">💬 Entrar na comunidade</button>
       </a>

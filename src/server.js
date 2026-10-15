@@ -8,6 +8,8 @@ const cookieParser = require('cookie-parser');
 const store = require('./store');
 const mp = require('./mercadopago');
 const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
+const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents } = require('./event');
+const { registerEventosRoutes } = require('./eventos');
 
 // Once a lote has this many tickets or fewer left, the sales page starts
 // showing "restam X ingressos" as an urgency nudge. Above that, the exact
@@ -66,9 +68,9 @@ app.locals.metaPixelId = process.env.FACEBOOK_PIXEL_ID || '';
 // Consumer-facing contact + seller details shown in the legal footer and the
 // cancellation policy. SELLER_DOCUMENT / SELLER_ADDRESS are optional and only
 // rendered when set.
-// Sales are closed by default now that the event is over. Set SALES_OPEN=true
-// (in the environment) to bring the ticket page and checkout back for the next event.
-app.locals.salesOpen = process.env.SALES_OPEN === 'true';
+// Sales are open for the current event. SALES_OPEN=false closes them (the home
+// then shows the thank-you page and /checkout is blocked), e.g. after the event.
+app.locals.salesOpen = process.env.SALES_OPEN !== 'false';
 app.locals.communityUrl = process.env.COMMUNITY_URL || 'https://chat.whatsapp.com/IfH31ObCm3o66OHOM46oup';
 const REFUND_DAYS = Number(process.env.REFUND_DAYS || 7);
 app.locals.refundDays = REFUND_DAYS;
@@ -90,11 +92,44 @@ app.locals.refundDays = REFUND_DAYS;
   };
 }
 
+// The current event (src/event.js). Pages about an older order use that
+// order's own event through eventInfoFor(), so old tickets keep their data.
 const eventInfo = {
-  name: process.env.EVENT_NAME || 'Crewolada',
-  dateLabel: process.env.EVENT_DATE_LABEL || '10/10/2026',
-  venue: process.env.EVENT_VENUE || 'Bangu Atletico Clube',
+  id: currentEvent.id,
+  name: currentEvent.name,
+  brand: currentEvent.brand,
+  dateLabel: currentEvent.dateLabel,
+  timeLabel: currentEvent.timeLabel,
+  venue: currentEvent.venue,
+  startAt: currentEvent.startAt,
+  capacity: currentEvent.capacity || null,
 };
+const eventInfoFor = (order) => ({ ...eventInfo, ...eventForOrder(order) });
+
+// Re-read the current event after the admin changes events or switches the
+// one on sale. Single process, so memory is always up to date.
+function refreshEvents() {
+  syncEvents(store.load());
+  Object.assign(eventInfo, {
+    id: currentEvent.id,
+    name: currentEvent.name,
+    brand: currentEvent.brand,
+    dateLabel: currentEvent.dateLabel,
+    timeLabel: currentEvent.timeLabel,
+    venue: currentEvent.venue,
+    startAt: currentEvent.startAt,
+    capacity: currentEvent.capacity || null,
+  });
+}
+refreshEvents();
+
+const statusLabels = { atual: 'atual', anterior: 'anterior', futuro: 'futuro' };
+// Events offered in the dashboard/report switcher: current + any with orders.
+function eventsForSwitcher(db) {
+  return EVENTS
+    .filter((e) => e.id === currentEvent.id || Object.values(db.orders || {}).some((o) => inEvent(o, e.id)))
+    .map((e) => ({ id: e.id, name: e.name, dateLabel: e.dateLabel, statusLabel: statusLabels[eventStatus(e)] }));
+}
 
 // cortesia.<dominio> serves the same app but only exposes the invite pages
 // (and the assets/ticket views they link to) — never the sales page, checkout
@@ -128,10 +163,12 @@ function describeRejection(statusDetail) {
 // those buyers keep their valid tickets, they just don't eat into the real
 // launch's 1o Lote allotment.
 // Courtesy tickets never count toward lote inventory either.
-function getSoldCount(db) {
+// Only tickets of the given event count toward its lote stock.
+function getSoldCount(db, eventId = currentEvent.id) {
   return Object.values(db.tickets).filter((t) => {
     const order = db.orders[t.orderId];
-    return !order || (order.loteName !== 'Lote Teste' && !order.isCourtesy);
+    if (!order) return eventId === LEGACY_EVENT.id;
+    return inEvent(order, eventId) && order.loteName !== 'Lote Teste' && !order.isCourtesy;
   }).length;
 }
 
@@ -208,7 +245,13 @@ app.get('/', (req, res) => {
   const soldCount = getSoldCount(db);
   const lote = getCurrentLote(lotes, soldCount);
   const soldOutLotes = getSoldOutLotes(lotes, soldCount);
-  res.render('index', { eventInfo, lote, maxQty, error: null, soldOutLotes, lowStockThreshold: LOW_STOCK_THRESHOLD });
+  res.render('index', {
+    eventInfo, lote, maxQty, error: null, soldOutLotes, lowStockThreshold: LOW_STOCK_THRESHOLD,
+    comingSoon: lotes.length === 0,
+    soldCount,
+    totalCapacity: lotes.reduce((sum, l) => sum + l.quantity, 0) || eventInfo.capacity || 0,
+    baseUrl: process.env.BASE_URL || '',
+  });
 });
 
 const LEGAL_UPDATED_AT = '09/10/2026';
@@ -256,7 +299,11 @@ app.post('/api/pagamentos', async (req, res) => {
     }
 
     const db = store.load();
-    const lote = getCurrentLote(getLotes(db), getSoldCount(db));
+    const lotesNow = getLotes(db);
+    if (lotesNow.length === 0) {
+      return res.status(400).json({ error: 'A venda de ingressos ainda não foi aberta.' });
+    }
+    const lote = getCurrentLote(lotesNow, getSoldCount(db));
     if (!lote) {
       return res.status(400).json({ error: 'Os ingressos deste lote se esgotaram.' });
     }
@@ -270,6 +317,7 @@ app.post('/api/pagamentos', async (req, res) => {
       buyerPhone,
       buyerCpf: String(buyerCpf).replace(/\D/g, ''),
       quantity: qty,
+      eventId: currentEvent.id,
       loteName: lote.name,
       unitPrice: lote.price,
       totalAmount: Number((lote.price * qty).toFixed(2)),
@@ -319,7 +367,7 @@ app.get('/pedido/:id', (req, res) => {
   if (!order) return res.status(404).send('Pedido nao encontrado.');
 
   const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
-  res.render('order_status', { eventInfo, order, tickets, whatsappTicketLink: buildWhatsappTicketLink() });
+  res.render('order_status', { eventInfo: eventInfoFor(order), order, tickets, whatsappTicketLink: buildWhatsappTicketLink() });
 });
 
 app.get('/pedido/:id/participantes', (req, res) => {
@@ -328,7 +376,7 @@ app.get('/pedido/:id/participantes', (req, res) => {
   if (!order || order.status !== 'paid') return res.status(404).send('Pedido nao encontrado.');
 
   const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
-  res.render('participantes', { eventInfo, order, tickets, saved: req.query.saved === '1' });
+  res.render('participantes', { eventInfo: eventInfoFor(order), order, tickets, saved: req.query.saved === '1' });
 });
 
 app.post('/api/pedido/:id/participantes', async (req, res) => {
@@ -423,7 +471,7 @@ app.get('/ingresso/:code', (req, res) => {
   if (!ticket) return res.status(404).send('Ingresso nao encontrado.');
 
   const order = db.orders[ticket.orderId];
-  res.render('ticket', { eventInfo, ticket, order });
+  res.render('ticket', { eventInfo: order ? eventInfoFor(order) : eventInfo, ticket, order });
 });
 
 app.get('/ingresso/:code/pdf', (req, res) => {
@@ -644,7 +692,11 @@ app.get('/admin', (req, res) => {
   }
 
   const db = store.load();
-  const orders = Object.values(db.orders).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const selectedEventId = EVENTS.some((e) => e.id === req.query.evento) ? req.query.evento : currentEvent.id;
+  const events = eventsForSwitcher(db);
+  const orders = Object.values(db.orders)
+    .filter((o) => inEvent(o, selectedEventId))
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const stats = { totalRevenue: 0, ticketsSold: 0, paidOrders: 0 };
   const loteMap = {};
@@ -672,6 +724,8 @@ app.get('/admin', (req, res) => {
     eventInfo,
     stats,
     loteBreakdown: Object.values(loteMap),
+    events,
+    selectedEventId,
     orders: ordersWithDate,
     broadcastConfigured: Boolean(process.env.N8N_BROADCAST_WEBHOOK_URL),
   });
@@ -912,13 +966,19 @@ registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasili
 registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
 registerRelatorioRoutes(app, { requireAdminAuth, eventInfo });
+registerEventosRoutes(app, {
+  requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,
+});
 registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
   const db = store.load();
-  const lotes = getLotes(db);
-  const soldCount = getSoldCount(db);
-  res.render('admin_lotes', { eventInfo, lotes, soldCount, saved: req.query.saved === '1' });
+  const ev = EVENTS.find((e) => e.id === req.query.evento) || currentEvent;
+  const lotes = getLotes(db, ev.id);
+  const soldCount = getSoldCount(db, ev.id);
+  res.render('admin_lotes', {
+    eventInfo, lotesEvent: { ...ev, status: eventStatus(ev) }, lotes, soldCount, capacity: ev.capacity || null, saved: req.query.saved === '1',
+  });
 });
 
 app.post('/api/admin/lotes', requireAdminAuth, async (req, res) => {
@@ -935,11 +995,17 @@ app.post('/api/admin/lotes', requireAdminAuth, async (req, res) => {
     return res.status(400).send('Cadastre pelo menos um lote valido.');
   }
 
+  const evId = EVENTS.some((e) => e.id === req.body.evento) ? req.body.evento : currentEvent.id;
   await store.withDb((db) => {
-    db.lotes = lotes;
+    if (evId === LEGACY_EVENT.id) {
+      db.lotes = lotes;
+    } else {
+      db.eventLotes = db.eventLotes || {};
+      db.eventLotes[evId] = lotes;
+    }
   });
 
-  res.redirect('/admin/lotes?saved=1');
+  res.redirect(`/admin/lotes?evento=${encodeURIComponent(evId)}&saved=1`);
 });
 
 app.get('/admin/mensagens', requireAdminAuth, (req, res) => {
@@ -960,7 +1026,11 @@ app.post('/api/admin/mensagens', requireAdminAuth, async (req, res) => {
   const { compra, dias5, dia1, diaEvento, hora1, eventStartAt } = req.body;
   await store.withDb((db) => {
     db.messageTemplates = { compra, dias5, dia1, diaEvento, hora1 };
-    if (eventStartAt) db.eventStartAt = parseDatetimeLocalAsBrasilia(eventStartAt);
+    if (eventStartAt) {
+      const parsed = parseDatetimeLocalAsBrasilia(eventStartAt);
+      if (parsed !== db.eventStartAt) db.remindersSent = {};
+      db.eventStartAt = parsed;
+    }
   });
   res.redirect('/admin/mensagens?saved=1');
 });

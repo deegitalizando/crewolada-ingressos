@@ -2,6 +2,7 @@ const axios = require('axios');
 const PDFDocument = require('pdfkit');
 const store = require('./store');
 const { normalizePhone } = require('./n8n');
+const { eventForOrder } = require('./event');
 
 const GOLD = '#c9911f';
 const BLACK = '#0a0a0a';
@@ -202,7 +203,8 @@ async function sendReceiptNotification(orderId, { eventInfo, formatDatetime, cha
 
   const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
   const receipt = buildReceipt(order, tickets, formatDatetime);
-  const pdf = await buildReceiptPdf({ eventInfo, receipt });
+  const ev = { ...eventInfo, ...eventForOrder(order) };
+  const pdf = await buildReceiptPdf({ eventInfo: ev, receipt });
 
   await axios.post(
     webhookUrl,
@@ -216,7 +218,7 @@ async function sendReceiptNotification(orderId, { eventInfo, formatDatetime, cha
       pdfBase64: pdf.toString('base64'),
       fileName: `comprovante-${receipt.protocol}.pdf`,
       mensagemPersonalizada: buildReceiptMessage({ order, receipt, receiptUrl: receiptUrlFor(order) }),
-      assunto: `Comprovante de cancelamento${receipt.hasRefund ? ' e reembolso' : ''} - ${eventInfo.name} 2026`,
+      assunto: `Comprovante de cancelamento${receipt.hasRefund ? ' e reembolso' : ''} - ${ev.name}`,
       origem: 'comprovante',
       canal: channel,
     },
@@ -243,13 +245,13 @@ function registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDat
   app.get('/comprovante/:id', (req, res) => {
     const found = loadReceipt(req.params.id);
     if (!found) return res.status(404).send('Comprovante não encontrado.');
-    return res.render('comprovante', { eventInfo, receipt: found.receipt });
+    return res.render('comprovante', { eventInfo: { ...eventInfo, ...eventForOrder(found.order) }, receipt: found.receipt });
   });
 
   app.get('/comprovante/:id/pdf', async (req, res) => {
     const found = loadReceipt(req.params.id);
     if (!found) return res.status(404).send('Comprovante não encontrado.');
-    const buffer = await buildReceiptPdf({ eventInfo, receipt: found.receipt });
+    const buffer = await buildReceiptPdf({ eventInfo: { ...eventInfo, ...eventForOrder(found.order) }, receipt: found.receipt });
     res.set('Content-Type', 'application/pdf');
     res.set('Content-Disposition', `inline; filename="comprovante-${found.receipt.protocol}.pdf"`);
     return res.send(buffer);

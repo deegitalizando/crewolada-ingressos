@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <title>Obrigado! - <%= eventInfo.name %></title>
+  <title>Obrigado! - <%= eventInfo.brand || eventInfo.name %></title>
   <%- include('partials/head') %>
   <style>
     .invite { text-align: center; }
@@ -25,22 +25,22 @@
 <body>
   <div class="page">
     <header class="hero hero-sm">
-      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.brand || eventInfo.name %>" />
     </header>
 
     <main class="card" style="text-align:center">
       <h2 style="color:var(--accent); margin-top:0">Recebemos suas respostas!</h2>
-      <p class="hint" style="font-size:15px; line-height:1.6; margin-top:0">Muito obrigado por dedicar esse minuto. É assim que a gente aprende a fazer a próxima <strong><%= eventInfo.name %></strong> do jeito certo.</p>
+      <p class="hint" style="font-size:15px; line-height:1.6; margin-top:0">Muito obrigado por dedicar esse minuto. É assim que a gente aprende a fazer a próxima <strong><%= eventInfo.brand || eventInfo.name %></strong> do jeito certo.</p>
     </main>
 
     <section class="card invite">
       <span class="tag">Convite</span>
-      <h2>Faça parte da comunidade <%= eventInfo.name %></h2>
+      <h2>Faça parte da comunidade <%= eventInfo.brand || eventInfo.name %></h2>
       <p class="lead">Entre no nosso grupo do WhatsApp e receba tudo em primeira mão, antes de todo mundo.</p>
       <ul>
         <li><span class="i">🎟️</span><span>Saiba quando abrir a venda de ingressos e de cada lote.</span></li>
         <li><span class="i">📣</span><span>Fique por dentro da data, do local e das atrações dos próximos eventos.</span></li>
-        <li><span class="i">🤝</span><span>Faça parte de quem vive a <%= eventInfo.name %> junto com a gente.</span></li>
+        <li><span class="i">🤝</span><span>Faça parte de quem vive a <%= eventInfo.brand || eventInfo.name %> junto com a gente.</span></li>
       </ul>
       <a class="btn-community" href="<%= communityUrl %>" target="_blank" rel="noopener">
         <button type="button">💬 Entrar na comunidade</button>

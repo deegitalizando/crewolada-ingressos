@@ -17,14 +17,14 @@ function buildTicketPdf({ eventInfo, order, ticket }) {
     doc
       .fillColor(GOLD)
       .font('Helvetica-Bold')
-      .fontSize(26)
-      .text(eventInfo.name, 0, 40, { width: 320, align: 'center' });
+      .fontSize(String(eventInfo.name).length > 14 ? 20 : 26)
+      .text(eventInfo.name, 0, 42, { width: 320, align: 'center' });
 
     doc
       .fillColor('#ffffff')
       .font('Helvetica')
       .fontSize(11)
-      .text(`${eventInfo.dateLabel}  -  ${eventInfo.venue}`, 24, 76, { width: 272, align: 'center' });
+      .text(`${eventInfo.dateLabel}${eventInfo.timeLabel ? ` (${eventInfo.timeLabel})` : ''}  -  ${eventInfo.venue}`, 24, 74, { width: 272, align: 'center' });
 
     doc.moveTo(40, 108).lineTo(280, 108).strokeColor(GOLD).lineWidth(1).stroke();
 

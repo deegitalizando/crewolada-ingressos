@@ -16,6 +16,7 @@
 
     <nav class="tabs-row">
       <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
       <a href="/admin/lotes" class="tab active">Lotes</a>
       <a href="/admin/cortesias" class="tab">Cortesias</a>
       <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
@@ -26,10 +27,12 @@
     </nav>
 
     <main class="card">
-      <h3>Lotes de ingresso</h3>
+      <h3>Lotes de ingresso &mdash; <%= lotesEvent.name %> <span style="font-size:13px;font-weight:400;color:var(--text-dim)">(<%= lotesEvent.dateLabel %> &middot; <%= lotesEvent.status %>)</span></h3>
       <p class="hint" style="margin-top:0">
         <%= soldCount %> ingresso<%= soldCount === 1 ? '' : 's' %> ja vendido<%= soldCount === 1 ? '' : 's' %> no total.
         O preco cobrado segue a ordem dos lotes abaixo: o lote 1 vale ate sua quantidade se esgotar, depois passa pro lote 2, e assim por diante.
+        <% if (capacity) { %><br />Capacidade divulgada do evento: <strong><%= capacity %> ingressos</strong>.<% } %>
+        <% if (!lotes.length) { %><br /><strong>Nenhum lote programado:</strong> enquanto nao houver lotes, o site mostra "ingressos em breve" e nao vende.<% } %>
       </p>
 
       <% if (saved) { %>
@@ -37,6 +40,7 @@
       <% } %>
 
       <form action="/api/admin/lotes" method="POST" id="lotes-form">
+        <input type="hidden" name="evento" value="<%= lotesEvent.id %>" />
         <div id="lotes-rows"></div>
         <div class="btn-row" style="margin-top:12px">
           <button type="button" class="btn-secondary" id="add-lote">+ Adicionar lote</button>
