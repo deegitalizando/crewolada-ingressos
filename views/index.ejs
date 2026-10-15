@@ -27,7 +27,7 @@
     .v3 h1, .v3 h2, .v3 h3 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; margin: 0; letter-spacing: -0.03em; line-height: 1.02; }
     .v3 p { margin: 0; }
     .v3 a { color: inherit; }
-    .v3 main button { all: unset; box-sizing: border-box; cursor: pointer; }
+    :where(.v3 main) button { all: unset; box-sizing: border-box; cursor: pointer; }
     .wrap { width: min(1040px, 100% - 40px); margin-inline: auto; }
 
     /* ---------- buttons ---------- */
@@ -45,6 +45,43 @@
     .btn-line { background: transparent; box-shadow: none; border: 1.5px solid var(--ink); }
     .btn-line:hover { background: var(--ink); color: #fff; box-shadow: none; }
     .btn-block { display: flex; width: 100%; }
+
+    /* ---------- pay button ---------- */
+    .cta-buy {
+      position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%;
+      padding: 22px 26px; border-radius: 20px; font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; font-weight: 800;
+      font-size: 21px; letter-spacing: -0.01em; color: var(--ink); text-align: center; user-select: none; -webkit-tap-highlight-color: transparent;
+      background: linear-gradient(180deg, #FFE866 0%, #FFD21E 52%, #FFBE0B 100%);
+      box-shadow: 0 6px 0 #C79A00, 0 24px 44px -16px rgba(14, 22, 38, 0.5);
+      transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), filter 0.3s;
+      animation: buyglow 2.4s ease-in-out infinite;
+    }
+    @keyframes buyglow { 0%, 100% { box-shadow: 0 6px 0 #C79A00, 0 24px 44px -16px rgba(14,22,38,.5), 0 0 0 0 rgba(255,210,30,.65); }
+                         60% { box-shadow: 0 6px 0 #C79A00, 0 24px 44px -16px rgba(14,22,38,.5), 0 0 0 16px rgba(255,210,30,0); } }
+    .cta-buy::before {
+      content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; transform: skewX(-20deg); pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent); animation: buysweep 3.4s ease-in-out infinite;
+    }
+    @keyframes buysweep { 0%, 50% { left: -40%; } 100% { left: 140%; } }
+    .cta-buy:hover { transform: translateY(-3px); box-shadow: 0 9px 0 #C79A00, 0 30px 54px -16px rgba(14, 22, 38, 0.55); filter: saturate(1.08); }
+    .cta-buy:active { transform: translateY(5px); box-shadow: 0 1px 0 #C79A00, 0 8px 18px -8px rgba(14, 22, 38, 0.5); animation: none; }
+    .cta-buy .lbl { position: relative; z-index: 1; display: inline-flex; align-items: baseline; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .cta-buy .lbl small { font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; opacity: 0.75; }
+    .cta-buy .go {
+      position: relative; z-index: 1; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--yellow);
+      display: grid; place-items: center; transition: transform 0.4s var(--ease);
+    }
+    .cta-buy .go svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; animation: nudge 1.4s ease-in-out infinite; }
+    @keyframes nudge { 0%, 100% { transform: translateX(-2px); } 50% { transform: translateX(3px); } }
+    .cta-buy:hover .go { transform: scale(1.12) rotate(-8deg); }
+    .cta-buy .ripple { position: absolute; border-radius: 50%; background: rgba(255, 255, 255, 0.7); transform: scale(0); animation: ripple 0.65s ease-out forwards; pointer-events: none; }
+    @keyframes ripple { to { transform: scale(1); opacity: 0; } }
+    .cta-buy.loading { pointer-events: none; animation: none; filter: saturate(0.85); }
+    .cta-buy.loading .go svg { animation: none; }
+    .cta-buy.loading .go { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .confetti-bit { position: fixed; z-index: 90; width: 9px; height: 14px; border-radius: 2px; pointer-events: none; animation: confetti 0.9s ease-out forwards; }
+    @keyframes confetti { to { transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); opacity: 0; } }
     .btn[disabled] { opacity: 0.4; cursor: not-allowed; animation: none; }
 
     /* ---------- hero: living sky ---------- */
@@ -117,13 +154,13 @@
     .bar { height: 5px; border-radius: 3px; background: rgba(14, 22, 38, 0.1); overflow: hidden; }
     .bar b { display: block; height: 100%; width: 0; background: var(--ink); border-radius: 3px; transition: width 1.4s var(--ease); }
     .qty { display: flex; align-items: center; justify-content: center; gap: 28px; margin: 36px 0 8px; }
-    .qty-btn { width: 52px; height: 52px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 22px; transition: border-color 0.3s, transform 0.4s var(--ease), background-color 0.3s; }
+    .qty-btn { width: 52px; height: 52px; margin: 0; padding: 0; border-radius: 50%; background: transparent; color: var(--ink); border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 22px; transition: border-color 0.3s, transform 0.4s var(--ease), background-color 0.3s; }
     .qty-btn:hover { border-color: var(--ink); transform: scale(1.08); }
     .qty-btn[disabled] { opacity: 0.3; cursor: not-allowed; transform: none; }
     .qty-val { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 40px; min-width: 48px; letter-spacing: -0.04em; }
     .total { color: var(--muted); margin-bottom: 24px; }
     .total strong { color: var(--ink); font-size: 20px; margin-left: 6px; }
-    .trust { margin-top: 20px; font-size: 13px; color: var(--muted); }
+    .trust { margin-top: 30px; font-size: 13px; color: var(--muted); }
     .alert-v3 { border: 1px solid #e11d48; color: #9f1239; border-radius: 12px; padding: 12px 16px; margin-top: 16px; }
 
     .more { padding-block: 40px 100px; text-align: center; }
@@ -148,7 +185,8 @@
     }
     @media (min-width: 1024px) { .sticky-cta { display: none; } }
     @media (prefers-reduced-motion: reduce) {
-      .fl, .cloud, .card-video, .badge, .sunglow, .btn.pulse, .dot, .scroll-hint::after, .card-video::after { animation: none !important; }
+      .fl, .cloud, .card-video, .badge, .sunglow, .btn.pulse, .dot, .scroll-hint::after, .card-video::after,
+      .cta-buy, .cta-buy::before, .cta-buy .go svg { animation: none !important; }
       .fl svg { animation: none !important; }
       html { scroll-behavior: auto; }
     }
@@ -224,8 +262,10 @@
                 <button type="button" class="qty-btn" id="qty-plus" aria-label="Mais um ingresso">+</button>
               </div>
               <p class="total">Total <strong id="qty-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></strong></p>
-              <button type="submit" class="btn btn-block pulse">Ir para o pagamento
-                <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+              <button type="submit" class="cta-buy" id="cta-buy">
+                <span class="lbl"><span id="cta-text">Pagar agora</span> <small id="cta-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></small></span>
+                <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+              </button>
             </form>
             <p class="trust">Pix ou cartão · QR Code por e-mail · Desista em até <%= refundDays %> dias</p>
           <% } else { %>
@@ -401,16 +441,71 @@
       var minusBtn = document.getElementById('qty-minus');
       var plusBtn = document.getElementById('qty-plus');
       var qty = 1;
+      var ctaBtn = document.getElementById('cta-buy');
+      var ctaTotal = document.getElementById('cta-total');
+      var ctaText = document.getElementById('cta-text');
+      var calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
       function render() {
         qtyValue.textContent = qty;
         qtyInput.value = qty;
-        qtyTotal.textContent = 'R$ ' + (qty * unitPrice).toFixed(2).replace('.', ',');
+        var totalLabel = 'R$ ' + (qty * unitPrice).toFixed(2).replace('.', ',');
+        qtyTotal.textContent = totalLabel;
+        if (ctaTotal) ctaTotal.textContent = (qty > 1 ? qty + ' ingressos · ' : '') + totalLabel;
         if (qty <= 1) minusBtn.setAttribute('disabled', ''); else minusBtn.removeAttribute('disabled');
         if (qty >= maxQty) plusBtn.setAttribute('disabled', ''); else plusBtn.removeAttribute('disabled');
       }
       minusBtn.addEventListener('click', function () { if (qty > 1) { qty -= 1; render(); } });
       plusBtn.addEventListener('click', function () { if (qty < maxQty) { qty += 1; render(); } });
       render();
+
+      function confetti(x, y) {
+        if (calm) return;
+        var colors = ['#FFD21E', '#0E1626', '#FFFFFF', '#1E90E8', '#FF9F1C'];
+        for (var i = 0; i < 26; i++) {
+          var c = document.createElement('span');
+          c.className = 'confetti-bit';
+          c.style.left = x + 'px';
+          c.style.top = y + 'px';
+          c.style.background = colors[i % colors.length];
+          c.style.setProperty('--cx', (Math.random() * 300 - 150) + 'px');
+          c.style.setProperty('--cy', (Math.random() * -220 - 30) + 'px');
+          c.style.setProperty('--cr', (Math.random() * 720 - 360) + 'deg');
+          document.body.appendChild(c);
+          setTimeout(function (el) { el.remove(); }, 1000, c);
+        }
+      }
+
+      if (ctaBtn) {
+        // ripple + confetti where the finger/cursor landed
+        ctaBtn.addEventListener('pointerdown', function (e) {
+          if (calm) return;
+          var r = ctaBtn.getBoundingClientRect();
+          var size = Math.max(r.width, r.height) * 1.6;
+          var rp = document.createElement('span');
+          rp.className = 'ripple';
+          rp.style.width = rp.style.height = size + 'px';
+          rp.style.left = (e.clientX - r.left - size / 2) + 'px';
+          rp.style.top = (e.clientY - r.top - size / 2) + 'px';
+          ctaBtn.appendChild(rp);
+          setTimeout(function () { rp.remove(); }, 700);
+          confetti(e.clientX, e.clientY);
+        });
+        // magnetic pull toward the cursor (mouse only)
+        if (!calm && window.matchMedia('(hover: hover)').matches) {
+          ctaBtn.addEventListener('pointermove', function (e) {
+            var r = ctaBtn.getBoundingClientRect();
+            var dx = ((e.clientX - r.left) / r.width - 0.5) * 10;
+            var dy = ((e.clientY - r.top) / r.height - 0.5) * 6;
+            ctaBtn.style.translate = dx + 'px ' + dy + 'px';
+          });
+          ctaBtn.addEventListener('pointerleave', function () { ctaBtn.style.translate = ''; });
+        }
+        // feedback while the payment page loads
+        document.getElementById('qty-form').addEventListener('submit', function () {
+          ctaBtn.classList.add('loading');
+          if (ctaText) ctaText.textContent = 'Abrindo pagamento...';
+        });
+      }
     })();
   </script>
   <% } %>
