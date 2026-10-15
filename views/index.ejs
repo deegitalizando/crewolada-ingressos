@@ -50,7 +50,7 @@
     .cta-buy {
       position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 14px; width: 100%;
       padding: 22px 26px; border-radius: 20px; font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; font-weight: 800;
-      font-size: 21px; letter-spacing: -0.01em; color: var(--ink); text-align: center; user-select: none; -webkit-tap-highlight-color: transparent;
+      font-size: 21px; letter-spacing: -0.01em; text-transform: none; color: var(--ink); text-align: left; user-select: none; -webkit-tap-highlight-color: transparent;
       background: linear-gradient(180deg, #FFE866 0%, #FFD21E 52%, #FFBE0B 100%);
       box-shadow: 0 6px 0 #C79A00, 0 24px 44px -16px rgba(14, 22, 38, 0.5);
       transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease), filter 0.3s;
@@ -65,8 +65,8 @@
     @keyframes buysweep { 0%, 50% { left: -40%; } 100% { left: 140%; } }
     .cta-buy:hover { transform: translateY(-3px); box-shadow: 0 9px 0 #C79A00, 0 30px 54px -16px rgba(14, 22, 38, 0.55); filter: saturate(1.08); }
     .cta-buy:active { transform: translateY(5px); box-shadow: 0 1px 0 #C79A00, 0 8px 18px -8px rgba(14, 22, 38, 0.5); animation: none; }
-    .cta-buy .lbl { position: relative; z-index: 1; display: inline-flex; align-items: baseline; gap: 10px; flex-wrap: wrap; justify-content: center; }
-    .cta-buy .lbl small { font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; opacity: 0.75; }
+    .cta-buy .lbl { position: relative; z-index: 1; display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; flex: 1; }
+    .cta-buy .lbl small { font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 700; opacity: 0.75; text-transform: none; letter-spacing: 0; }
     .cta-buy .go {
       position: relative; z-index: 1; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--yellow);
       display: grid; place-items: center; transition: transform 0.4s var(--ease);
@@ -134,6 +134,9 @@
     @keyframes blink { 50% { opacity: 0.25; } }
 
     .hero-cta { margin-top: 40px; }
+    .buy-inline { width: min(420px, 100%); margin-top: 28px; }
+    .buy-inline .qty { margin: 0 0 18px; }
+    .buy-inline .trust { margin-top: 22px; }
     .hero-note { margin-top: 16px; font-size: 14px; color: rgba(14, 22, 38, 0.7); }
     .hero-note strong { color: var(--ink); }
     .scroll-hint { position: absolute; z-index: 4; left: 50%; bottom: 18px; width: 22px; height: 36px; margin-left: -11px; border: 1.5px solid rgba(14, 22, 38, 0.45); border-radius: 12px; }
@@ -205,7 +208,7 @@
       </div>
     </header>
 
-    <div class="hero-inner">
+    <div class="hero-inner" id="ingressos">
       <p class="eyebrow"><%= eventInfo.dateLabel.slice(0, 5) %> · <%= eventInfo.timeLabel %> · <%= eventInfo.venue %></p>
 
       <div class="stage" id="stage">
@@ -219,8 +222,20 @@
       </div>
 
       <% if (lote && !comingSoon) { %>
-        <a class="btn pulse hero-cta" href="#ingressos">Garantir meu ingresso
-          <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+        <form action="/checkout/dados" method="GET" id="qty-form" class="buy-inline">
+          <input type="hidden" name="qty" id="qty-input" value="1" />
+          <% if (error) { %><div class="alert-v3"><%= error %></div><% } %>
+          <div class="qty">
+            <button type="button" class="qty-btn" id="qty-minus" aria-label="Menos um ingresso">−</button>
+            <span class="qty-val" id="qty-value">1</span>
+            <button type="button" class="qty-btn" id="qty-plus" aria-label="Mais um ingresso">+</button>
+          </div>
+          <button type="submit" class="cta-buy" id="cta-buy">
+            <span class="lbl"><span id="cta-text">Garantir meu ingresso</span> <small id="cta-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></small></span>
+            <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+          </button>
+          <p class="trust">Pix ou cartão · QR Code por e-mail · Desista em até <%= refundDays %> dias</p>
+        </form>
         <p class="hero-note">Restam <strong><%= left %></strong> de <%= totalCapacity %> · <span id="days-left"></span></p>
       <% } else if (comingSoon) { %>
         <a class="btn hero-cta" href="#comunidade">Avisar quando abrir</a>
@@ -234,50 +249,6 @@
   </section>
 
   <main>
-    <section class="buy" id="ingressos">
-      <div class="wrap">
-        <div class="buy-card">
-          <% if (comingSoon) { %>
-            <p class="kicker">Em breve</p>
-            <h2 style="font-size:clamp(2rem,6vw,3rem); margin-top:12px">Ingressos em breve</h2>
-            <p class="per" style="margin-top:12px">A venda ainda não abriu. Entre na comunidade e seja avisado em primeira mão.</p>
-            <a class="btn btn-block" style="margin-top:28px" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
-          <% } else if (lote) { %>
-            <p class="kicker"><%= lote.name %> · limitado</p>
-            <p class="price"><span>R$</span><%= priceLabel %></p>
-            <p class="per">por pessoa</p>
-
-            <div class="meter">
-              <div class="row"><span><strong><%= left %></strong> de <%= totalCapacity %> disponíveis</span><span><%= soldCount > 0 ? Math.min(100, Math.round((soldCount / totalCapacity) * 100)) + '% garantidos' : 'Venda aberta' %></span></div>
-              <div class="bar" aria-hidden="true"><b data-pct="<%= totalCapacity ? Math.min(100, Math.round((soldCount / totalCapacity) * 100)) : 0 %>"></b></div>
-            </div>
-
-            <% if (error) { %><div class="alert-v3"><%= error %></div><% } %>
-
-            <form action="/checkout/dados" method="GET" id="qty-form">
-              <input type="hidden" name="qty" id="qty-input" value="1" />
-              <div class="qty">
-                <button type="button" class="qty-btn" id="qty-minus" aria-label="Menos um ingresso">−</button>
-                <span class="qty-val" id="qty-value">1</span>
-                <button type="button" class="qty-btn" id="qty-plus" aria-label="Mais um ingresso">+</button>
-              </div>
-              <p class="total">Total <strong id="qty-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></strong></p>
-              <button type="submit" class="cta-buy" id="cta-buy">
-                <span class="lbl"><span id="cta-text">Pagar agora</span> <small id="cta-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></small></span>
-                <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
-              </button>
-            </form>
-            <p class="trust">Pix ou cartão · QR Code por e-mail · Desista em até <%= refundDays %> dias</p>
-          <% } else { %>
-            <p class="kicker">Esgotado</p>
-            <h2 style="font-size:clamp(2rem,6vw,3rem); margin-top:12px">Ingressos esgotados</h2>
-            <p class="per" style="margin-top:12px">Os <%= totalCapacity || 300 %> ingressos acabaram. Entre na comunidade para saber dos próximos eventos em primeira mão.</p>
-            <a class="btn btn-block" style="margin-top:28px" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
-          <% } %>
-        </div>
-      </div>
-    </section>
-
     <section class="more" id="comunidade">
       <div class="wrap">
         <h2 style="font-size:clamp(1.5rem,4vw,2.25rem)">Fique por dentro</h2>
@@ -449,7 +420,7 @@
         qtyValue.textContent = qty;
         qtyInput.value = qty;
         var totalLabel = 'R$ ' + (qty * unitPrice).toFixed(2).replace('.', ',');
-        qtyTotal.textContent = totalLabel;
+        if (qtyTotal) qtyTotal.textContent = totalLabel;
         if (ctaTotal) ctaTotal.textContent = (qty > 1 ? qty + ' ingressos · ' : '') + totalLabel;
         if (qty <= 1) minusBtn.setAttribute('disabled', ''); else minusBtn.removeAttribute('disabled');
         if (qty >= maxQty) plusBtn.setAttribute('disabled', ''); else plusBtn.removeAttribute('disabled');
