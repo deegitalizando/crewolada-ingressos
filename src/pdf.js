@@ -44,7 +44,7 @@ function buildTicketPdf({ eventInfo, order, ticket }) {
       .fillColor(DIM)
       .font('Helvetica')
       .fontSize(11)
-      .text(order.loteName || '', 24, 172, { width: 272, align: 'center' });
+      .text(`${order.loteName || ''}${ticket.kindLabel ? ` · ${ticket.kindLabel}` : ''}`, 24, 172, { width: 272, align: 'center' });
 
     const qrBuffer = Buffer.from(ticket.qrCodeBase64, 'base64');
     doc.roundedRect(60, 200, 200, 200, 8).fill('#ffffff');
@@ -56,15 +56,23 @@ function buildTicketPdf({ eventInfo, order, ticket }) {
       .fontSize(14)
       .text(ticket.code, 24, 418, { width: 272, align: 'center' });
 
-    if (order.unitPrice) {
+    const shownPrice = ticket.price !== null && ticket.price !== undefined ? ticket.price : order.unitPrice;
+    if (shownPrice !== null && shownPrice !== undefined) {
       doc
         .fillColor('#ffffff')
         .font('Helvetica')
         .fontSize(11)
-        .text(`${order.loteName || ''} - R$ ${Number(order.unitPrice).toFixed(2).replace('.', ',')}`, 24, 440, {
+        .text(`${order.loteName || ''} - ${Number(shownPrice) > 0 ? 'R$ ' + Number(shownPrice).toFixed(2).replace('.', ',') : 'Gratis'}`, 24, 434, {
           width: 272,
           align: 'center',
         });
+    }
+    if (Array.isArray(ticket.includes) && ticket.includes.length) {
+      doc
+        .fillColor('#ffd21e')
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .text(`Inclui: ${ticket.includes.join(', ')}`, 24, 451, { width: 272, align: 'center' });
     }
 
     doc.moveTo(40, 466).lineTo(280, 466).strokeColor(GOLD).lineWidth(1).stroke();

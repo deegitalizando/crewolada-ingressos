@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Ingressos - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
+      <a href="/admin/ingressos" class="tab active">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+    </nav>
+
+    <main class="card">
+      <h3 style="margin-top:0">Ingressos &mdash; <%= ev.name %> <span style="font-size:13px;font-weight:400;color:var(--text-dim)">(<%= ev.dateLabel %> &middot; <%= ev.status %>)</span></h3>
+      <p class="hint" style="margin-top:0; text-align:left">
+        Cada compra é de <strong>um tipo de ingresso</strong>, com a quantidade de adultos, crianças e bebês.
+        O comprador paga o valor cheio pelos adultos, <strong>meia</strong> pelas crianças e nada pelos bebês, conforme as regras abaixo.
+        Para eventos antigos que usam lotes, use <a href="/admin/lotes?evento=<%= ev.id %>" style="color:var(--accent)">Lotes</a>.
+      </p>
+
+      <% if (saved) { %>
+        <div class="alert" style="background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac">Salvo com sucesso.</div>
+      <% } %>
+
+      <form action="/admin/ingressos" method="POST" class="form">
+        <input type="hidden" name="evento" value="<%= ev.id %>" />
+
+        <h3 style="margin-bottom:0">Tipos de ingresso</h3>
+        <p class="hint" style="margin-top:0;text-align:left">Deixe o nome em branco para remover. "Inclui" é uma lista separada por vírgula (ex.: Churrasco, Refrigerante, Algodão doce).</p>
+        <% products.forEach(function(p, i) { %>
+          <div style="display:grid; grid-template-columns: 2fr 1fr 3fr; gap:8px; align-items:end">
+            <label>Nome <input type="text" name="produtos[<%= i %>][name]" value="<%= p ? p.name : '' %>" maxlength="60" placeholder="Ingresso Simples" /></label>
+            <label>Preço (R$) <input type="number" step="0.01" min="0" name="produtos[<%= i %>][price]" value="<%= p ? p.price : '' %>" /></label>
+            <label>Inclui <input type="text" name="produtos[<%= i %>][includes]" value="<%= p ? p.includes.join(', ') : '' %>" placeholder="Churrasco, Refrigerante" /></label>
+          </div>
+        <% }) %>
+
+        <h3 style="margin-bottom:0; margin-top:20px">Crianças</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px">
+          <label>Não pagam até (anos) <input type="number" min="0" max="17" name="freeUntil" value="<%= rules.freeUntil %>" /></label>
+          <label>Pagam meia até (anos) <input type="number" min="0" max="17" name="halfUntil" value="<%= rules.halfUntil %>" /></label>
+        </div>
+        <label style="flex-direction:row; align-items:center; gap:10px">
+          <input type="checkbox" name="freeCounts" style="width:auto" <%= rules.freeCountsInCapacity ? 'checked' : '' %> />
+          Os bebês (que não pagam) contam no limite de ingressos
+        </label>
+
+        <h3 style="margin-bottom:0; margin-top:20px">Limite</h3>
+        <label>Total de ingressos à venda <input type="number" min="0" name="capacity" value="<%= ev.capacity || '' %>" /></label>
+        <p class="hint" style="margin-top:0;text-align:left">Adultos e crianças que pagam meia contam no limite. Quando chegar nele, a venda fecha sozinha.</p>
+
+        <button type="submit">Salvar ingressos</button>
+      </form>
+    </main>
+  </div>
+</body>
+</html>

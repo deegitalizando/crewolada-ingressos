@@ -42,7 +42,7 @@
     <nav class="tabs-row">
       <a href="/admin" class="tab">Vendas</a>
       <a href="/admin/eventos" class="tab active">Eventos</a>
-      <a href="/admin/lotes" class="tab">Lotes</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
       <a href="/admin/cortesias" class="tab">Cortesias</a>
       <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
       <a href="/contabilidade" class="tab">Contabilidade</a>
@@ -87,7 +87,7 @@
             <div class="ev-actions">
               <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas</button></a>
               <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
-              <a href="/admin/lotes?evento=<%= c.id %>"><button type="button" class="btn-secondary">Lotes</button></a>
+              <a href="<%= c.hasProducts ? '/admin/ingressos' : '/admin/lotes' %>?evento=<%= c.id %>"><button type="button" class="btn-secondary"><%= c.hasProducts ? 'Ingressos' : 'Lotes' %></button></a>
               <% if (c.status !== 'atual') { %>
                 <form action="/admin/eventos/<%= c.id %>/atual" method="POST" onsubmit="return confirm('Definir este evento como atual? O site passa a vender os ingressos dele.')">
                   <button type="submit">Definir como atual</button>

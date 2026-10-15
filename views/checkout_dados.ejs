@@ -14,10 +14,19 @@
 
     <main class="card">
       <h2>Seus dados</h2>
+      <% if (typeof purchase !== 'undefined' && purchase) { %>
+        <p class="total-row" style="margin-bottom:6px"><strong><%= loteName %></strong><% if (purchase.includes && purchase.includes.length) { %> &middot; inclui <%= purchase.includes.join(', ').toLowerCase() %><% } %></p>
+        <% purchase.items.forEach(function(i) { %>
+          <p class="total-row" style="margin:0"><%= i.qty %> &times; <%= i.label %> &middot; <%= i.unitPrice > 0 ? 'R$ ' + i.unitPrice.toFixed(2).replace('.', ',') : 'grátis' %></p>
+        <% }) %>
+        <p class="total-row" style="margin-top:10px"><strong>Total: R$ <%= total.toFixed(2).replace('.', ',') %></strong></p>
+        <p class="hint" style="text-align:left">Crianças: leve um documento com data de nascimento para conferência na entrada.</p>
+      <% } else { %>
       <p class="total-row">
         <%= quantity %> ingresso<%= quantity === 1 ? '' : 's' %> (<%= loteName %>) &middot;
         <strong>Total: R$ <%= total.toFixed(2).replace('.', ',') %></strong>
       </p>
+      <% } %>
 
       <div id="payment-error" class="alert" style="display: none"></div>
 
@@ -147,6 +156,12 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                  <% if (typeof purchase !== 'undefined' && purchase) { %>
+                  produto: <%- JSON.stringify(purchase.produto) %>,
+                  adultos: <%= purchase.adultos %>,
+                  criancas: <%= purchase.criancas %>,
+                  bebes: <%= purchase.bebes %>,
+                  <% } %>
                   quantity: <%= quantity %>,
                   buyerName,
                   buyerEmail: email,

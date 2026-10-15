@@ -1,5 +1,6 @@
 const store = require('./store');
 const { getLotes } = require('./lotes');
+const { getProducts, getChildRules } = require('./produtos');
 const {
   EVENTS, currentEvent, LEGACY_EVENT, NEXT_EVENT, syncEvents, orderEventId, eventStatus,
 } = require('./event');
@@ -65,6 +66,7 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
         lotesCapacity: lotesCap,
         startAtLocal: e.startAt ? formatDatetimeLocalBrasilia(e.startAt) : '',
         isSeed: SEED_IDS.has(e.id),
+        hasProducts: getProducts(e).length > 0,
         hasOrders: s.orders + s.courtesy + s.cancelled > 0,
       };
     });
@@ -75,6 +77,55 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
       anteriores: cards.filter((c) => c.status === 'anterior').reverse(),
       msg: req.query.msg || null,
     });
+  });
+
+  // ---- ticket types of an event (Ingresso Simples, Passaporte...) + children's rules
+  app.get('/admin/ingressos', requireAdminAuth, (req, res) => {
+    const ev = EVENTS.find((e) => e.id === req.query.evento) || currentEvent;
+    const products = getProducts(ev);
+    res.render('admin_ingressos', {
+      eventInfo,
+      ev: { ...ev, status: eventStatus(ev) },
+      products: products.concat(Array(Math.max(0, 4 - products.length)).fill(null)),
+      rules: getChildRules(ev),
+      saved: req.query.saved === '1',
+    });
+  });
+
+  app.post('/admin/ingressos', requireAdminAuth, async (req, res) => {
+    const ev = EVENTS.find((e) => e.id === req.body.evento);
+    if (!ev) return res.redirect('/admin/ingressos');
+    const existing = getProducts(ev);
+    const taken = new Set();
+    const products = Object.values(req.body.produtos || {})
+      .map((p) => {
+        const name = String(p.name || '').trim().slice(0, 60);
+        const price = Math.round((parseFloat(String(p.price || '').replace(',', '.')) || 0) * 100) / 100;
+        const includes = String(p.includes || '').split(',').map((s) => s.trim()).filter(Boolean).slice(0, 8);
+        const known = existing.find((x) => x.name.toLowerCase() === name.toLowerCase());
+        let id = known ? known.id : slug(name);
+        for (let i = 2; taken.has(id); i += 1) id = `${id}-${i}`;
+        taken.add(id);
+        return { id, name, price, includes };
+      })
+      .filter((p) => p.name && p.price > 0);
+
+    const freeUntil = Math.max(0, parseInt(req.body.freeUntil, 10) || 0);
+    const halfUntil = Math.max(freeUntil, parseInt(req.body.halfUntil, 10) || 0);
+    const capacity = Math.max(0, parseInt(req.body.capacity, 10) || 0) || null;
+
+    await store.withDb((db) => {
+      db.events = db.events || {};
+      db.events[ev.id] = {
+        ...(db.events[ev.id] || {}),
+        id: ev.id,
+        products,
+        childRules: { freeUntil, halfUntil, freeCountsInCapacity: req.body.freeCounts === 'on' },
+        capacity,
+      };
+    });
+    onChange();
+    res.redirect(`/admin/ingressos?evento=${encodeURIComponent(ev.id)}&saved=1`);
   });
 
   app.post('/admin/eventos', requireAdminAuth, async (req, res) => {

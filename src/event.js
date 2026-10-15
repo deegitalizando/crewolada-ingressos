@@ -25,8 +25,13 @@ const NEXT_EVENT = {
   venue: 'Rio da Prata - Campo Grande/RJ',
   startAt: '2026-11-14T18:00:00.000Z', // 14/11/2026 15h (Brasilia)
   capacity: 300,
-  // Programmed here so the sale opens on deploy; editable later in /admin/lotes.
+  // Programmed here so the sale opens on deploy; editable later in /admin/ingressos.
   defaultLotes: [{ name: 'Lote Único', quantity: 300, price: 25 }],
+  childRules: { freeUntil: 2, halfUntil: 12, freeCountsInCapacity: false },
+  products: [
+    { id: 'simples', name: 'Ingresso Simples', price: 25, includes: [] },
+    { id: 'passaporte', name: 'Passaporte', price: 100, includes: ['Churrasco', 'Refrigerante', 'Algodão doce'] },
+  ],
 };
 
 const SEEDS = [LEGACY_EVENT, NEXT_EVENT];

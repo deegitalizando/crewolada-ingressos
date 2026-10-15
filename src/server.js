@@ -8,8 +8,9 @@ const cookieParser = require('cookie-parser');
 const store = require('./store');
 const mp = require('./mercadopago');
 const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
-const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents } = require('./event');
+const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents, getEventById } = require('./event');
 const { registerEventosRoutes } = require('./eventos');
+const { getProducts, getChildRules, buildPurchase } = require('./produtos');
 
 // Once a lote has this many tickets or fewer left, the sales page starts
 // showing "restam X ingressos" as an urgency nudge. Above that, the exact
@@ -168,7 +169,9 @@ function getSoldCount(db, eventId = currentEvent.id) {
   return Object.values(db.tickets).filter((t) => {
     const order = db.orders[t.orderId];
     if (!order) return eventId === LEGACY_EVENT.id;
-    return inEvent(order, eventId) && order.loteName !== 'Lote Teste' && !order.isCourtesy;
+    if (!inEvent(order, eventId) || order.loteName === 'Lote Teste' || order.isCourtesy) return false;
+    if (t.kind === 'bebe' && !getChildRules(getEventById(eventId)).freeCountsInCapacity) return false;
+    return true;
   }).length;
 }
 
@@ -243,13 +246,28 @@ app.get('/', (req, res) => {
   const db = store.load();
   const lotes = getLotes(db);
   const soldCount = getSoldCount(db);
-  const lote = getCurrentLote(lotes, soldCount);
-  const soldOutLotes = getSoldOutLotes(lotes, soldCount);
+  const products = getProducts(currentEvent);
+  const productMode = products.length > 0;
+  const capacity = currentEvent.capacity || 0;
+  let lote = getCurrentLote(lotes, soldCount);
+  let comingSoon = lotes.length === 0;
+  let totalCapacity = lotes.reduce((sum, l) => sum + l.quantity, 0) || eventInfo.capacity || 0;
+  if (productMode) {
+    // Products replace lotes: availability is the event capacity minus what was sold.
+    const remaining = Math.max(0, capacity - soldCount);
+    totalCapacity = capacity;
+    comingSoon = false;
+    lote = remaining > 0 ? { name: products[0].name, price: Math.min(...products.map((p) => p.price)), remaining } : null;
+  }
   res.render('index', {
-    eventInfo, lote, maxQty, error: null, soldOutLotes, lowStockThreshold: LOW_STOCK_THRESHOLD,
-    comingSoon: lotes.length === 0,
+    eventInfo, lote, maxQty, error: null, soldOutLotes: productMode ? [] : getSoldOutLotes(lotes, soldCount),
+    lowStockThreshold: LOW_STOCK_THRESHOLD,
+    comingSoon,
     soldCount,
-    totalCapacity: lotes.reduce((sum, l) => sum + l.quantity, 0) || eventInfo.capacity || 0,
+    totalCapacity,
+    productMode,
+    products: products.map((p) => ({ ...p, half: Math.round((p.price / 2) * 100) / 100 })),
+    childRules: getChildRules(currentEvent),
     baseUrl: process.env.BASE_URL || '',
   });
 });
@@ -271,6 +289,28 @@ app.get('/politica-de-cancelamento', (req, res) => {
 app.get('/checkout/dados', (req, res) => {
   if (!app.locals.salesOpen) return res.redirect('/');
   const db = store.load();
+
+  if (getProducts(currentEvent).length > 0) {
+    const remaining = Math.max(0, (currentEvent.capacity || 0) - getSoldCount(db));
+    const purchase = buildPurchase(currentEvent, req.query, { maxPersons: maxQty, remaining });
+    if (purchase.error) return res.redirect('/');
+    return res.render('checkout_dados', {
+      eventInfo,
+      quantity: purchase.persons,
+      loteName: purchase.product.name,
+      total: purchase.total,
+      purchase: {
+        produto: purchase.product.id,
+        adultos: Number(req.query.adultos) || 0,
+        criancas: Number(req.query.criancas) || 0,
+        bebes: Number(req.query.bebes) || 0,
+        items: purchase.items,
+        includes: purchase.includes,
+      },
+      mpPublicKey: process.env.MP_PUBLIC_KEY,
+    });
+  }
+
   const lote = getCurrentLote(getLotes(db), getSoldCount(db));
   if (!lote) return res.redirect('/');
 
@@ -299,6 +339,54 @@ app.post('/api/pagamentos', async (req, res) => {
     }
 
     const db = store.load();
+
+    // Product purchase (Ingresso Simples / Passaporte + children): priced here, never by the client.
+    if (getProducts(currentEvent).length > 0) {
+      const remaining = Math.max(0, (currentEvent.capacity || 0) - getSoldCount(db));
+      if (remaining <= 0) return res.status(400).json({ error: 'Os ingressos se esgotaram.' });
+      const purchase = buildPurchase(currentEvent, req.body, { maxPersons: maxQty, remaining });
+      if (purchase.error) return res.status(400).json({ error: purchase.error });
+
+      const productOrder = {
+        id: crypto.randomUUID(),
+        buyerName,
+        buyerEmail,
+        buyerPhone,
+        buyerCpf: String(buyerCpf).replace(/\D/g, ''),
+        quantity: purchase.persons,
+        eventId: currentEvent.id,
+        productId: purchase.product.id,
+        loteName: purchase.product.name,
+        unitPrice: purchase.product.price,
+        items: purchase.items,
+        includes: purchase.includes,
+        totalAmount: purchase.total,
+        status: 'pending',
+        mpPaymentId: null,
+        paymentMethodId: formData.payment_method_id || null,
+        pixQrCode: null,
+        pixQrCodeBase64: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      const productPayment = await mp.createPayment(productOrder, formData);
+      productOrder.mpPaymentId = String(productPayment.id);
+
+      if (productPayment.status === 'rejected') {
+        await store.withDb((d) => { d.orders[productOrder.id] = { ...productOrder, status: 'rejected' }; });
+        return res.status(400).json({ error: describeRejection(productPayment.status_detail) });
+      }
+      const qr = productPayment.point_of_interaction?.transaction_data;
+      if (qr) {
+        productOrder.pixQrCode = qr.qr_code || null;
+        productOrder.pixQrCodeBase64 = qr.qr_code_base64 || null;
+      }
+      await store.withDb((d) => { d.orders[productOrder.id] = productOrder; });
+      if (productPayment.status === 'approved') await approveOrder(productOrder.id, productPayment.id, eventInfo);
+      return res.json({ redirectUrl: `/pedido/${productOrder.id}` });
+    }
+
     const lotesNow = getLotes(db);
     if (lotesNow.length === 0) {
       return res.status(400).json({ error: 'A venda de ingressos ainda não foi aberta.' });
@@ -670,7 +758,9 @@ app.post('/api/validar', requireValidatorAuth, async (req, res) => {
 
   return res.json({
     result: 'valido',
-    message: 'Ingresso valido. Entrada liberada!',
+    message: 'Ingresso valido. Entrada liberada!' +
+      (ticket.kindLabel ? ` ${order ? order.loteName : ''} · ${ticket.kindLabel}.` : '') +
+      (ticket.includes && ticket.includes.length ? ` Inclui: ${ticket.includes.join(', ')}.` : ''),
     code: ticket.code,
     buyerName: order?.buyerName || '',
     usedAt,
