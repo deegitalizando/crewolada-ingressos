@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Convites - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .ct-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 16px; margin: 0 16px 14px; }
+    .ct-top { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: space-between; align-items: center; }
+    .ct-top h4 { margin: 0; font-size: 17px; }
+    .badge-s { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; }
+    .badge-s.novo { background: rgba(255, 210, 30, 0.2); color: var(--accent); }
+    .badge-s.em-conversa { background: rgba(57, 135, 229, 0.2); color: #9ec5f4; }
+    .badge-s.fechado { background: rgba(34, 197, 94, 0.2); color: #86efac; }
+    .badge-s.descartado { background: rgba(255, 255, 255, 0.1); color: var(--text-dim); }
+    .ct-meta { margin: 6px 0 10px; color: var(--text-dim); font-size: 13px; }
+    .ct-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .ct-actions form, .ct-actions a { display: inline-block; }
+    .ct-actions button, .ct-actions a button, .ct-actions select { margin: 0; width: auto; padding: 8px 14px; font-size: 13px; }
+    .ct-actions select { background: #1a1a1a; color: var(--text); border: 1px solid rgba(255,255,255,.14); border-radius: 10px; }
+    details.ct-d summary { cursor: pointer; color: var(--text-dim); font-size: 13px; margin-top: 10px; }
+    .ct-d dl { margin: 10px 0 0; display: grid; grid-template-columns: 170px 1fr; gap: 6px 14px; font-size: 14px; }
+    .ct-d dt { color: var(--text-dim); }
+    .ct-d dd { margin: 0; word-break: break-word; }
+    .ct-d h5 { margin: 14px 0 0; color: var(--accent); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form"><button type="submit" class="link-btn">Sair</button></form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/contatos" class="tab active">Convites</a>
+      <a href="/admin/links" class="tab">Links</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+    </nav>
+
+    <main class="card">
+      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center">
+        <h3 style="margin:0">Convites recebidos</h3>
+        <a href="/admin/contatos/exportar.csv"><button type="button" class="btn-secondary" style="margin:0; width:auto; padding:8px 14px; font-size:13px">Baixar CSV</button></a>
+      </div>
+      <p class="hint" style="margin-bottom:0; text-align:left">
+        Página pública: <a href="/contato" target="_blank" style="color:var(--accent)">/contato</a>.
+        Cada convite também é enviado por e-mail para <strong><%= inbox %></strong>.
+      </p>
+      <% if (msg === 'reenviado') { %><div class="alert" style="margin-top:12px; background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac">E-mail reenviado.</div><% } %>
+      <% if (msg === 'falhou') { %><div class="alert" style="margin-top:12px">Não foi possível reenviar o e-mail agora. Confira o fluxo do n8n.</div><% } %>
+    </main>
+
+    <% if (list.length === 0) { %>
+      <p class="hint" style="text-align:center">Nenhum convite recebido ainda.</p>
+    <% } %>
+
+    <% list.forEach(function(c) { %>
+      <article class="ct-card">
+        <div class="ct-top">
+          <h4><%= c.nome %> · <%= c.convidar %></h4>
+          <span class="badge-s <%= c.status %>"><%= ({ novo: 'Novo', 'em-conversa': 'Em conversa', fechado: 'Fechado', descartado: 'Descartado' })[c.status] || c.status %></span>
+        </div>
+        <p class="ct-meta">
+          <%= c.tipoEvento %> · <%= c.whenLabel %> · <%= c.cidade %>/<%= c.uf %> · <%= c.bilhetado %><br />
+          Recebido em <%= c.createdAtLabel %> · e-mail <%= c.emailSentAt ? 'enviado' : 'NÃO enviado' %>
+        </p>
+        <div class="ct-actions">
+          <a href="<%= c.waLink %>" target="_blank" rel="noopener"><button type="button">📲 Responder no WhatsApp</button></a>
+          <form action="/admin/contatos/<%= c.id %>/status" method="POST">
+            <select name="status" onchange="this.form.submit()">
+              <% ['novo', 'em-conversa', 'fechado', 'descartado'].forEach(function(s) { %>
+                <option value="<%= s %>" <%= c.status === s ? 'selected' : '' %>><%= ({ novo: 'Novo', 'em-conversa': 'Em conversa', fechado: 'Fechado', descartado: 'Descartado' })[s] %></option>
+              <% }) %>
+            </select>
+          </form>
+          <form action="/admin/contatos/<%= c.id %>/reenviar" method="POST"><button type="submit" class="btn-secondary">Reenviar e-mail</button></form>
+          <form action="/admin/contatos/<%= c.id %>/excluir" method="POST" onsubmit="return confirm('Excluir este convite?')"><button type="submit" class="btn-secondary">Excluir</button></form>
+        </div>
+        <details class="ct-d">
+          <summary>Ver todas as respostas</summary>
+          <h5>Evento</h5>
+          <dl><% c.details.lines.forEach(function(l) { %><dt><%= l[0] %></dt><dd><%= l[1] %></dd><% }) %></dl>
+          <h5>Contato</h5>
+          <dl><% c.details.contact.forEach(function(l) { %><dt><%= l[0] %></dt><dd><%= l[1] %></dd><% }) %></dl>
+        </details>
+      </article>
+    <% }) %>
+  </div>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Nossa história · Crewolada</title>
+  <meta name="description" content="Como um DJ de Campo Grande, no Rio, criou uma festa de black music cristã para quem não se sentia em casa nas baladas." />
+  <meta property="og:title" content="Nossa história · Crewolada" />
+  <meta property="og:description" content="Como um DJ de Campo Grande criou uma festa de black music cristã que chegou a reunir milhares de jovens." />
+  <meta property="og:type" content="article" />
+  <meta property="og:image" content="/img/logo.jpg" />
+  <meta name="theme-color" content="#0A0F1A" />
+  <%- include('partials/head') %>
+  <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <style>
+    body.sb {
+      --bg: #0A0F1A; --ink: #F4F1E8; --muted: #9AA7BD; --line: rgba(255, 255, 255, 0.16); --yellow: #FFD21E; --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      margin: 0; color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif; font-size: 18px; line-height: 1.7;
+      background: radial-gradient(900px 520px at 85% -10%, #4a2a8f 0%, #161a44 45%, var(--bg) 80%) fixed; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+    }
+    .sb *, .sb *::before, .sb *::after { box-sizing: border-box; }
+    .sb h1, .sb h2 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; letter-spacing: -0.03em; margin: 0; }
+    .sb p { margin: 0; }
+    .bar { width: min(720px, 100%); margin-inline: auto; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 18px; }
+    .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(255, 210, 30, 0.6); }
+    .bar a.back { color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 700; }
+    .bar a.back:hover { color: #fff; }
+    article { width: min(720px, 100%); margin-inline: auto; padding: 24px 20px 90px; }
+    .kicker { color: var(--yellow); font-weight: 700; font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; }
+    article h1 { margin-top: 12px; font-size: clamp(2.4rem, 8vw, 4.2rem); font-weight: 800; line-height: 1.02; }
+    article h1 .thin { font-weight: 200; font-style: italic; color: var(--yellow); }
+    .lead { margin-top: 22px; font-size: clamp(1.15rem, 2.8vw, 1.4rem); color: #dfe2ee; line-height: 1.5; }
+    article h2 { margin-top: 46px; font-size: clamp(1.6rem, 5vw, 2.2rem); font-weight: 800; line-height: 1.1; }
+    article p + p { margin-top: 18px; }
+    article h2 + p { margin-top: 14px; }
+    article p { color: #e3e5ef; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 34px 0 0; }
+    .stat { padding: 16px 12px; border-radius: 18px; text-align: center; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); }
+    .stat b { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(1.4rem, 5vw, 2rem); color: var(--yellow); letter-spacing: -0.03em; }
+    .stat span { display: block; font-size: 13px; color: var(--muted); line-height: 1.3; margin-top: 2px; }
+    blockquote { margin: 30px 0 0; padding: 4px 0 4px 20px; border-left: 4px solid var(--yellow); font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(1.3rem, 4vw, 1.7rem); line-height: 1.25; letter-spacing: -0.02em; }
+    ul.rules { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+    ul.rules li { padding: 14px 16px; border-radius: 16px; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); color: #e3e5ef; font-size: 17px; line-height: 1.5; }
+    .cta { margin-top: 48px; display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn { display: inline-flex; padding: 16px 26px; border-radius: 999px; text-decoration: none; font-weight: 800; transition: transform 0.3s var(--ease), background-color 0.3s, color 0.3s; }
+    .btn.y { background: var(--yellow); color: #0A0F1A; }
+    .btn.g { border: 1.5px solid var(--ink); color: var(--ink); }
+    .btn:hover { transform: translateY(-2px); }
+    .btn.g:hover { background: var(--ink); color: var(--bg); }
+    .btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .src { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .src a { color: var(--muted); }
+    @media (max-width: 420px) { .stats { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="sb">
+  <div class="bar">
+    <a class="brand" href="/links"><img src="/img/logo.jpg" alt="" width="38" height="38" /> Crewolada</a>
+    <a class="back" href="/links">&larr; Links</a>
+  </div>
+
+  <article>
+    <p class="kicker">Nossa história</p>
+    <h1>A festa que nasceu<br />para quem <span class="thin">não tinha onde ir</span></h1>
+    <p class="lead">Tudo começou com um DJ de Campo Grande, na Zona Oeste do Rio, e uma pergunta simples: por que quem frequenta a igreja precisa escolher entre a fé e uma noite boa de música?</p>
+
+    <h2>O DJ e a ideia</h2>
+    <p>Diego Carreiro Moura, o DJ Dee, cresceu dentro da igreja. Aprendeu a discotecar com um amigo e logo passou a tocar em eventos de congregações. Foi ali, vendo a reação dos jovens, que percebeu uma lacuna: faltava uma festa feita para o público evangélico, sem que ninguém precisasse se sentir deslocado.</p>
+    <p>O visual de Diego, com dreads, tatuagens e alargadores, sempre rendeu conversa. A resposta dele é direta: Deus não olha para a aparência, e a vida inteira ele esteve na igreja.</p>
+
+    <h2>A primeira noite</h2>
+    <p>A primeira Crewolada aconteceu em setembro de 2008, e não foi fácil. O local mudou poucos dias antes do evento e foi preciso pegar um empréstimo para pagar o salão e o som. Mesmo com tudo isso, cerca de cem pessoas apareceram e a noite aconteceu.</p>
+    <p>Aquela turma pequena era o começo de algo maior. As edições seguintes foram crescendo e, com o tempo, a festa passou a reunir cerca de 2.300 pessoas numa única noite.</p>
+
+    <div class="stats" role="list">
+      <div class="stat" role="listitem"><b>2008</b><span>ano da primeira festa</span></div>
+      <div class="stat" role="listitem"><b>~100</b><span>pessoas na estreia</span></div>
+      <div class="stat" role="listitem"><b>~2.300</b><span>no auge das edições</span></div>
+    </div>
+
+    <h2>Como é uma noite de Crewolada</h2>
+    <p>A festa mistura black music, hip hop gospel e muita dança, e a cabine não fica na mão de um DJ só: eram quatro se revezando, entre charme, rap, soul, rock e blues. Cristãos e quem ainda não é cristão dividem a mesma pista.</p>
+    <blockquote>Uma balada onde ninguém precisa esconder a fé nem a vontade de dançar.</blockquote>
+    <p style="margin-top:22px">Quando o salão enche, a noite abre com uma oração. No meio da música, a pista para por uns dez minutos para uma mensagem curta, baseada na Bíblia, sobre algum assunto do dia a dia dos jovens. Depois, a festa volta.</p>
+    <ul class="rules">
+      <li>Sem venda de bebida alcoólica ou cigarro: só refrigerante, água e comida.</li>
+      <li>Paquera com limites, para a noite ser confortável para todo mundo.</li>
+      <li>Espaço aberto para cristãos e não cristãos.</li>
+    </ul>
+
+    <h2>A cada dois meses</h2>
+    <p>Durante os anos de maior movimento, a Crewolada acontecia a cada dois meses. Bangu foi uma das casas da festa, no Bangu Atlético Clube, e os ingressos eram vendidos em pontos da Zona Oeste.</p>
+
+    <h2>E agora?</h2>
+    <p>A Crewolada continua. Em 2026 a festa volta com a Tardezinha Crewolada, no Rio da Prata, em Campo Grande, e chega pela primeira vez a São Paulo, em Osasco. O DJ Dee também pode ir tocar no seu evento, seja só ele ou a festa completa.</p>
+
+    <div class="cta">
+      <a class="btn y" href="/links#ingressos">Garantir meu ingresso</a>
+      <a class="btn g" href="/contato">Levar a Crewolada para o meu evento</a>
+      <a class="btn g" href="<%= locals.communityUrl || '/links' %>">Entrar na comunidade</a>
+    </div>
+
+    <p class="src">Os fatos desta página sobre a origem e o formato da festa têm como base a reportagem &ldquo;DJ evangélico cria evento de hip hop gospel e atrai milhares de jovens no RJ&rdquo;, publicada pelo portal <a href="https://guiame.com.br/gospel/noticias/dj-evangelico-cria-evento-de-hip-hop-gospel-e-atrai-milhares-de-jovens-no-rj.html" rel="noopener" target="_blank">Guiame</a> em dezembro de 2015, e nos materiais de divulgação das edições da festa.</p>
+  </article>
+</body>
+</html>

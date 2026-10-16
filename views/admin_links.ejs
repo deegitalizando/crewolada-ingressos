@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Links - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/contatos" class="tab">Convites</a>
+      <a href="/admin/links" class="tab active">Links</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+    </nav>
+
+    <% if (saved) { %><div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac">Links salvos.</div><% } %>
+    <% if (error) { %><div class="alert" style="margin:0 16px 12px">Use endereços completos começando com https://</div><% } %>
+
+    <main class="card">
+      <h3 style="margin-top:0">Links da página /links</h3>
+      <p class="hint" style="margin-top:0; text-align:left">
+        A página <a href="/links" target="_blank" style="color:var(--accent)">/links</a> usa os endereços curtos
+        <b>/youtube</b> e <b>/playlist</b>, que levam para os endereços que você cadastrar aqui. Pode trocar quando quiser, sem precisar publicar o site de novo.
+      </p>
+      <form action="/admin/links" method="POST">
+        <label>Canal do YouTube (/youtube)
+          <input type="url" name="youtube" value="<%= links.youtube || '' %>" placeholder="https://www.youtube.com/@seucanal" <%= envLocked.youtube ? 'disabled' : '' %> />
+        </label>
+        <% if (envLocked.youtube) { %><p class="hint" style="text-align:left">Definido pela variável YOUTUBE_URL no servidor.</p>
+        <% } else if (!configured.youtube) { %><p class="hint" style="text-align:left">Ainda não cadastrado: por enquanto /youtube abre uma busca por "Crewolada" no YouTube.</p><% } %>
+
+        <label style="margin-top:14px">Playlist (/playlist)
+          <input type="url" name="playlist" value="<%= links.playlist || '' %>" placeholder="https://open.spotify.com/playlist/..." <%= envLocked.playlist ? 'disabled' : '' %> />
+        </label>
+        <% if (envLocked.playlist) { %><p class="hint" style="text-align:left">Definido pela variável PLAYLIST_URL no servidor.</p>
+        <% } else if (!configured.playlist) { %><p class="hint" style="text-align:left">Ainda não cadastrado: por enquanto /playlist abre uma busca no YouTube.</p><% } %>
+
+        <button type="submit" style="margin-top:16px">Salvar</button>
+      </form>
+    </main>
+  </div>
+</body>
+</html>

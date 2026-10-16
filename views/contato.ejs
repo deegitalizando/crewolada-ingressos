@@ -1,0 +1,421 @@
+<% const O = opcoes; %>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Convide a Crewolada · Contato para eventos</title>
+  <meta name="description" content="Quer o DJ Dee ou a festa Crewolada completa no seu evento? Responda em 1 minuto e receba uma proposta." />
+  <meta property="og:title" content="Convide a Crewolada para o seu evento" />
+  <meta property="og:description" content="Responda em 1 minuto e a gente retorna com uma proposta." />
+  <meta property="og:image" content="/img/logo.jpg" />
+  <meta name="theme-color" content="#0A0F1A" />
+  <%- include('partials/head') %>
+  <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <style>
+    :root { --accent: #FFD21E; }
+    body.ct {
+      --bg: #0A0F1A; --ink: #F4F1E8; --muted: #9AA7BD; --line: rgba(255, 255, 255, 0.14); --yellow: #FFD21E; --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      margin: 0; min-height: 100svh; color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif; font-size: 17px; line-height: 1.55;
+      background: radial-gradient(1000px 600px at 85% -10%, #4a2a8f 0%, #161a44 45%, var(--bg) 80%) fixed; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+      display: flex; flex-direction: column;
+    }
+    .ct *, .ct *::before, .ct *::after { box-sizing: border-box; }
+    .ct [hidden] { display: none !important; }
+    .ct h1, .ct h2, .ct legend { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; margin: 0; letter-spacing: -0.03em; line-height: 1.02; }
+    .ct p { margin: 0; }
+    .ct a { color: inherit; }
+
+    /* ---------- sound scene: vinyl + equalizer ---------- */
+    .scene { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .vinyl {
+      position: absolute; right: -90px; top: 120px; width: 300px; height: 300px; border-radius: 50%; opacity: 0.55;
+      background: radial-gradient(circle, var(--yellow) 0 11%, #111 11.5% 13%, transparent 13.5%),
+                  repeating-radial-gradient(circle, #14141c 0 3px, #0b0b11 3px 6px);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 30px 80px -30px rgba(255, 210, 30, 0.35); animation: spin 9s linear infinite;
+    }
+    .vinyl::after { content: ''; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 20deg, transparent 0 40%, rgba(255, 255, 255, 0.10) 50%, transparent 60% 100%); }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .eq { position: absolute; left: 0; right: 0; bottom: 0; height: 22vh; display: flex; align-items: flex-end; gap: 6px; padding-inline: 8px; opacity: 0.4; }
+    .eq i { flex: 1; min-width: 4px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--yellow), rgba(255, 138, 0, 0.6)); height: 12%; animation: bounce var(--d, 1s) ease-in-out var(--dl, 0s) infinite alternate; transform-origin: bottom; }
+    @keyframes bounce { from { height: 8%; } to { height: var(--h, 70%); } }
+
+    /* ---------- chrome ---------- */
+    .bar { position: relative; z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; width: min(760px, 100%); margin-inline: auto; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
+    .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(255, 210, 30, 0.6); }
+    .progress { flex: 1; max-width: 260px; display: none; }
+    .progress.on { display: block; }
+    .progress .t { font-size: 12px; color: var(--muted); text-align: right; margin-bottom: 6px; }
+    .progress .p { height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.14); overflow: hidden; }
+    .progress .p span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, #FFD21E, #FF8A00); border-radius: 3px; transition: width 0.35s var(--ease); }
+
+    main { position: relative; z-index: 3; flex: 1; width: min(760px, 100%); margin-inline: auto; padding: 8px 20px 140px; display: flex; flex-direction: column; justify-content: center; }
+    .screen { display: none; animation: enter 0.4s var(--ease); }
+    .screen.active { display: block; }
+    @keyframes enter { from { opacity: 0; transform: translateX(24px); } }
+    @media (prefers-reduced-motion: reduce) { .screen { animation: none; } .vinyl, .eq i { animation: none !important; } }
+
+    /* ---------- intro ---------- */
+    .intro h1 { font-size: clamp(2.6rem, 9vw, 5rem); font-weight: 800; }
+    .intro h1 .thin { font-weight: 200; font-style: italic; color: var(--yellow); }
+    .intro .lead { margin-top: 18px; max-width: 30em; color: #d6d9e6; font-size: clamp(1.0625rem, 2.4vw, 1.25rem); }
+    .intro .mini { margin-top: 14px; color: var(--muted); font-size: 14px; }
+
+    /* ---------- questions ---------- */
+    .q { border: 0; padding: 0; margin: 0; min-width: 0; }
+    .q legend, .q .qt { font-size: clamp(1.7rem, 6vw, 2.8rem); font-weight: 800; padding: 0; display: block; margin-bottom: 8px; }
+    .q .qh { color: var(--muted); font-size: 15px; margin-bottom: 22px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .chip { position: relative; display: block; }
+    .chip input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+    .chip span { display: block; padding: 15px 20px; border-radius: 16px; font-size: 17px; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); transition: transform 0.35s var(--ease), border-color 0.25s, background-color 0.25s; }
+    .chip:hover span { transform: translateY(-2px); border-color: rgba(255, 255, 255, 0.4); }
+    .chip input:checked + span { background: var(--yellow); color: #0A0F1A; border-color: var(--yellow); font-weight: 700; }
+    .chip input:focus-visible + span { outline: 2px solid #fff; outline-offset: 2px; }
+    .cards { display: grid; gap: 12px; margin-top: 20px; }
+    .cards .chip span { padding: 18px 20px; }
+    .cards .chip b { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; letter-spacing: -0.02em; }
+    .cards .chip small { display: block; margin-top: 2px; font-size: 14px; opacity: 0.8; font-weight: 400; }
+    .fld { display: block; margin-top: 16px; font-size: 13px; font-weight: 700; color: #d6d9e6; }
+    .fld input[type="text"], .fld input[type="tel"], .fld input[type="email"], .fld input[type="date"], .fld input[type="time"], .fld select, .fld textarea {
+      display: block; width: 100%; margin-top: 6px; padding: 16px; border-radius: 14px; border: 1.5px solid var(--line); background: rgba(255, 255, 255, 0.07); color: #fff;
+      font-size: 17px; font-family: inherit; font-weight: 400; transition: border-color 0.25s, background-color 0.25s; color-scheme: dark;
+    }
+    .fld textarea { min-height: 150px; resize: vertical; }
+    .fld select option { color: #111; }
+    .fld input:focus, .fld select:focus, .fld textarea:focus { outline: none; border-color: var(--yellow); background: rgba(255, 255, 255, 0.11); }
+    .fld input::placeholder, .fld textarea::placeholder { color: rgba(255, 255, 255, 0.35); }
+    .row2 { display: grid; grid-template-columns: 1fr 120px; gap: 12px; }
+    .optional { color: var(--muted); font-weight: 400; font-size: 12px; }
+    .check { display: flex; flex-direction: row; gap: 12px; align-items: flex-start; margin-top: 20px; font-size: 13px; color: var(--muted); line-height: 1.5; font-weight: 400; }
+    .check input { width: 20px; height: 20px; min-width: 20px; padding: 0; margin: 2px 0 0; accent-color: var(--yellow); }
+    .check a { color: var(--yellow); }
+    .hp { position: absolute; left: -9999px; height: 0; overflow: hidden; }
+    .err { margin-top: 16px; padding: 12px 16px; border-radius: 14px; border: 1px solid #fb7185; background: rgba(251, 113, 133, 0.12); color: #fecdd3; font-size: 14px; }
+
+    /* ---------- controls ---------- */
+    .nav { display: flex; gap: 12px; margin-top: 28px; align-items: center; }
+    .go {
+      all: unset; box-sizing: border-box; cursor: pointer; position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 12px;
+      padding: 18px 30px; border-radius: 18px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 19px; color: #0A0F1A; text-align: center;
+      background: linear-gradient(180deg, #FFE866 0%, #FFD21E 52%, #FFBE0B 100%); box-shadow: 0 6px 0 #C79A00, 0 22px 40px -16px rgba(0, 0, 0, 0.7);
+      transition: transform 0.18s var(--ease), box-shadow 0.18s var(--ease); -webkit-tap-highlight-color: transparent; user-select: none;
+    }
+    .go svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+    .go:hover { transform: translateY(-3px); box-shadow: 0 9px 0 #C79A00, 0 28px 50px -16px rgba(0, 0, 0, 0.75); }
+    .go:active { transform: translateY(5px); box-shadow: 0 1px 0 #C79A00, 0 8px 18px -8px rgba(0, 0, 0, 0.6); }
+    .go[disabled] { opacity: 0.5; pointer-events: none; }
+    .go.loading::after { content: ''; width: 18px; height: 18px; border: 3px solid rgba(10, 15, 26, 0.3); border-top-color: #0A0F1A; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .back { all: unset; cursor: pointer; padding: 14px 18px; border-radius: 14px; border: 1.5px solid var(--line); color: var(--ink); font-weight: 700; transition: border-color 0.25s, transform 0.35s var(--ease); }
+    .back:hover { border-color: #fff; transform: translateX(-2px); }
+    .skip { color: var(--muted); font-size: 14px; margin-top: 12px; }
+
+    .done h1 { font-size: clamp(2.4rem, 8vw, 4.4rem); font-weight: 800; }
+    .done h1 .thin { font-weight: 200; font-style: italic; color: var(--yellow); }
+    .done p { margin-top: 16px; color: #d6d9e6; max-width: 30em; }
+    .done .links { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+    .ghost { display: inline-flex; padding: 16px 26px; border-radius: 999px; border: 1.5px solid var(--ink); text-decoration: none; font-weight: 700; transition: background-color 0.3s, color 0.3s; }
+    .ghost:hover { background: var(--ink); color: var(--bg); }
+
+    @media (min-width: 700px) { .cards { grid-template-columns: repeat(3, 1fr); } .vinyl { right: 4%; top: 15%; width: 380px; height: 380px; } }
+  </style>
+</head>
+<body class="ct">
+  <div class="scene" aria-hidden="true">
+    <div class="vinyl"></div>
+    <div class="eq" id="eq"></div>
+  </div>
+
+  <div class="bar">
+    <a class="brand" href="/"><img src="/img/logo.jpg" alt="" width="38" height="38" /> Crewolada</a>
+    <div class="progress" id="progress" aria-live="polite"><div class="t" id="ptext"></div><div class="p"><span id="pfill"></span></div></div>
+  </div>
+
+  <main>
+    <noscript><p class="err">Esta página precisa de JavaScript. Se preferir, fale com a gente pela comunidade do WhatsApp.</p></noscript>
+
+    <section class="screen intro active" id="intro">
+      <h1>Quer a <span class="thin">Crewolada</span><br />no seu evento?</h1>
+      <p class="lead">Conte um pouco sobre o seu evento e a gente retorna com uma proposta. Leva cerca de 1 minuto.</p>
+      <div class="nav"><button type="button" class="go" id="start">Começar <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button></div>
+      <p class="mini">Respondemos pelo WhatsApp que você informar no final.</p>
+    </section>
+
+    <form id="quiz" novalidate autocomplete="on">
+      <div class="hp" aria-hidden="true"><label>Não preencha <input type="text" name="website" tabindex="-1" autocomplete="off" /></label></div>
+
+      <section class="screen" data-id="tipoEvento" data-auto="1">
+        <fieldset class="q"><legend>Que tipo de evento é?</legend>
+          <div class="chips"><% O.tipoEvento.forEach(function(o) { %><label class="chip"><input type="radio" name="tipoEvento" value="<%= o %>" /><span><%= o %></span></label><% }) %></div>
+        </fieldset>
+      </section>
+
+      <section class="screen" data-id="convidar" data-auto="1">
+        <fieldset class="q"><legend>Quem você quer convidar?</legend>
+          <div class="cards">
+            <label class="chip"><input type="radio" name="convidar" value="<%= O.convidar[0] %>" /><span><b>Só o DJ Dee</b><small>O set do DJ Dee animando o seu evento.</small></span></label>
+            <label class="chip"><input type="radio" name="convidar" value="<%= O.convidar[1] %>" /><span><b>A festa Crewolada completa</b><small>A experiência completa, do jeito Crewolada.</small></span></label>
+            <label class="chip"><input type="radio" name="convidar" value="<%= O.convidar[2] %>" /><span><b>Ainda não sei</b><small>Quero entender as opções e os valores.</small></span></label>
+          </div>
+        </fieldset>
+      </section>
+
+      <section class="screen" data-id="data">
+        <div class="q"><span class="qt">Quando será o evento?</span>
+          <p class="qh">Escolha a data. Se ainda não definiu, tudo bem.</p>
+          <label class="fld">Data<input type="date" name="data" min="<%= minDate %>" /></label>
+          <div class="chips"><label class="chip"><input type="checkbox" name="dataIndefinida" /><span>Ainda não defini a data</span></label></div>
+        </div>
+      </section>
+
+      <section class="screen" data-id="local">
+        <div class="q"><span class="qt">Onde vai ser?</span>
+          <p class="qh">Cidade e estado do evento.</p>
+          <div class="row2">
+            <label class="fld">Cidade<input type="text" name="cidade" maxlength="60" autocomplete="address-level2" /></label>
+            <label class="fld">UF<select name="uf" autocomplete="address-level1"><option value="">UF</option><% ufs.forEach(function(u) { %><option value="<%= u %>"><%= u %></option><% }) %></select></label>
+          </div>
+          <label class="fld">Nome do local <span class="optional">(opcional)</span><input type="text" name="local" maxlength="100" placeholder="Igreja, clube, espaço de eventos..." /></label>
+        </div>
+      </section>
+
+      <section class="screen" data-id="bilhetado" data-auto="1">
+        <fieldset class="q"><legend>O evento é bilhetado?</legend><p class="qh">Ou seja, tem venda de ingressos?</p>
+          <div class="chips"><% O.bilhetado.forEach(function(o) { %><label class="chip"><input type="radio" name="bilhetado" value="<%= o %>" /><span><%= o %></span></label><% }) %></div>
+        </fieldset>
+      </section>
+
+      <section class="screen" data-id="publico" data-auto="1">
+        <fieldset class="q"><legend>Qual o público esperado?</legend>
+          <div class="chips"><% O.publico.forEach(function(o) { %><label class="chip"><input type="radio" name="publico" value="<%= o %>" /><span><%= o %></span></label><% }) %></div>
+        </fieldset>
+      </section>
+
+      <section class="screen" data-id="estrutura" data-auto="1">
+        <fieldset class="q"><legend>O local tem som e iluminação adequados?</legend><p class="qh">Estrutura para uma apresentação de DJ e festa.</p>
+          <div class="chips"><% O.estrutura.forEach(function(o) { %><label class="chip"><input type="radio" name="estrutura" value="<%= o %>" /><span><%= o %></span></label><% }) %></div>
+        </fieldset>
+      </section>
+
+      <section class="screen" data-id="precisaEstrutura" data-auto="1">
+        <fieldset class="q"><legend>Vão precisar de estrutura?</legend><p class="qh">Podemos orçar som e iluminação junto com a apresentação.</p>
+          <div class="chips"><% O.precisaEstrutura.forEach(function(o) { %><label class="chip"><input type="radio" name="precisaEstrutura" value="<%= o %>" /><span><%= o %></span></label><% }) %></div>
+        </fieldset>
+      </section>
+
+      <section class="screen" data-id="horario" data-optional="1">
+        <div class="q"><span class="qt">Horário e duração</span>
+          <p class="qh">Quando começa e quanto tempo de apresentação você imagina? <span class="optional">(opcional)</span></p>
+          <label class="fld">Início do evento<input type="time" name="inicio" /></label>
+          <div class="chips"><% O.duracao.forEach(function(o) { %><label class="chip"><input type="radio" name="duracao" value="<%= o %>" /><span><%= o %></span></label><% }) %></div>
+        </div>
+      </section>
+
+      <section class="screen" data-id="orcamento" data-optional="1">
+        <fieldset class="q"><legend>Como está o orçamento?</legend><p class="qh"><span class="optional">(opcional)</span></p>
+          <div class="chips"><% O.orcamento.forEach(function(o) { %><label class="chip"><input type="radio" name="orcamento" value="<%= o %>" /><span><%= o %></span></label><% }) %></div>
+          <label class="fld" id="valor-wrap" hidden>Valor em mente <span class="optional">(opcional)</span><input type="text" name="orcamentoValor" maxlength="40" placeholder="Ex: R$ 3.000" /></label>
+        </fieldset>
+      </section>
+
+      <section class="screen" data-id="deslocamento" data-optional="1">
+        <fieldset class="q"><legend>E o deslocamento?</legend><p class="qh">Como ficam transporte e hospedagem, já que o evento é fora do Rio? <span class="optional">(opcional)</span></p>
+          <div class="chips"><% [O.deslocamento[0], O.deslocamento[1]].forEach(function(o) { %><label class="chip"><input type="radio" name="deslocamento" value="<%= o %>" /><span><%= o %></span></label><% }) %></div>
+        </fieldset>
+      </section>
+
+      <section class="screen" data-id="detalhes" data-optional="1">
+        <div class="q"><span class="qt">Quer contar mais?</span>
+          <p class="qh">Links, referências, @ do evento ou qualquer detalhe importante. <span class="optional">(opcional)</span></p>
+          <label class="fld">Detalhes<textarea name="detalhes" maxlength="1200" placeholder="Conte mais sobre o evento..."></textarea></label>
+        </div>
+      </section>
+
+      <section class="screen" data-id="contato">
+        <div class="q"><span class="qt">Como falamos com você?</span>
+          <p class="qh">Retornamos pelo WhatsApp.</p>
+          <label class="fld">Seu nome<input type="text" name="nome" maxlength="80" autocomplete="name" /></label>
+          <label class="fld">WhatsApp (com DDD)<input type="tel" name="whatsapp" inputmode="numeric" autocomplete="tel" placeholder="(11) 99999-9999" /></label>
+          <label class="fld">E-mail <span class="optional">(opcional)</span><input type="email" name="email" maxlength="120" autocomplete="email" /></label>
+          <label class="fld">Seu papel no evento <span class="optional">(opcional)</span>
+            <select name="papel"><option value="">Selecione</option><% O.papel.forEach(function(o) { %><option value="<%= o %>"><%= o %></option><% }) %></select></label>
+          <label class="fld">Instagram do evento ou seu <span class="optional">(opcional)</span><input type="text" name="instagram" maxlength="40" placeholder="@usuario" /></label>
+          <label class="check"><input type="checkbox" name="consent" /><span>Concordo em informar meus dados para que a equipe da Crewolada entre em contato sobre este convite, conforme a <a href="/politica-de-privacidade" target="_blank">Política de Privacidade</a>.</span></label>
+        </div>
+      </section>
+
+      <div class="err" id="err" role="alert" hidden></div>
+      <div class="nav" id="nav" hidden>
+        <button type="button" class="back" id="back">Voltar</button>
+        <button type="button" class="go" id="next">Continuar <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        <button type="submit" class="go" id="send">Enviar convite <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+      </div>
+      <p class="skip" id="skip" hidden>Esta pergunta é opcional. Pode pular.</p>
+    </form>
+
+    <section class="screen done" id="done">
+      <h1>Convite <span class="thin">recebido!</span></h1>
+      <p>Obrigado por pensar na Crewolada. A equipe vai analisar as informações e retornar pelo WhatsApp que você informou.</p>
+      <div class="links">
+        <a class="go" href="/" style="text-decoration:none">Voltar ao site</a>
+        <a class="ghost" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var COMPLETA = <%- JSON.stringify(O.estrutura[0]) %>;
+
+      // ----- equalizer bars
+      var eq = document.getElementById('eq');
+      if (eq && !reduce) {
+        var n = window.innerWidth < 600 ? 22 : 48;
+        for (var i = 0; i < n; i++) {
+          var b = document.createElement('i');
+          b.style.setProperty('--d', (0.5 + Math.random() * 1.1).toFixed(2) + 's');
+          b.style.setProperty('--dl', (-Math.random() * 1.5).toFixed(2) + 's');
+          b.style.setProperty('--h', (25 + Math.random() * 70).toFixed(0) + '%');
+          eq.appendChild(b);
+        }
+      }
+
+      var form = document.getElementById('quiz');
+      var steps = Array.prototype.slice.call(form.querySelectorAll('.screen[data-id]'));
+      var intro = document.getElementById('intro');
+      var done = document.getElementById('done');
+      var nav = document.getElementById('nav');
+      var progress = document.getElementById('progress');
+      var errBox = document.getElementById('err');
+      var skip = document.getElementById('skip');
+      var current = null;
+      var timer = null;
+
+      function val(name) {
+        var el = form.elements[name];
+        if (!el) return '';
+        if (el.length && el[0] && el[0].type === 'radio') { for (var i = 0; i < el.length; i++) if (el[i].checked) return el[i].value; return ''; }
+        if (el.type === 'checkbox') return el.checked ? 'on' : '';
+        return (el.value || '').trim();
+      }
+      var rules = {
+        precisaEstrutura: function () { var e = val('estrutura'); return !!e && e !== COMPLETA; },
+        deslocamento: function () { var u = val('uf'); return !!u && u !== 'RJ'; }
+      };
+      function applicable(s) { var r = rules[s.getAttribute('data-id')]; return r ? r() : true; }
+      function active() { return steps.filter(applicable); }
+
+      var checks = {
+        tipoEvento: function () { return val('tipoEvento') ? '' : 'Escolha uma opção.'; },
+        convidar: function () { return val('convidar') ? '' : 'Escolha uma opção.'; },
+        data: function () { return (val('data') || val('dataIndefinida')) ? '' : 'Informe a data ou marque que ainda não definiu.'; },
+        local: function () { return !val('cidade') ? 'Informe a cidade.' : !val('uf') ? 'Escolha o estado.' : ''; },
+        bilhetado: function () { return val('bilhetado') ? '' : 'Escolha uma opção.'; },
+        publico: function () { return val('publico') ? '' : 'Escolha uma opção.'; },
+        estrutura: function () { return val('estrutura') ? '' : 'Escolha uma opção.'; },
+        precisaEstrutura: function () { return val('precisaEstrutura') ? '' : 'Escolha uma opção.'; },
+        contato: function () {
+          if (val('nome').length < 2) return 'Informe seu nome.';
+          if (val('whatsapp').replace(/\D/g, '').length < 10) return 'Informe seu WhatsApp com DDD.';
+          var em = val('email');
+          if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return 'O e-mail informado não parece válido.';
+          if (!val('consent')) return 'Marque a autorização para enviar.';
+          return '';
+        }
+      };
+      function problem(s) { var c = checks[s.getAttribute('data-id')]; return c ? c() : ''; }
+
+      function show(step) {
+        var list = active();
+        if (list.indexOf(step) === -1) step = list[0];
+        current = step;
+        intro.classList.remove('active');
+        steps.forEach(function (s) { s.classList.toggle('active', s === step); });
+        var idx = list.indexOf(step);
+        var last = idx === list.length - 1;
+        progress.classList.add('on');
+        document.getElementById('ptext').textContent = 'Pergunta ' + (idx + 1) + ' de ' + list.length;
+        document.getElementById('pfill').style.width = Math.round(((idx + 1) / list.length) * 100) + '%';
+        nav.hidden = false;
+        document.getElementById('next').hidden = last;
+        document.getElementById('send').hidden = !last;
+        document.getElementById('back').style.visibility = idx === 0 ? 'hidden' : 'visible';
+        skip.hidden = !step.getAttribute('data-optional');
+        errBox.hidden = true;
+        var f = step.querySelector('input[type="text"], input[type="tel"], input[type="email"], textarea');
+        if (f && !f.value && window.innerWidth > 700) { try { f.focus({ preventScroll: true }); } catch (e) {} }
+      }
+      function next() {
+        clearTimeout(timer);
+        var p = problem(current);
+        if (p) { errBox.textContent = p; errBox.hidden = false; return; }
+        var list = active();
+        var idx = list.indexOf(current);
+        if (idx < list.length - 1) show(list[idx + 1]);
+      }
+      function back() {
+        clearTimeout(timer);
+        var list = active();
+        var idx = list.indexOf(current);
+        if (idx > 0) show(list[idx - 1]);
+      }
+
+      document.getElementById('start').addEventListener('click', function () { show(active()[0]); });
+      document.getElementById('next').addEventListener('click', next);
+      document.getElementById('back').addEventListener('click', back);
+
+      form.addEventListener('change', function (e) {
+        var t = e.target;
+        if (t.name === 'orcamento') document.getElementById('valor-wrap').hidden = t.value !== <%- JSON.stringify(O.orcamento[0]) %>;
+        if (t.name === 'dataIndefinida' && t.checked) form.elements.data.value = '';
+        if (t.name === 'data' && t.value) form.elements.dataIndefinida.checked = false;
+        if (t.type === 'radio' && current && current.getAttribute('data-auto') === '1' && current.contains(t)) {
+          clearTimeout(timer);
+          timer = setTimeout(next, 240);
+        }
+      });
+      form.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+        e.preventDefault();
+        var list = active();
+        if (list.indexOf(current) < list.length - 1) next(); else document.getElementById('send').click();
+      });
+
+      // light input masks
+      var tel = form.elements.whatsapp;
+      tel.addEventListener('input', function () {
+        var d = tel.value.replace(/\D/g, '').slice(0, 11);
+        tel.value = d.length > 6 ? '(' + d.slice(0, 2) + ') ' + d.slice(2, d.length > 10 ? 7 : 6) + '-' + d.slice(d.length > 10 ? 7 : 6) : d.length > 2 ? '(' + d.slice(0, 2) + ') ' + d.slice(2) : d;
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var list = active();
+        for (var i = 0; i < list.length; i++) {
+          var p = problem(list[i]);
+          if (p) { show(list[i]); errBox.textContent = p; errBox.hidden = false; return; }
+        }
+        var send = document.getElementById('send');
+        send.classList.add('loading'); send.setAttribute('disabled', '');
+        var payload = {};
+        Array.prototype.forEach.call(new FormData(form).entries(), function (kv) { payload[kv[0]] = kv[1]; });
+        fetch('/api/contato', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            if (!res.ok) throw new Error((res.d && res.d.error) || 'Não foi possível enviar agora.');
+            steps.forEach(function (s) { s.classList.remove('active'); });
+            nav.hidden = true; skip.hidden = true; errBox.hidden = true; progress.classList.remove('on');
+            done.classList.add('active');
+            window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+          })
+          .catch(function (err) {
+            send.classList.remove('loading'); send.removeAttribute('disabled');
+            errBox.textContent = err.message || 'Não foi possível enviar agora. Tente de novo.';
+            errBox.hidden = false;
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

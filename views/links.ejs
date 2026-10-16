@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Crewolada · Links</title>
+  <meta name="description" content="Ingressos, YouTube, playlist, nossa história e como levar a Crewolada para o seu evento." />
+  <meta property="og:title" content="Crewolada · Links" />
+  <meta property="og:description" content="Ingressos, YouTube, playlist, nossa história e como levar a Crewolada para o seu evento." />
+  <meta property="og:image" content="/img/logo.jpg" />
+  <meta name="theme-color" content="#0A0F1A" />
+  <%- include('partials/head') %>
+  <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <style>
+    body.lk {
+      --bg: #0A0F1A; --ink: #F4F1E8; --muted: #9AA7BD; --line: rgba(255, 255, 255, 0.16); --yellow: #FFD21E; --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      margin: 0; min-height: 100svh; color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif; font-size: 17px; line-height: 1.5;
+      background: radial-gradient(900px 560px at 85% -10%, #4a2a8f 0%, #161a44 45%, var(--bg) 80%) fixed; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+    }
+    .lk *, .lk *::before, .lk *::after { box-sizing: border-box; }
+    .lk [hidden] { display: none !important; }
+    .lk h1, .lk h2 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; margin: 0; letter-spacing: -0.03em; line-height: 1.05; }
+    .lk p { margin: 0; }
+
+    .scene { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .vinyl {
+      position: absolute; right: -110px; top: 40px; width: 300px; height: 300px; border-radius: 50%; opacity: 0.5;
+      background: radial-gradient(circle, var(--yellow) 0 11%, #111 11.5% 13%, transparent 13.5%), repeating-radial-gradient(circle, #14141c 0 3px, #0b0b11 3px 6px);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 30px 80px -30px rgba(255, 210, 30, 0.35); animation: lkspin 10s linear infinite;
+    }
+    .eq { position: absolute; left: 0; right: 0; bottom: 0; height: 20vh; display: flex; align-items: flex-end; gap: 6px; padding-inline: 8px; opacity: 0.32; }
+    .eq i { flex: 1; min-width: 4px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--yellow), rgba(255, 138, 0, 0.6)); height: 10%; animation: lkbounce var(--d, 1s) ease-in-out var(--dl, 0s) infinite alternate; }
+    @keyframes lkspin { to { transform: rotate(360deg); } }
+    @keyframes lkbounce { from { height: 8%; } to { height: var(--h, 70%); } }
+
+    .wrap { position: relative; z-index: 2; width: min(520px, 100%); margin-inline: auto; padding: 40px 20px 120px; }
+    .head { text-align: center; }
+    .head img { width: 104px; height: 104px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px var(--yellow), 0 0 0 9px rgba(255, 210, 30, 0.18), 0 20px 40px -14px rgba(0, 0, 0, 0.7); }
+    .head h1 { margin-top: 20px; font-size: 2rem; font-weight: 800; }
+    .head p { margin-top: 6px; color: var(--muted); font-size: 15px; }
+
+    .list { display: grid; gap: 14px; margin-top: 30px; padding: 0; list-style: none; }
+    .item { opacity: 0; transform: translateY(14px); animation: lkin 0.6s var(--ease) forwards; animation-delay: calc(var(--i) * 80ms + 120ms); }
+    @keyframes lkin { to { opacity: 1; transform: none; } }
+    .btn {
+      all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px 18px; border-radius: 18px;
+      background: rgba(255, 255, 255, 0.07); border: 1.5px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 700; font-size: 17px;
+      backdrop-filter: blur(6px); -webkit-tap-highlight-color: transparent;
+      transition: transform 0.3s var(--ease), border-color 0.25s, background-color 0.25s;
+    }
+    .btn:hover { transform: translateY(-3px); border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.11); }
+    .btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .btn .ic { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: rgba(255, 255, 255, 0.1); }
+    .btn .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .btn .tx { flex: 1; min-width: 0; }
+    .btn .tx small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); margin-top: 1px; }
+    .btn .ar { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
+    .btn.main {
+      color: #0A0F1A; border-color: transparent; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800;
+      background: linear-gradient(180deg, #FFE866 0%, #FFD21E 52%, #FFBE0B 100%); box-shadow: 0 6px 0 #C79A00, 0 22px 40px -16px rgba(0, 0, 0, 0.7);
+    }
+    .btn.main .ic { background: rgba(10, 15, 26, 0.12); }
+    .btn.main .tx small { color: rgba(10, 15, 26, 0.7); font-family: 'DM Sans', sans-serif; }
+    .btn.main:hover { transform: translateY(-3px); box-shadow: 0 9px 0 #C79A00, 0 28px 50px -16px rgba(0, 0, 0, 0.75); background: linear-gradient(180deg, #FFE866 0%, #FFD21E 52%, #FFBE0B 100%); }
+    .btn.main:active { transform: translateY(5px); box-shadow: 0 1px 0 #C79A00, 0 8px 18px -8px rgba(0, 0, 0, 0.6); }
+
+    .foot { margin-top: 36px; text-align: center; color: var(--muted); font-size: 13px; }
+    .foot a { color: var(--muted); }
+
+    /* ticket chooser */
+    .sheet-bg { position: fixed; inset: 0; z-index: 20; background: rgba(4, 6, 12, 0.7); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .sheet-bg.on { opacity: 1; pointer-events: auto; }
+    .sheet {
+      position: fixed; z-index: 21; left: 0; right: 0; bottom: 0; width: min(520px, 100%); margin-inline: auto; padding: 14px 20px 28px; border-radius: 26px 26px 0 0;
+      background: #12172b; border: 1.5px solid var(--line); border-bottom: 0; transform: translateY(105%); transition: transform 0.45s var(--ease); max-height: 86svh; overflow: auto;
+    }
+    .sheet.on { transform: none; }
+    .sheet .grab { width: 44px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); margin: 0 auto 16px; }
+    .sheet h2 { font-size: 1.6rem; font-weight: 800; }
+    .sheet .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .evs { display: grid; gap: 12px; margin-top: 18px; }
+    .ev { display: block; text-decoration: none; color: var(--ink); padding: 16px 18px; border-radius: 18px; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); transition: transform 0.3s var(--ease), border-color 0.25s; }
+    .ev:hover { transform: translateY(-2px); border-color: var(--yellow); }
+    .ev:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+    .ev b { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; letter-spacing: -0.02em; }
+    .ev .when { color: var(--yellow); font-weight: 700; font-size: 14px; margin-top: 4px; }
+    .ev .where { color: var(--muted); font-size: 14px; margin-top: 2px; }
+    .tag { display: inline-block; margin-top: 10px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; background: var(--yellow); color: #0A0F1A; }
+    .tag.free { background: #22c55e; }
+    .none { color: var(--muted); margin-top: 18px; }
+    .close { all: unset; cursor: pointer; display: block; margin: 18px auto 0; padding: 12px 22px; color: var(--muted); font-weight: 700; }
+    .close:hover { color: #fff; }
+
+    @media (min-width: 700px) { .vinyl { right: 6%; top: 8%; width: 380px; height: 380px; } }
+    @media (prefers-reduced-motion: reduce) { .vinyl, .eq i { animation: none !important; } .item { animation: none; opacity: 1; transform: none; } .sheet { transition: none; } }
+  </style>
+</head>
+<body class="lk">
+  <div class="scene" aria-hidden="true"><div class="vinyl"></div><div class="eq" id="eq"></div></div>
+
+  <div class="wrap">
+    <header class="head">
+      <img src="/img/logo.jpg" alt="Crewolada" width="104" height="104" />
+      <h1>Crewolada</h1>
+      <p>Black music cristã · Rio de Janeiro</p>
+    </header>
+
+    <ul class="list">
+      <li class="item" style="--i:0">
+        <button type="button" class="btn main" id="open-tickets" aria-haspopup="dialog">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg></span>
+          <span class="tx">Ingressos<small>Escolha o evento</small></span>
+          <svg class="ar" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+      </li>
+      <li class="item" style="--i:1">
+        <a class="btn" href="/youtube" rel="noopener">
+          <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M10 9.5v5l4.5-2.5z"/></svg></span>
+          <span class="tx">Nosso canal do YouTube<small>Vídeos e sets da Crewolada</small></span>
+          <svg class="ar" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
+        </a>
+      </li>
+      <li class="item" style="--i:2">
+        <a class="btn" href="/contato">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></span>
+          <span class="tx">Leve a Crewolada para seu evento<small>Peça uma proposta em 1 minuto</small></span>
+          <svg class="ar" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </li>
+      <li class="item" style="--i:3">
+        <a class="btn" href="/playlist" rel="noopener">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h12M4 11h12M4 16h7"/><path d="M19 8v9"/><circle cx="17" cy="17" r="2"/></svg></span>
+          <span class="tx">Playlist<small>Pra ouvir onde estiver</small></span>
+          <svg class="ar" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
+        </a>
+      </li>
+      <li class="item" style="--i:4">
+        <a class="btn" href="/sobre">
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 5h6a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4z"/><path d="M20 5h-6a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h7z"/></svg></span>
+          <span class="tx">Nossa história<small>Como a Crewolada nasceu</small></span>
+          <svg class="ar" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </a>
+      </li>
+    </ul>
+
+    <p class="foot">© Crewolada · <a href="/politica-de-privacidade">Privacidade</a></p>
+  </div>
+
+  <div class="sheet-bg" id="bg"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
+    <div class="grab"></div>
+    <h2 id="sheet-title">Qual evento?</h2>
+    <p class="sub">Escolha o evento para garantir o seu ingresso.</p>
+    <% if (events.length) { %>
+      <div class="evs">
+        <% events.forEach(function(e) { %>
+          <a class="ev" href="<%= e.href %>">
+            <b><%= e.name %></b>
+            <div class="when"><%= e.dateLabel %><%= e.timeLabel ? ' · ' + e.timeLabel : '' %></div>
+            <% if (e.venue) { %><div class="where"><%= e.venue %></div><% } %>
+            <span class="tag <%= e.free ? 'free' : '' %>"><%= e.free ? 'Inscrição gratuita' : 'Ingressos à venda' %></span>
+          </a>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <p class="none">No momento não há eventos com ingressos abertos. Entre na nossa comunidade do WhatsApp para saber das novidades primeiro.</p>
+      <div class="evs"><a class="ev" href="<%= locals.communityUrl || '/' %>"><b>Entrar na comunidade</b></a></div>
+    <% } %>
+    <button type="button" class="close" id="close">Fechar</button>
+  </div>
+
+  <script>
+    (function () {
+      var eq = document.getElementById('eq');
+      var n = Math.max(14, Math.min(40, Math.floor(window.innerWidth / 16)));
+      for (var i = 0; i < n; i++) {
+        var b = document.createElement('i');
+        b.style.setProperty('--h', (25 + Math.random() * 70).toFixed(0) + '%');
+        b.style.setProperty('--d', (0.6 + Math.random() * 0.9).toFixed(2) + 's');
+        b.style.setProperty('--dl', (-Math.random() * 1.5).toFixed(2) + 's');
+        eq.appendChild(b);
+      }
+      var sheet = document.getElementById('sheet'), bg = document.getElementById('bg'), opener = document.getElementById('open-tickets');
+      function open() {
+        sheet.hidden = false;
+        requestAnimationFrame(function () { sheet.classList.add('on'); bg.classList.add('on'); });
+        var first = sheet.querySelector('.ev, .close'); if (first) first.focus();
+      }
+      function close() {
+        sheet.classList.remove('on'); bg.classList.remove('on');
+        setTimeout(function () { sheet.hidden = true; }, 300);
+        opener.focus();
+      }
+      opener.addEventListener('click', open);
+      bg.addEventListener('click', close);
+      document.getElementById('close').addEventListener('click', close);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !sheet.hidden) close(); });
+      if (location.hash === '#ingressos') open();
+    })();
+  </script>
+</body>
+</html>

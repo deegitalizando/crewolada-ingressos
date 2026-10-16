@@ -10,6 +10,8 @@ const mp = require('./mercadopago');
 const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
 const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents, getEventById } = require('./event');
 const { registerEventosRoutes } = require('./eventos');
+const { registerContatoRoutes } = require('./contato');
+const { registerLinksRoutes } = require('./links');
 const { getProducts, getChildRules, buildPurchase } = require('./produtos');
 
 // Once a lote has this many tickets or fewer left, the sales page starts
@@ -1056,6 +1058,8 @@ registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasili
 registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
 registerRelatorioRoutes(app, { requireAdminAuth, eventInfo });
+registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
+registerLinksRoutes(app, { requireAdminAuth, eventInfo });
 registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,
 });
