@@ -66,7 +66,7 @@
 
   <% if (order.status === 'paid' && metaPixelId) { %>
   <script>
-    fbq('track', 'Purchase', { value: <%= order.totalAmount %>, currency: 'BRL' }, { eventID: '<%= order.id %>' });
+    <% if (Number(order.totalAmount) > 0) { %>fbq('track', 'Purchase', { value: <%= order.totalAmount %>, currency: 'BRL' }, { eventID: '<%= order.id %>' });<% } else { %>fbq('track', 'CompleteRegistration', {}, { eventID: '<%= order.id %>' });<% } %>
   </script>
   <% } %>
 

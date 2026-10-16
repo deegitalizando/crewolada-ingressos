@@ -1,7 +1,7 @@
 const store = require('./store');
 const { sendReminder } = require('./n8n');
 const { getTemplates, renderTemplate } = require('./templates');
-const { currentEvent, inEvent, eventTemplateVars } = require('./event');
+const { currentEvent, inEvent, eventTemplateVars, EVENTS, getEventById } = require('./event');
 
 const MILESTONES = ['dias5', 'dia1', 'diaEvento', 'hora1'];
 
@@ -49,11 +49,11 @@ function pickVariation(messageTemplate) {
 // back-to-back, with identical timing, is exactly the burst pattern that
 // gets a business number flagged/banned. 4-9s between sends keeps this
 // broadcast at a human-plausible pace.
-async function sendToAllPaidBuyers(db, messageTemplate) {
-  const buyers = Object.values(db.orders).filter((o) => o.status === 'paid' && inEvent(o, currentEvent.id));
+async function sendToAllPaidBuyers(db, messageTemplate, eventId = currentEvent.id) {
+  const buyers = Object.values(db.orders).filter((o) => o.status === 'paid' && inEvent(o, eventId));
   for (let i = 0; i < buyers.length; i++) {
     const order = buyers[i];
-    const mensagem = renderTemplate(pickVariation(messageTemplate), { ...eventTemplateVars(), nome: order.buyerName });
+    const mensagem = renderTemplate(pickVariation(messageTemplate), { ...eventTemplateVars(getEventById(eventId)), nome: order.buyerName });
     try {
       await sendReminder({
         nome: order.buyerName,
@@ -100,6 +100,33 @@ async function checkAndSendReminders() {
         });
 
         await sendToAllPaidBuyers(db, templates[key]);
+      }
+    }
+  }
+
+  // Other upcoming events that already have registrations (e.g. the free SP event
+  // sold in parallel with the current one) get the same reminder milestones,
+  // tracked per event. Milestones that are already stale (someone registered
+  // late) are marked as done instead of being sent out of context.
+  {
+    const nowMs = Date.now();
+    const templates = getTemplates(db);
+    for (const ev of EVENTS) {
+      if (ev.id === currentEvent.id || !ev.startAt) continue;
+      if (nowMs > Date.parse(ev.startAt) + 3 * 3600000) continue;
+      if (!Object.values(db.orders).some((o) => o.status === 'paid' && inEvent(o, ev.id))) continue;
+      const dates = getMilestoneDates(ev.startAt);
+      if (!dates) continue;
+      const flags = (db.eventReminders || {})[ev.id] || {};
+      for (const key of MILESTONES) {
+        if (flags[key] || nowMs < dates[key].getTime()) continue;
+        const stale = nowMs - dates[key].getTime() > 12 * 3600000;
+        await store.withDb((d) => {
+          d.eventReminders = d.eventReminders || {};
+          d.eventReminders[ev.id] = d.eventReminders[ev.id] || {};
+          d.eventReminders[ev.id][key] = true;
+        });
+        if (!stale) await sendToAllPaidBuyers(db, templates[key], ev.id);
       }
     }
   }

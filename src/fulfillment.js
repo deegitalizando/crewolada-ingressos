@@ -54,7 +54,7 @@ async function approveOrder(orderId, paymentId, eventInfo) {
   // or an admin-triggered resend — both of which already pass origin: 'reenvio'.
   await notifyOrderApproved(approvedOrder, tickets, { channel: 'email' });
   // Courtesy tickets aren't sales — don't report them as conversions.
-  if (!approvedOrder.isCourtesy) await trackPurchase(approvedOrder, approvedOrder.id);
+  if (!approvedOrder.isCourtesy && Number(approvedOrder.totalAmount) > 0) await trackPurchase(approvedOrder, approvedOrder.id);
 
   return { order: approvedOrder, tickets };
 }

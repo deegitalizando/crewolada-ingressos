@@ -1,4 +1,4 @@
-<% if (!(typeof order !== 'undefined' && order && order.isCourtesy)) { %>
+<% if (!(typeof order !== 'undefined' && order && (order.isCourtesy || Number(order.totalAmount) === 0))) { %>
 <footer class="legal-footer">
   <h4>Cancelamento e reembolso em até <%= refundDays %> dias</h4>
   <p>

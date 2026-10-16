@@ -34,7 +34,25 @@ const NEXT_EVENT = {
   ],
 };
 
-const SEEDS = [LEGACY_EVENT, NEXT_EVENT];
+// Free, limited registration with its own page (crewolada.com/SP). It is sold in
+// parallel with the "current" event, so it never needs to be set as current.
+const SP_EVENT = {
+  id: 'crewolada-sp-2026-11-19',
+  name: 'Crewolada SP',
+  brand: 'Crewolada',
+  slug: 'sp',
+  free: true,
+  tagline: 'Pela 1ª vez em São Paulo',
+  note: 'Véspera de feriado',
+  dateLabel: '19/11/2026',
+  timeLabel: 'Das 19h às 23h',
+  venue: 'Igreja Somos Betel - Osasco/SP',
+  startAt: '2026-11-19T22:00:00.000Z', // 19/11/2026 19h (Brasilia)
+  capacity: 500,
+  maxPerCpf: 4,
+};
+
+const SEEDS = [LEGACY_EVENT, NEXT_EVENT, SP_EVENT];
 
 // Both are mutated IN PLACE by syncEvents(), so every module that imported
 // them keeps seeing the live values without re-requiring anything.
@@ -98,6 +116,6 @@ function eventTemplateVars(event = currentEvent) {
 }
 
 module.exports = {
-  LEGACY_EVENT, NEXT_EVENT, EVENTS, currentEvent, syncEvents,
+  LEGACY_EVENT, NEXT_EVENT, SP_EVENT, EVENTS, currentEvent, syncEvents,
   orderEventId, inEvent, getEventById, eventForOrder, eventStatus, eventTemplateVars,
 };

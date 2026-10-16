@@ -1232,6 +1232,119 @@ app.get('/api/downloads/preview/:id', requireAdminAuth, async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------
+// Free, limited registration pages (one per event with a slug), e.g. /SP.
+// Registered last so no real route can ever be shadowed by a slug.
+// ---------------------------------------------------------------------
+
+const freeHits = new Map();
+function freeRateLimited(ip) {
+  const now = Date.now();
+  const list = (freeHits.get(ip) || []).filter((x) => now - x < 3600000);
+  list.push(now);
+  freeHits.set(ip, list);
+  return list.length > 20;
+}
+
+function findFreeEvent(slug) {
+  const s = String(slug || '').toLowerCase();
+  return EVENTS.find((e) => e.free && e.slug && e.slug.toLowerCase() === s) || null;
+}
+
+function freePageData(ev, db) {
+  const capacity = ev.capacity || 0;
+  const sold = getSoldCount(db, ev.id);
+  const startMs = ev.startAt ? Date.parse(ev.startAt) : NaN;
+  const weekday = Number.isNaN(startMs)
+    ? ''
+    : new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'America/Sao_Paulo' }).format(new Date(startMs));
+  return {
+    ev, capacity, sold, left: Math.max(0, capacity - sold), weekday,
+    closed: !Number.isNaN(startMs) && Date.now() > startMs + 5 * 3600000,
+    baseUrl: process.env.BASE_URL || '',
+  };
+}
+
+app.get('/:slug', (req, res, next) => {
+  const ev = findFreeEvent(req.params.slug);
+  if (!ev) return next();
+  res.render('evento_gratuito', {
+    eventInfo: { ...eventInfo, ...ev }, ...freePageData(ev, store.load()), error: null, values: {},
+  });
+});
+
+app.post('/:slug/inscricao', async (req, res, next) => {
+  const ev = findFreeEvent(req.params.slug);
+  if (!ev) return next();
+
+  const evInfo = { ...eventInfo, ...ev };
+  const renderError = (status, error) => res.status(status).render('evento_gratuito', {
+    eventInfo: evInfo, ...freePageData(ev, store.load()), error, values: req.body,
+  });
+
+  if (req.body.website) return res.redirect(`/${ev.slug}`); // honeypot
+  const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.ip;
+  if (freeRateLimited(clientIp)) return renderError(429, 'Muitas tentativas em pouco tempo. Tente de novo mais tarde.');
+
+  const buyerName = String(req.body.nome || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  const buyerEmail = String(req.body.email || '').trim().toLowerCase().slice(0, 120);
+  let phone = String(req.body.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '');
+  if (phone.length > 11 && phone.startsWith('55')) phone = phone.slice(2);
+  const cpf = String(req.body.cpf || '').replace(/\D/g, '');
+  const maxPer = ev.maxPerCpf || 4;
+  const qty = Math.min(Math.max(parseInt(req.body.quantidade, 10) || 1, 1), maxPer);
+
+  if (buyerName.length < 2) return renderError(400, 'Informe seu nome completo.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) return renderError(400, 'Informe um e-mail válido: é para lá que enviamos o ingresso.');
+  if (!/^[1-9][1-9]\d{8,9}$/.test(phone)) return renderError(400, 'Informe um WhatsApp válido, com DDD.');
+  if (!isValidCpf(cpf)) return renderError(400, 'CPF inválido. Confira e tente novamente.');
+  if (req.body.consent !== 'on') return renderError(400, 'Para se inscrever, é preciso concordar com o uso dos dados.');
+
+  const page = freePageData(ev, store.load());
+  if (page.closed) return renderError(400, 'As inscrições deste evento foram encerradas.');
+
+  const order = {
+    id: crypto.randomUUID(),
+    buyerName,
+    buyerEmail,
+    buyerPhone: phone,
+    buyerCpf: cpf,
+    quantity: qty,
+    eventId: ev.id,
+    productId: 'gratuito',
+    loteName: 'Ingresso Gratuito',
+    unitPrice: 0,
+    totalAmount: 0,
+    isFree: true,
+    status: 'pending',
+    mpPaymentId: null,
+    paymentMethodId: 'gratuito',
+    pixQrCode: null,
+    pixQrCodeBase64: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  // Capacity and the per-CPF limit are checked and the order saved in one atomic step.
+  const outcome = await store.withDb((d) => {
+    const mine = Object.values(d.orders).filter((o) => inEvent(o, ev.id) && o.buyerCpf === cpf && (o.status === 'paid' || o.status === 'pending'));
+    // Same person tapping twice: send them to the order they already have.
+    const recent = mine.find((o) => o.buyerEmail === buyerEmail && Date.now() - Date.parse(o.createdAt) < 120000);
+    if (recent) return { existing: recent.id };
+    const already = mine.reduce((s, o) => s + o.quantity, 0);
+    if (already + qty > maxPer) return { error: `Este CPF já tem ${already} ingresso(s). O limite é ${maxPer} por pessoa.` };
+    if (getSoldCount(d, ev.id) + qty > (ev.capacity || 0)) return { error: 'Os ingressos acabaram. Entre na comunidade para saber dos próximos eventos.' };
+    d.orders[order.id] = order;
+    return { created: true };
+  });
+
+  if (outcome.existing) return res.redirect(`/pedido/${outcome.existing}`);
+  if (outcome.error) return renderError(400, outcome.error);
+
+  await approveOrder(order.id, `gratuito-${order.id}`, evInfo);
+  return res.redirect(`/pedido/${order.id}`);
+});
+
 app.listen(PORT, () => {
   console.log(`Crewolada rodando em http://localhost:${PORT}`);
   startReminderScheduler();

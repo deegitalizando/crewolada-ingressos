@@ -67,6 +67,8 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
         startAtLocal: e.startAt ? formatDatetimeLocalBrasilia(e.startAt) : '',
         isSeed: SEED_IDS.has(e.id),
         hasProducts: getProducts(e).length > 0,
+        free: Boolean(e.free),
+        slug: e.slug || '',
         hasOrders: s.orders + s.courtesy + s.cancelled > 0,
       };
     });

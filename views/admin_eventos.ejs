@@ -78,6 +78,7 @@
             <p class="ev-meta">
               <%= c.dateLabel %><%= c.timeLabel ? ' · ' + c.timeLabel : '' %> &middot; <%= c.venue || 'Local a definir' %>
             </p>
+            <% if (c.slug) { %><p class="ev-meta" style="margin-top:-6px">Inscrição gratuita: <a href="/<%= c.slug %>" target="_blank" style="color:var(--accent)">/<%= c.slug.toUpperCase() %></a></p><% } %>
             <div class="ev-nums">
               <div class="ev-num"><div class="l">Ingressos vendidos</div><div class="v"><%= c.stats.tickets %><%= (c.capacity || c.lotesCapacity) ? ' / ' + (c.capacity || c.lotesCapacity) : '' %></div></div>
               <div class="ev-num"><div class="l">Receita bruta</div><div class="v"><%= money(c.stats.revenue) %></div></div>
@@ -87,8 +88,8 @@
             <div class="ev-actions">
               <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas</button></a>
               <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
-              <a href="<%= c.hasProducts ? '/admin/ingressos' : '/admin/lotes' %>?evento=<%= c.id %>"><button type="button" class="btn-secondary"><%= c.hasProducts ? 'Ingressos' : 'Lotes' %></button></a>
-              <% if (c.status !== 'atual') { %>
+              <% if (!c.free) { %><a href="<%= c.hasProducts ? '/admin/ingressos' : '/admin/lotes' %>?evento=<%= c.id %>"><button type="button" class="btn-secondary"><%= c.hasProducts ? 'Ingressos' : 'Lotes' %></button></a><% } %>
+              <% if (c.status !== 'atual' && !c.free) { %>
                 <form action="/admin/eventos/<%= c.id %>/atual" method="POST" onsubmit="return confirm('Definir este evento como atual? O site passa a vender os ingressos dele.')">
                   <button type="submit">Definir como atual</button>
                 </form>
