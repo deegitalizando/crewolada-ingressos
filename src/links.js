@@ -6,8 +6,8 @@ const { EVENTS, currentEvent, eventStatus } = require('./event');
 // (/admin/links) so they can change without a deploy; YOUTUBE_URL / PLAYLIST_URL
 // env vars take precedence when set.
 const FALLBACKS = {
-  youtube: 'https://www.youtube.com/results?search_query=Crewolada',
-  playlist: 'https://www.youtube.com/results?search_query=Crewolada+playlist',
+  youtube: 'https://www.youtube.com/@festacrewolada',
+  playlist: 'https://open.spotify.com/playlist/05T8GiPzEl87DYLlaXwu4g',
 };
 
 const isHttps = (u) => /^https:\/\/[^\s]+$/i.test(String(u || '').trim());

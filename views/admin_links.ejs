@@ -42,13 +42,13 @@
           <input type="url" name="youtube" value="<%= links.youtube || '' %>" placeholder="https://www.youtube.com/@seucanal" <%= envLocked.youtube ? 'disabled' : '' %> />
         </label>
         <% if (envLocked.youtube) { %><p class="hint" style="text-align:left">Definido pela variável YOUTUBE_URL no servidor.</p>
-        <% } else if (!configured.youtube) { %><p class="hint" style="text-align:left">Ainda não cadastrado: por enquanto /youtube abre uma busca por "Crewolada" no YouTube.</p><% } %>
+        <% } else if (!configured.youtube) { %><p class="hint" style="text-align:left">Usando o padrão: youtube.com/@festacrewolada.</p><% } %>
 
         <label style="margin-top:14px">Playlist (/playlist)
           <input type="url" name="playlist" value="<%= links.playlist || '' %>" placeholder="https://open.spotify.com/playlist/..." <%= envLocked.playlist ? 'disabled' : '' %> />
         </label>
         <% if (envLocked.playlist) { %><p class="hint" style="text-align:left">Definido pela variável PLAYLIST_URL no servidor.</p>
-        <% } else if (!configured.playlist) { %><p class="hint" style="text-align:left">Ainda não cadastrado: por enquanto /playlist abre uma busca no YouTube.</p><% } %>
+        <% } else if (!configured.playlist) { %><p class="hint" style="text-align:left">Usando o padrão: a playlist da Crewolada no Spotify.</p><% } %>
 
         <button type="submit" style="margin-top:16px">Salvar</button>
       </form>
