@@ -35,6 +35,7 @@
     }
     @keyframes vdrift { from { transform: translateY(-50%) rotate(180deg); } to { transform: translateY(-47%) rotate(180deg); } }
     .torn { position: absolute; right: 0; bottom: 0; width: 70vw; height: 34vh; max-width: 560px; background: linear-gradient(135deg, #2a2a2a 0%, #0c0c0c 55%, #000 100%); clip-path: polygon(100% 24%, 78% 46%, 52% 70%, 0 100%, 100% 100%); opacity: 0.85; }
+    .ghostcrown { position: absolute; left: -16vw; top: 40vh; width: min(66vw, 380px); height: min(66vw, 380px); color: var(--gold); opacity: 0.07; transform: rotate(-8deg); fill: none; stroke: currentColor; stroke-width: 1.2; }
     .scribble { position: absolute; right: -8px; top: 30vh; width: 120px; height: 90px; overflow: visible; }
     .scribble path { fill: none; stroke: var(--gold); stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 260; stroke-dashoffset: 260; animation: draw 6s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(229, 167, 27, 0.55)); }
     @keyframes draw { 0% { stroke-dashoffset: 260; opacity: 1; } 45%, 75% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
@@ -54,6 +55,8 @@
 
     /* ---------- content ---------- */
     .wrap { position: relative; z-index: 2; width: min(500px, 100%); margin-inline: auto; padding: 18px 20px 150px; }
+    .kick { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 4px 0 0; font-size: 12px; letter-spacing: 0.42em; text-transform: uppercase; color: #fff; font-weight: 500; }
+    .kick span { flex: 1; max-width: 70px; height: 1.5px; background: var(--gold); }
     .hero { position: relative; width: 100%; height: min(330px, 84vw); }
     .hero .halo { position: absolute; left: 50%; top: 52%; width: 86%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(229, 167, 27, 0.22), transparent 66%); animation: pulse 4s ease-in-out infinite alternate; }
     @keyframes pulse { from { opacity: 0.5; transform: translate(-50%, -50%) scale(0.94); } to { opacity: 1; transform: translate(-50%, -50%) scale(1.06); } }
@@ -88,7 +91,10 @@
     .btn.main:hover { transform: translateY(-3px); border-color: #fff; }
     .btn.main:active { transform: translateY(1px); }
 
-    .foot { margin-top: 34px; text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
+    .brush { width: 220px; margin: 30px auto 0; color: var(--gold); }
+    .brush svg { display: block; width: 100%; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(229, 167, 27, 0.5)); }
+    .brush .x { stroke-width: 4; }
+    .foot { margin-top: 18px; text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
     .foot a { color: var(--muted); }
 
     /* ---------- ticket chooser ---------- */
@@ -130,7 +136,7 @@
     }
   </style>
 </head>
-<body class="lk">
+<body data-fx="off" class="lk">
   <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
     <defs>
       <symbol id="g-cross" viewBox="0 0 64 64"><path d="M27 5h10v17h17v10H37v27H27V32H10V22h17z" fill="currentColor" fill-opacity=".1" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></symbol>
@@ -150,8 +156,7 @@
 
   <div class="bg" aria-hidden="true">
     <div class="dots"></div>
-    <div class="torn"></div>
-    <div class="vtext">Crewolada</div>
+    <svg class="ghostcrown" viewBox="0 0 64 64"><use href="#g-crown"/></svg>
     <svg class="scribble" viewBox="0 0 120 90"><path d="M112 14C78 2 30 14 50 32c20 16 52 6 36 28-12 16-48 14-70 20"/></svg>
 
     <span class="fl" style="--x:6%;--y:14%;--s:34px;--r:10deg;--d:8s;--dl:-2s;--o:.28;--depth:18"><svg class="g"><use href="#g-cross"/></svg></span>
@@ -169,10 +174,11 @@
 
   <div class="wrap">
     <header>
+      <p class="kick"><span></span>Black music cristã<span></span></p>
       <div class="hero">
         <div class="halo"></div>
         <img class="logo" src="/img/logo.jpg" alt="Crewolada" width="330" height="330" />
-        <span class="fl" style="--x:calc(50% - 30px);--y:-2px;--s:60px;--r:5deg;--d:4.5s;--o:1;--depth:8;--c:var(--gold-hi)"><svg class="g"><use href="#g-crown"/></svg></span>
+        <span class="fl" style="--x:56%;--y:2px;--s:62px;--r:4deg;--d:4.5s;--o:1;--depth:8;--c:var(--gold-hi);rotate:14deg"><svg class="g"><use href="#g-crown"/></svg></span>
         <span class="fl" style="--x:2%;--y:30%;--s:52px;--r:-8deg;--d:5.5s;--dl:-1s;--o:.95;--depth:20"><svg class="g"><use href="#g-cross"/></svg></span>
         <span class="fl" style="--x:79%;--y:26%;--s:58px;--r:8deg;--d:6s;--dl:-2s;--o:.95;--depth:24"><svg class="g"><use href="#g-bible"/></svg></span>
         <span class="fl" style="--x:6%;--y:68%;--s:40px;--c:var(--pink);--r:-10deg;--d:4.8s;--dl:-1.5s;--o:.95;--depth:28"><svg class="g"><use href="#g-note"/></svg></span>
@@ -218,6 +224,8 @@
         </a>
       </li>
     </ul>
+
+    <div class="brush" aria-hidden="true"><svg viewBox="0 0 220 56"><path d="M6 14C60 6 150 6 214 12" /><path d="M20 20C80 14 150 14 200 19" opacity=".5"/><path d="M110 22v30M99 33h22" class="x"/></svg></div>
 
     <p class="foot">© Crewolada · <a href="/politica-de-privacidade">Privacidade</a></p>
   </div>

@@ -7,22 +7,22 @@
   <meta property="og:description" content="Como um DJ de Campo Grande criou uma festa de black music cristã que chegou a reunir milhares de jovens." />
   <meta property="og:type" content="article" />
   <meta property="og:image" content="/img/logo.jpg" />
-  <meta name="theme-color" content="#0A0F1A" />
+  <meta name="theme-color" content="#000000" />
   <%- include('partials/head') %>
   <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/fonts/fonts.css" />
   <style>
     body.sb {
-      --bg: #0A0F1A; --ink: #F4F1E8; --muted: #9AA7BD; --line: rgba(255, 255, 255, 0.16); --yellow: #FFD21E; --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --bg: #000000; --ink: #F4F1E8; --muted: #9AA7BD; --line: rgba(255, 255, 255, 0.16); --yellow: #E5A71B; --ease: cubic-bezier(0.22, 1, 0.36, 1);
       margin: 0; color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif; font-size: 18px; line-height: 1.7;
-      background: radial-gradient(900px 520px at 85% -10%, #4a2a8f 0%, #161a44 45%, var(--bg) 80%) fixed; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+      background: #000; overflow-x: hidden; -webkit-font-smoothing: antialiased;
     }
     .sb *, .sb *::before, .sb *::after { box-sizing: border-box; }
-    .sb h1, .sb h2 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; letter-spacing: -0.03em; margin: 0; }
-    .sb p { margin: 0; }
+    :where(.sb) h1, :where(.sb) h2 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; letter-spacing: -0.03em; margin: 0; }
+    :where(.sb) p { margin: 0; }
     .bar { width: min(720px, 100%); margin-inline: auto; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .brand { display: inline-flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 18px; }
-    .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(255, 210, 30, 0.6); }
+    .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px rgba(229, 167, 27, 0.6); }
     .bar a.back { color: var(--muted); text-decoration: none; font-size: 15px; font-weight: 700; }
     .bar a.back:hover { color: #fff; }
     article { width: min(720px, 100%); margin-inline: auto; padding: 24px 20px 90px; }
@@ -35,15 +35,15 @@
     article h2 + p { margin-top: 14px; }
     article p { color: #e3e5ef; }
     .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 34px 0 0; }
-    .stat { padding: 16px 12px; border-radius: 18px; text-align: center; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); }
+    .stat { padding: 16px 12px; border-radius: 6px; text-align: center; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); }
     .stat b { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(1.4rem, 5vw, 2rem); color: var(--yellow); letter-spacing: -0.03em; }
     .stat span { display: block; font-size: 13px; color: var(--muted); line-height: 1.3; margin-top: 2px; }
     blockquote { margin: 30px 0 0; padding: 4px 0 4px 20px; border-left: 4px solid var(--yellow); font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(1.3rem, 4vw, 1.7rem); line-height: 1.25; letter-spacing: -0.02em; }
     ul.rules { margin: 18px 0 0; padding: 0; list-style: none; display: grid; gap: 10px; }
-    ul.rules li { padding: 14px 16px; border-radius: 16px; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); color: #e3e5ef; font-size: 17px; line-height: 1.5; }
+    ul.rules li { padding: 14px 16px; border-radius: 6px; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); color: #e3e5ef; font-size: 17px; line-height: 1.5; }
     .cta { margin-top: 48px; display: flex; flex-wrap: wrap; gap: 12px; }
-    .btn { display: inline-flex; padding: 16px 26px; border-radius: 999px; text-decoration: none; font-weight: 800; transition: transform 0.3s var(--ease), background-color 0.3s, color 0.3s; }
-    .btn.y { background: var(--yellow); color: #0A0F1A; }
+    .btn { display: inline-flex; padding: 16px 26px; border-radius: 4px; text-decoration: none; font-weight: 800; transition: transform 0.3s var(--ease), background-color 0.3s, color 0.3s; }
+    .btn.y { background: var(--yellow); color: #000000; }
     .btn.g { border: 1.5px solid var(--ink); color: var(--ink); }
     .btn:hover { transform: translateY(-2px); }
     .btn.g:hover { background: var(--ink); color: var(--bg); }

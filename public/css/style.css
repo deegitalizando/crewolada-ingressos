@@ -603,3 +603,37 @@ th {
   }
   .no-print, .legal-footer { display: none !important; }
 }
+
+/* ===== Identidade Crewolada (flyer): preto, dourado e branco ===== */
+:root {
+  --accent: #E5A71B;
+  --accent-2: #C98F12;
+  --gold-hi: #F6C441;
+  --card-bg: #0b0b0b;
+  --card-border: rgba(229, 167, 27, 0.5);
+  --text: #ffffff;
+  --text-dim: #a9a9a9;
+}
+body { font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; }
+.hero h1 { text-transform: uppercase; letter-spacing: 0.04em; }
+.card h2, .card h3 { text-transform: uppercase; letter-spacing: 0.04em; }
+.card, .cancel-dialog { border-radius: 6px; border: 1.5px solid var(--card-border); }
+.logo { border-radius: 0; box-shadow: none; background: transparent; }
+button {
+  border-radius: 4px;
+  font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif;
+  letter-spacing: 0.1em;
+  color: #000;
+  background: linear-gradient(180deg, var(--gold-hi), var(--accent));
+}
+.btn-secondary { background: transparent; border: 1.5px solid var(--card-border); color: var(--text); }
+.btn-danger { background: var(--danger); color: #fff; }
+.link-btn { background: none; color: var(--text-dim); letter-spacing: 0; }
+input, .template-box textarea { border-radius: 4px; }
+input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(229, 167, 27, 0.18); }
+.badge, .tab, .status-pill { border-radius: 4px; }
+.tab.active { color: #000; }
+.stat-box, .refund-box, .ticket-list a, .scan-result { border-radius: 6px; }
+.qty-btn { border-radius: 4px; color: var(--accent); }
+.legal-footer h4, .legal h3 { text-transform: uppercase; letter-spacing: 0.08em; }
