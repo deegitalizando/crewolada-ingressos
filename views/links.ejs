@@ -4,140 +4,217 @@
   <title>Crewolada · Links</title>
   <meta name="description" content="Ingressos, YouTube, playlist, nossa história e como levar a Crewolada para o seu evento." />
   <meta property="og:title" content="Crewolada · Links" />
-  <meta property="og:description" content="Ingressos, YouTube, playlist, nossa história e como levar a Crewolada para o seu evento." />
+  <meta property="og:description" content="Música, cultura, fé e propósito. Ingressos, YouTube, playlist e nossa história." />
   <meta property="og:image" content="/img/logo.jpg" />
-  <meta name="theme-color" content="#0A0F1A" />
+  <meta name="theme-color" content="#000000" />
   <%- include('partials/head') %>
   <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/fonts/fonts.css" />
   <style>
     body.lk {
-      --bg: #0A0F1A; --ink: #F4F1E8; --muted: #9AA7BD; --line: rgba(255, 255, 255, 0.16); --yellow: #FFD21E; --ease: cubic-bezier(0.22, 1, 0.36, 1);
-      margin: 0; min-height: 100svh; color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif; font-size: 17px; line-height: 1.5;
-      background: radial-gradient(900px 560px at 85% -10%, #4a2a8f 0%, #161a44 45%, var(--bg) 80%) fixed; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+      --ink: #FFFFFF; --muted: #9a9a9a; --gold: #E5A71B; --gold-hi: #F6C441; --pink: #FF1F8E; --blue: #1E90FF; --line: rgba(229, 167, 27, 0.55); --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      margin: 0; min-height: 100svh; color: var(--ink); background: #000; font-family: 'DM Sans', system-ui, sans-serif; font-size: 16px; line-height: 1.45;
+      overflow-x: hidden; -webkit-font-smoothing: antialiased; position: relative;
     }
     .lk *, .lk *::before, .lk *::after { box-sizing: border-box; }
     .lk [hidden] { display: none !important; }
-    .lk h1, .lk h2 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; margin: 0; letter-spacing: -0.03em; line-height: 1.05; }
-    .lk p { margin: 0; }
+    .lk h1, .lk h2, .lk p { margin: 0; }
+    .lk svg.g { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
-    .scene { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-    .vinyl {
-      position: absolute; right: -110px; top: 40px; width: 300px; height: 300px; border-radius: 50%; opacity: 0.5;
-      background: radial-gradient(circle, var(--yellow) 0 11%, #111 11.5% 13%, transparent 13.5%), repeating-radial-gradient(circle, #14141c 0 3px, #0b0b11 3px 6px);
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08), 0 30px 80px -30px rgba(255, 210, 30, 0.35); animation: lkspin 10s linear infinite;
+    /* ---------- backdrop, same language as the flyer ---------- */
+    .bg { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .dots {
+      position: absolute; top: 0; right: 0; width: 70vw; height: 46vh; max-width: 520px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.55) 0 1.1px, transparent 1.8px) 0 0 / 10px 10px;
+      -webkit-mask-image: linear-gradient(225deg, #000 0%, transparent 72%); mask-image: linear-gradient(225deg, #000 0%, transparent 72%); opacity: 0.55;
     }
-    .eq { position: absolute; left: 0; right: 0; bottom: 0; height: 20vh; display: flex; align-items: flex-end; gap: 6px; padding-inline: 8px; opacity: 0.32; }
-    .eq i { flex: 1; min-width: 4px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--yellow), rgba(255, 138, 0, 0.6)); height: 10%; animation: lkbounce var(--d, 1s) ease-in-out var(--dl, 0s) infinite alternate; }
-    @keyframes lkspin { to { transform: rotate(360deg); } }
-    @keyframes lkbounce { from { height: 8%; } to { height: var(--h, 70%); } }
+    .vtext {
+      position: absolute; left: -0.3em; top: 50%; transform: translateY(-50%) rotate(180deg); writing-mode: vertical-rl; white-space: nowrap;
+      font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: min(15.4vh, 24vw); line-height: 1; letter-spacing: -0.02em; text-transform: uppercase;
+      color: transparent; -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.16); animation: vdrift 14s ease-in-out infinite alternate;
+    }
+    @keyframes vdrift { from { transform: translateY(-50%) rotate(180deg); } to { transform: translateY(-47%) rotate(180deg); } }
+    .torn { position: absolute; right: 0; bottom: 0; width: 70vw; height: 34vh; max-width: 560px; background: linear-gradient(135deg, #2a2a2a 0%, #0c0c0c 55%, #000 100%); clip-path: polygon(100% 24%, 78% 46%, 52% 70%, 0 100%, 100% 100%); opacity: 0.85; }
+    .scribble { position: absolute; right: -8px; top: 30vh; width: 120px; height: 90px; overflow: visible; }
+    .scribble path { fill: none; stroke: var(--gold); stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 260; stroke-dashoffset: 260; animation: draw 6s ease-in-out infinite; filter: drop-shadow(0 0 6px rgba(229, 167, 27, 0.55)); }
+    @keyframes draw { 0% { stroke-dashoffset: 260; opacity: 1; } 45%, 75% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+    .eq { position: absolute; left: 0; right: 0; bottom: 0; height: 15vh; display: flex; align-items: flex-end; gap: 7px; padding-inline: 10px; opacity: 0.38; }
+    .eq i { flex: 1; min-width: 4px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, var(--gold-hi), rgba(229, 167, 27, 0.25)); height: 8%; animation: bounce var(--d, 1s) ease-in-out var(--dl, 0s) infinite alternate; }
+    .eq i:nth-child(7n+3) { background: linear-gradient(180deg, var(--pink), rgba(255, 31, 142, 0.2)); }
+    .eq i:nth-child(7n+6) { background: linear-gradient(180deg, var(--blue), rgba(30, 144, 255, 0.2)); }
+    @keyframes bounce { from { height: 6%; } to { height: var(--h, 70%); } }
 
-    .wrap { position: relative; z-index: 2; width: min(520px, 100%); margin-inline: auto; padding: 40px 20px 120px; }
-    .head { text-align: center; }
-    .head img { width: 104px; height: 104px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px var(--yellow), 0 0 0 9px rgba(255, 210, 30, 0.18), 0 20px 40px -14px rgba(0, 0, 0, 0.7); }
-    .head h1 { margin-top: 20px; font-size: 2rem; font-weight: 800; }
-    .head p { margin-top: 6px; color: var(--muted); font-size: 15px; }
+    /* floating icons (cross, bible, crown, notes...) */
+    .fl { position: absolute; left: var(--x); top: var(--y); width: var(--s, 44px); height: var(--s, 44px); color: var(--c, var(--gold)); opacity: var(--o, 0.4);
+      transform: translate3d(calc(var(--px, 0) * var(--depth, 10) * 1px), calc(var(--py, 0) * var(--depth, 10) * 1px), 0); transition: transform 0.4s ease-out; }
+    .fl svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 0 8px currentColor); animation: float var(--d, 7s) ease-in-out var(--dl, 0s) infinite alternate; }
+    @keyframes float { from { transform: translateY(0) rotate(calc(var(--r, 6deg) * -1)); } to { transform: translateY(-20px) rotate(var(--r, 6deg)); } }
+    .fl.spin svg { animation: spin var(--d, 12s) linear infinite; filter: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .list { display: grid; gap: 14px; margin-top: 30px; padding: 0; list-style: none; }
-    .item { opacity: 0; transform: translateY(14px); animation: lkin 0.6s var(--ease) forwards; animation-delay: calc(var(--i) * 80ms + 120ms); }
-    @keyframes lkin { to { opacity: 1; transform: none; } }
+    /* ---------- content ---------- */
+    .wrap { position: relative; z-index: 2; width: min(500px, 100%); margin-inline: auto; padding: 18px 20px 150px; }
+    .hero { position: relative; width: 100%; height: min(330px, 84vw); }
+    .hero .halo { position: absolute; left: 50%; top: 52%; width: 86%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: radial-gradient(circle, rgba(229, 167, 27, 0.22), transparent 66%); animation: pulse 4s ease-in-out infinite alternate; }
+    @keyframes pulse { from { opacity: 0.5; transform: translate(-50%, -50%) scale(0.94); } to { opacity: 1; transform: translate(-50%, -50%) scale(1.06); } }
+    .hero img.logo { position: absolute; inset: 0; margin: auto; width: min(330px, 84vw); height: min(330px, 84vw); object-fit: contain; -webkit-mask-image: radial-gradient(closest-side, #000 90%, transparent 100%); mask-image: radial-gradient(closest-side, #000 90%, transparent 100%); animation: bob 5s ease-in-out infinite alternate; }
+    @keyframes bob { from { transform: translateY(2px); } to { transform: translateY(-6px); } }
+    .tagline { margin-top: 2px; text-align: center; font-size: 12px; letter-spacing: 0.34em; text-transform: uppercase; color: #e8e8e8; font-weight: 500; }
+    .tagline b { color: var(--gold); padding: 0 0.35em; }
+
+    .list { display: grid; gap: 14px; margin: 28px 0 0; padding: 0; list-style: none; }
+    .item { opacity: 0; transform: translateY(14px); animation: in 0.6s var(--ease) forwards; animation-delay: calc(var(--i) * 80ms + 150ms); }
+    @keyframes in { to { opacity: 1; transform: none; } }
     .btn {
-      all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 14px; width: 100%; padding: 16px 18px; border-radius: 18px;
-      background: rgba(255, 255, 255, 0.07); border: 1.5px solid var(--line); color: var(--ink); text-decoration: none; font-weight: 700; font-size: 17px;
-      backdrop-filter: blur(6px); -webkit-tap-highlight-color: transparent;
-      transition: transform 0.3s var(--ease), border-color 0.25s, background-color 0.25s;
+      all: unset; box-sizing: border-box; cursor: pointer; position: relative; overflow: hidden; display: flex; align-items: stretch; width: 100%; min-height: 64px;
+      background: rgba(0, 0, 0, 0.78); border: 1.5px solid var(--line); border-radius: 4px; color: var(--ink); text-decoration: none; -webkit-tap-highlight-color: transparent;
+      backdrop-filter: blur(4px); transition: transform 0.3s var(--ease), border-color 0.25s, box-shadow 0.3s;
     }
-    .btn:hover { transform: translateY(-3px); border-color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.11); }
+    .btn:hover { transform: translateY(-3px); border-color: var(--gold-hi); box-shadow: 0 10px 30px -12px rgba(229, 167, 27, 0.55); }
     .btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-    .btn .ic { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 14px; background: rgba(255, 255, 255, 0.1); }
-    .btn .ic svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-    .btn .tx { flex: 1; min-width: 0; }
-    .btn .tx small { display: block; font-weight: 400; font-size: 13px; color: var(--muted); margin-top: 1px; }
-    .btn .ar { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.6; }
-    .btn.main {
-      color: #0A0F1A; border-color: transparent; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 800;
-      background: linear-gradient(180deg, #FFE866 0%, #FFD21E 52%, #FFBE0B 100%); box-shadow: 0 6px 0 #C79A00, 0 22px 40px -16px rgba(0, 0, 0, 0.7);
-    }
-    .btn.main .ic { background: rgba(10, 15, 26, 0.12); }
-    .btn.main .tx small { color: rgba(10, 15, 26, 0.7); font-family: 'DM Sans', sans-serif; }
-    .btn.main:hover { transform: translateY(-3px); box-shadow: 0 9px 0 #C79A00, 0 28px 50px -16px rgba(0, 0, 0, 0.75); background: linear-gradient(180deg, #FFE866 0%, #FFD21E 52%, #FFBE0B 100%); }
-    .btn.main:active { transform: translateY(5px); box-shadow: 0 1px 0 #C79A00, 0 8px 18px -8px rgba(0, 0, 0, 0.6); }
+    .btn .ic { flex: none; width: 62px; display: grid; place-items: center; border-right: 1.5px solid var(--line); color: var(--gold); }
+    .btn .ic svg { width: 28px; height: 28px; }
+    .btn .tx { flex: 1; min-width: 0; padding: 11px 14px; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+    .btn .lb { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+    .btn .mn { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.15; }
+    .btn .ar { flex: none; align-self: center; margin-right: 16px; width: 18px; height: 18px; opacity: 0.55; }
+    .btn.main { background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-color: var(--gold-hi); color: #000; min-height: 76px; box-shadow: 0 0 0 0 rgba(229, 167, 27, 0.6); animation: in 0.6s var(--ease) forwards, glow 2.4s ease-in-out 1s infinite; animation-delay: 150ms, 1s; }
+    @keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(229, 167, 27, 0.55); } 50% { box-shadow: 0 0 0 9px rgba(229, 167, 27, 0); } }
+    .btn.main .ic { border-right-color: rgba(0, 0, 0, 0.35); color: #000; }
+    .btn.main .lb { color: rgba(0, 0, 0, 0.7); }
+    .btn.main .mn { font-size: 21px; }
+    .btn.main::after { content: ''; position: absolute; top: 0; bottom: 0; width: 60px; left: -90px; background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.55), transparent); transform: skewX(-20deg); animation: shine 3.4s ease-in-out 1.2s infinite; }
+    @keyframes shine { 0% { left: -90px; } 40%, 100% { left: 120%; } }
+    .btn.main:hover { transform: translateY(-3px); border-color: #fff; }
+    .btn.main:active { transform: translateY(1px); }
 
-    .foot { margin-top: 36px; text-align: center; color: var(--muted); font-size: 13px; }
+    .foot { margin-top: 34px; text-align: center; color: var(--muted); font-size: 12px; letter-spacing: 0.04em; }
     .foot a { color: var(--muted); }
 
-    /* ticket chooser */
-    .sheet-bg { position: fixed; inset: 0; z-index: 20; background: rgba(4, 6, 12, 0.7); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    /* ---------- ticket chooser ---------- */
+    .sheet-bg { position: fixed; inset: 0; z-index: 20; background: rgba(0, 0, 0, 0.78); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
     .sheet-bg.on { opacity: 1; pointer-events: auto; }
     .sheet {
-      position: fixed; z-index: 21; left: 0; right: 0; bottom: 0; width: min(520px, 100%); margin-inline: auto; padding: 14px 20px 28px; border-radius: 26px 26px 0 0;
-      background: #12172b; border: 1.5px solid var(--line); border-bottom: 0; transform: translateY(105%); transition: transform 0.45s var(--ease); max-height: 86svh; overflow: auto;
+      position: fixed; z-index: 21; left: 0; right: 0; bottom: 0; width: min(500px, 100%); margin-inline: auto; padding: 14px 20px 26px; border-radius: 22px 22px 0 0;
+      background: #000; border: 1.5px solid var(--line); border-bottom: 0; transform: translateY(105%); transition: transform 0.45s var(--ease); max-height: 88svh; overflow: auto; color: var(--ink);
     }
     .sheet.on { transform: none; }
-    .sheet .grab { width: 44px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.25); margin: 0 auto 16px; }
-    .sheet h2 { font-size: 1.6rem; font-weight: 800; }
+    .sheet .grab { width: 44px; height: 4px; border-radius: 3px; background: var(--gold); margin: 0 auto 16px; opacity: 0.8; }
+    .sheet h2 { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 1.7rem; letter-spacing: 0.02em; text-transform: uppercase; }
+    .sheet h2 span { color: var(--gold); }
     .sheet .sub { color: var(--muted); font-size: 14px; margin-top: 4px; }
     .evs { display: grid; gap: 12px; margin-top: 18px; }
-    .ev { display: block; text-decoration: none; color: var(--ink); padding: 16px 18px; border-radius: 18px; background: rgba(255, 255, 255, 0.06); border: 1.5px solid var(--line); transition: transform 0.3s var(--ease), border-color 0.25s; }
-    .ev:hover { transform: translateY(-2px); border-color: var(--yellow); }
+    .ev { display: block; text-decoration: none; color: var(--ink); padding: 16px 18px 18px; border: 1.5px solid var(--line); border-radius: 4px; background: #0b0b0b; transition: transform 0.3s var(--ease), border-color 0.25s, box-shadow 0.3s; }
+    .ev:hover { transform: translateY(-2px); border-color: var(--gold-hi); box-shadow: 0 10px 28px -14px rgba(229, 167, 27, 0.6); }
     .ev:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-    .ev b { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; letter-spacing: -0.02em; }
-    .ev .when { color: var(--yellow); font-weight: 700; font-size: 14px; margin-top: 4px; }
-    .ev .where { color: var(--muted); font-size: 14px; margin-top: 2px; }
-    .tag { display: inline-block; margin-top: 10px; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; background: var(--yellow); color: #0A0F1A; }
-    .tag.free { background: #22c55e; }
+    .ev .nm { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .ev .cols { display: grid; grid-template-columns: auto 1fr; gap: 0 16px; margin-top: 12px; }
+    .ev .col + .col { border-left: 1.5px solid var(--line); padding-left: 16px; }
+    .ev .l { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+    .ev .v { display: block; margin-top: 2px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 20px; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1.15; }
+    .ev .v i { font-style: normal; color: var(--gold); }
+    .ev .v.sm { font-size: 15px; }
+    .ev .hr { display: block; margin-top: 3px; font-size: 13px; color: #cfcfcf; }
+    .tag { display: inline-block; margin-top: 14px; padding: 5px 12px; border-radius: 2px; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; background: var(--gold); color: #000; }
+    .tag.free { background: #fff; }
     .none { color: var(--muted); margin-top: 18px; }
-    .close { all: unset; cursor: pointer; display: block; margin: 18px auto 0; padding: 12px 22px; color: var(--muted); font-weight: 700; }
+    .close { all: unset; cursor: pointer; display: block; margin: 16px auto 0; padding: 12px 22px; color: var(--muted); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; font-size: 12px; }
     .close:hover { color: #fff; }
 
-    @media (min-width: 700px) { .vinyl { right: 6%; top: 8%; width: 380px; height: 380px; } }
-    @media (prefers-reduced-motion: reduce) { .vinyl, .eq i { animation: none !important; } .item { animation: none; opacity: 1; transform: none; } .sheet { transition: none; } }
+    @media (min-width: 760px) { .wrap { padding-top: 34px; } }
+    @media (prefers-reduced-motion: reduce) {
+      .fl, .fl svg, .vtext, .halo, .logo, .eq i, .scribble path, .btn.main::after, .btn.main { animation: none !important; transition: none; }
+      .item { animation: none; opacity: 1; transform: none; }
+      .scribble path { stroke-dashoffset: 0; }
+      .sheet { transition: none; }
+    }
   </style>
 </head>
 <body class="lk">
-  <div class="scene" aria-hidden="true"><div class="vinyl"></div><div class="eq" id="eq"></div></div>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="g-cross" viewBox="0 0 64 64"><path d="M27 5h10v17h17v10H37v27H27V32H10V22h17z" fill="currentColor" fill-opacity=".1" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></symbol>
+      <symbol id="g-crown" viewBox="0 0 64 64"><path d="M7 46 11 19l13 13 8-18 8 18 13-13 4 27z" fill="currentColor" fill-opacity=".1" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M7 53h50" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="11" cy="17" r="3" fill="currentColor"/><circle cx="32" cy="12" r="3" fill="currentColor"/><circle cx="53" cy="17" r="3" fill="currentColor"/></symbol>
+      <symbol id="g-bible" viewBox="0 0 64 64"><path d="M32 17C24 11 14 11 6 14v35c8-3 18-3 26 3 8-6 18-6 26-3V14c-8-3-18-3-26 3z" fill="currentColor" fill-opacity=".1" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><path d="M32 17v35M46 22v15M40 27h12" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M12 22c5-1 9 0 14 2M12 29c5-1 9 0 14 2M12 36c5-1 9 0 14 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></symbol>
+      <symbol id="g-note" viewBox="0 0 64 64"><path d="M26 46V12l24-6v32" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/><path d="M26 22l24-6" stroke="currentColor" stroke-width="4"/><ellipse cx="19" cy="47" rx="8" ry="6" fill="currentColor" transform="rotate(-18 19 47)"/><ellipse cx="43" cy="39" rx="8" ry="6" fill="currentColor" transform="rotate(-18 43 39)"/></symbol>
+      <symbol id="g-note1" viewBox="0 0 64 64"><path d="M28 48V10c0 14 20 12 20 30" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><ellipse cx="21" cy="49" rx="9" ry="6.5" fill="currentColor" transform="rotate(-18 21 49)"/></symbol>
+      <symbol id="g-phones" viewBox="0 0 64 64"><path d="M10 42V32a22 22 0 0 1 44 0v10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/><rect x="6" y="38" width="12" height="18" rx="4" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="2.4"/><rect x="46" y="38" width="12" height="18" rx="4" fill="currentColor" fill-opacity=".15" stroke="currentColor" stroke-width="2.4"/></symbol>
+      <symbol id="g-vinyl" viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="32" cy="32" r="20" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6"/><circle cx="32" cy="32" r="13" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".6"/><circle cx="32" cy="32" r="7" fill="currentColor" fill-opacity=".25" stroke="currentColor" stroke-width="2"/><path d="M50 14a26 26 0 0 1 4 10" stroke="currentColor" stroke-width="3" stroke-linecap="round" fill="none"/></symbol>
+      <symbol id="g-ticket" viewBox="0 0 24 24"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></symbol>
+      <symbol id="g-play" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M10 9.5v5l4.5-2.5z"/></symbol>
+      <symbol id="g-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></symbol>
+      <symbol id="g-book" viewBox="0 0 24 24"><path d="M4 5h6a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4z"/><path d="M20 5h-6a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h7z"/><path d="M16.5 8.5v5M14.5 10.5h4"/></symbol>
+      <symbol id="g-list" viewBox="0 0 24 24"><path d="M4 6h12M4 11h12M4 16h7"/><path d="M19 8v9"/><circle cx="17" cy="17" r="2"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="bg" aria-hidden="true">
+    <div class="dots"></div>
+    <div class="torn"></div>
+    <div class="vtext">Crewolada</div>
+    <svg class="scribble" viewBox="0 0 120 90"><path d="M112 14C78 2 30 14 50 32c20 16 52 6 36 28-12 16-48 14-70 20"/></svg>
+
+    <span class="fl" style="--x:6%;--y:14%;--s:34px;--r:10deg;--d:8s;--dl:-2s;--o:.28;--depth:18"><svg class="g"><use href="#g-cross"/></svg></span>
+    <span class="fl" style="--x:84%;--y:22%;--s:30px;--c:var(--pink);--r:-12deg;--d:6s;--dl:-1s;--o:.4;--depth:26"><svg class="g"><use href="#g-note1"/></svg></span>
+    <span class="fl" style="--x:90%;--y:46%;--s:44px;--r:8deg;--d:9s;--dl:-4s;--o:.26;--depth:14"><svg class="g"><use href="#g-crown"/></svg></span>
+    <span class="fl" style="--x:3%;--y:44%;--s:40px;--c:var(--blue);--r:-8deg;--d:7s;--dl:-3s;--o:.34;--depth:22"><svg class="g"><use href="#g-note"/></svg></span>
+    <span class="fl spin" style="--x:78%;--y:66%;--s:64px;--d:16s;--o:.22;--depth:10"><svg class="g"><use href="#g-vinyl"/></svg></span>
+    <span class="fl" style="--x:10%;--y:70%;--s:42px;--r:9deg;--d:8s;--dl:-5s;--o:.28;--depth:20"><svg class="g"><use href="#g-bible"/></svg></span>
+    <span class="fl" style="--x:46%;--y:80%;--s:36px;--r:-10deg;--d:7s;--dl:-2s;--o:.24;--depth:16"><svg class="g"><use href="#g-phones"/></svg></span>
+    <span class="fl" style="--x:70%;--y:6%;--s:26px;--r:12deg;--d:6s;--dl:-3s;--o:.3;--depth:24"><svg class="g"><use href="#g-cross"/></svg></span>
+    <span class="fl" style="--x:30%;--y:90%;--s:26px;--c:var(--pink);--r:-6deg;--d:5s;--dl:-1s;--o:.4;--depth:18"><svg class="g"><use href="#g-note1"/></svg></span>
+
+    <div class="eq" id="eq"></div>
+  </div>
 
   <div class="wrap">
-    <header class="head">
-      <img src="/img/logo.jpg" alt="Crewolada" width="104" height="104" />
-      <h1>Crewolada</h1>
-      <p>Black music cristã · Rio de Janeiro</p>
+    <header>
+      <div class="hero">
+        <div class="halo"></div>
+        <img class="logo" src="/img/logo.jpg" alt="Crewolada" width="330" height="330" />
+        <span class="fl" style="--x:calc(50% - 30px);--y:-2px;--s:60px;--r:5deg;--d:4.5s;--o:1;--depth:8;--c:var(--gold-hi)"><svg class="g"><use href="#g-crown"/></svg></span>
+        <span class="fl" style="--x:2%;--y:30%;--s:52px;--r:-8deg;--d:5.5s;--dl:-1s;--o:.95;--depth:20"><svg class="g"><use href="#g-cross"/></svg></span>
+        <span class="fl" style="--x:79%;--y:26%;--s:58px;--r:8deg;--d:6s;--dl:-2s;--o:.95;--depth:24"><svg class="g"><use href="#g-bible"/></svg></span>
+        <span class="fl" style="--x:6%;--y:68%;--s:40px;--c:var(--pink);--r:-10deg;--d:4.8s;--dl:-1.5s;--o:.95;--depth:28"><svg class="g"><use href="#g-note"/></svg></span>
+        <span class="fl" style="--x:84%;--y:70%;--s:34px;--c:var(--blue);--r:10deg;--d:5.2s;--dl:-.5s;--o:.95;--depth:30"><svg class="g"><use href="#g-note1"/></svg></span>
+      </div>
+      <p class="tagline">Música<b>•</b>Cultura<b>•</b>Fé<b>•</b>Propósito</p>
     </header>
 
     <ul class="list">
       <li class="item" style="--i:0">
         <button type="button" class="btn main" id="open-tickets" aria-haspopup="dialog">
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M3 9a2 2 0 0 0 0 6v3h18v-3a2 2 0 0 1 0-6V6H3z"/><path d="M13 6v12" stroke-dasharray="2 3"/></svg></span>
-          <span class="tx">Ingressos<small>Escolha o evento</small></span>
-          <svg class="ar" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span class="ic"><svg class="g"><use href="#g-ticket"/></svg></span>
+          <span class="tx"><span class="lb">Garanta o seu</span><span class="mn">Ingressos</span></span>
+          <svg class="ar g" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </li>
       <li class="item" style="--i:1">
         <a class="btn" href="/youtube" rel="noopener">
-          <span class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M10 9.5v5l4.5-2.5z"/></svg></span>
-          <span class="tx">Nosso canal do YouTube<small>Vídeos e sets da Crewolada</small></span>
-          <svg class="ar" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
+          <span class="ic"><svg class="g"><use href="#g-play"/></svg></span>
+          <span class="tx"><span class="lb">Assista</span><span class="mn">Nosso canal do YouTube</span></span>
+          <svg class="ar g" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
         </a>
       </li>
       <li class="item" style="--i:2">
         <a class="btn" href="/contato">
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></span>
-          <span class="tx">Leve a Crewolada para seu evento<small>Peça uma proposta em 1 minuto</small></span>
-          <svg class="ar" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span class="ic"><svg class="g"><use href="#g-mic"/></svg></span>
+          <span class="tx"><span class="lb">Convide</span><span class="mn">Leve a Crewolada para seu evento</span></span>
+          <svg class="ar g" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
       </li>
       <li class="item" style="--i:3">
         <a class="btn" href="/playlist" rel="noopener">
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 6h12M4 11h12M4 16h7"/><path d="M19 8v9"/><circle cx="17" cy="17" r="2"/></svg></span>
-          <span class="tx">Playlist<small>Pra ouvir onde estiver</small></span>
-          <svg class="ar" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
+          <span class="ic"><svg class="g"><use href="#g-list"/></svg></span>
+          <span class="tx"><span class="lb">Ouça</span><span class="mn">Playlist</span></span>
+          <svg class="ar g" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
         </a>
       </li>
       <li class="item" style="--i:4">
         <a class="btn" href="/sobre">
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M4 5h6a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4z"/><path d="M20 5h-6a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h7z"/></svg></span>
-          <span class="tx">Nossa história<small>Como a Crewolada nasceu</small></span>
-          <svg class="ar" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          <span class="ic"><svg class="g"><use href="#g-book"/></svg></span>
+          <span class="tx"><span class="lb">Conheça</span><span class="mn">Nossa história</span></span>
+          <svg class="ar g" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
       </li>
     </ul>
@@ -148,22 +225,31 @@
   <div class="sheet-bg" id="bg"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
     <div class="grab"></div>
-    <h2 id="sheet-title">Qual evento?</h2>
+    <h2 id="sheet-title">Qual <span>evento?</span></h2>
     <p class="sub">Escolha o evento para garantir o seu ingresso.</p>
     <% if (events.length) { %>
       <div class="evs">
-        <% events.forEach(function(e) { %>
+        <% events.forEach(function(e) { var parts = String(e.dateLabel || '').split('/'); %>
           <a class="ev" href="<%= e.href %>">
-            <b><%= e.name %></b>
-            <div class="when"><%= e.dateLabel %><%= e.timeLabel ? ' · ' + e.timeLabel : '' %></div>
-            <% if (e.venue) { %><div class="where"><%= e.venue %></div><% } %>
+            <span class="nm"><%= e.name %></span>
+            <span class="cols">
+              <span class="col">
+                <span class="l">Data:</span>
+                <span class="v"><% parts.forEach(function(p, i) { %><%= p %><% if (i < parts.length - 1) { %><i>/</i><% } %><% }) %></span>
+                <% if (e.timeLabel) { %><span class="hr"><%= e.timeLabel %></span><% } %>
+              </span>
+              <span class="col">
+                <span class="l">Local:</span>
+                <span class="v sm"><%= e.venue || 'A definir' %></span>
+              </span>
+            </span>
             <span class="tag <%= e.free ? 'free' : '' %>"><%= e.free ? 'Inscrição gratuita' : 'Ingressos à venda' %></span>
           </a>
         <% }) %>
       </div>
     <% } else { %>
       <p class="none">No momento não há eventos com ingressos abertos. Entre na nossa comunidade do WhatsApp para saber das novidades primeiro.</p>
-      <div class="evs"><a class="ev" href="<%= locals.communityUrl || '/' %>"><b>Entrar na comunidade</b></a></div>
+      <div class="evs"><a class="ev" href="<%= locals.communityUrl || '/' %>"><span class="nm">Entrar na comunidade</span></a></div>
     <% } %>
     <button type="button" class="close" id="close">Fechar</button>
   </div>
@@ -171,7 +257,7 @@
   <script>
     (function () {
       var eq = document.getElementById('eq');
-      var n = Math.max(14, Math.min(40, Math.floor(window.innerWidth / 16)));
+      var n = Math.max(14, Math.min(44, Math.floor(window.innerWidth / 15)));
       for (var i = 0; i < n; i++) {
         var b = document.createElement('i');
         b.style.setProperty('--h', (25 + Math.random() * 70).toFixed(0) + '%');
@@ -179,6 +265,22 @@
         b.style.setProperty('--dl', (-Math.random() * 1.5).toFixed(2) + 's');
         eq.appendChild(b);
       }
+
+      // gentle parallax on the floating icons (pointer on desktop, scroll/tilt-free on touch)
+      var still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!still) {
+        var raf = 0, nx = 0, ny = 0;
+        window.addEventListener('pointermove', function (e) {
+          nx = (e.clientX / window.innerWidth - 0.5) * 2;
+          ny = (e.clientY / window.innerHeight - 0.5) * 2;
+          if (!raf) raf = requestAnimationFrame(function () {
+            raf = 0;
+            document.body.style.setProperty('--px', nx.toFixed(3));
+            document.body.style.setProperty('--py', ny.toFixed(3));
+          });
+        }, { passive: true });
+      }
+
       var sheet = document.getElementById('sheet'), bg = document.getElementById('bg'), opener = document.getElementById('open-tickets');
       function open() {
         sheet.hidden = false;
