@@ -233,6 +233,13 @@
   <div class="sheet-bg" id="bg"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
     <div class="grab"></div>
+    <%# Temporario: enquanto true, o botao Ingressos so mostra "Em breve". Troque para false para voltar a listar os eventos. %>
+    <% var emBreve = true; %>
+    <% if (emBreve) { %>
+      <h2 id="sheet-title">Em <span>breve</span></h2>
+      <p class="sub">Os ingressos dos próximos eventos Crewolada vão abrir em breve. Entre na nossa comunidade do WhatsApp para saber primeiro.</p>
+      <div class="evs"><a class="ev" href="<%= locals.communityUrl || '/' %>" target="_blank" rel="noopener"><span class="nm">Entrar na comunidade</span></a></div>
+    <% } else { %>
     <h2 id="sheet-title">Qual <span>evento?</span></h2>
     <p class="sub">Escolha o evento para garantir o seu ingresso.</p>
     <% if (events.length) { %>
@@ -258,6 +265,7 @@
     <% } else { %>
       <p class="none">No momento não há eventos com ingressos abertos. Entre na nossa comunidade do WhatsApp para saber das novidades primeiro.</p>
       <div class="evs"><a class="ev" href="<%= locals.communityUrl || '/' %>"><span class="nm">Entrar na comunidade</span></a></div>
+    <% } %>
     <% } %>
     <button type="button" class="close" id="close">Fechar</button>
   </div>
