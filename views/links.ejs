@@ -80,6 +80,7 @@
     .btn .tx { flex: 1; min-width: 0; padding: 11px 14px; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
     .btn .lb { font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
     .btn .mn { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; font-weight: 800; font-size: 17px; letter-spacing: 0.05em; text-transform: uppercase; line-height: 1.15; }
+    .btn .ds { margin-top: 3px; font-size: 13px; line-height: 1.3; color: #cfcfcf; }
     .btn .ar { flex: none; align-self: center; margin-right: 16px; width: 18px; height: 18px; opacity: 0.55; }
     .btn.main { background: linear-gradient(180deg, var(--gold-hi), var(--gold)); border-color: var(--gold-hi); color: #000; min-height: 76px; box-shadow: 0 0 0 0 rgba(229, 167, 27, 0.6); animation: in 0.6s var(--ease) forwards, glow 2.4s ease-in-out 1s infinite; animation-delay: 150ms, 1s; }
     @keyframes glow { 0%, 100% { box-shadow: 0 0 0 0 rgba(229, 167, 27, 0.55); } 50% { box-shadow: 0 0 0 9px rgba(229, 167, 27, 0); } }
@@ -150,6 +151,7 @@
       <symbol id="g-play" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="4"/><path d="M10 9.5v5l4.5-2.5z"/></symbol>
       <symbol id="g-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></symbol>
       <symbol id="g-book" viewBox="0 0 24 24"><path d="M4 5h6a3 3 0 0 1 3 3v11a2 2 0 0 0-2-2H4z"/><path d="M20 5h-6a3 3 0 0 0-3 3v11a2 2 0 0 1 2-2h7z"/><path d="M16.5 8.5v5M14.5 10.5h4"/></symbol>
+      <symbol id="g-wpp" viewBox="0 0 24 24"><path d="M4 20l1.2-4.1A8 8 0 1 1 8.3 19z"/><path d="M9 8.5c0 3.5 2.6 6.4 6 6.6l1-1.5-2-1-1 .8c-1-.5-1.8-1.3-2.3-2.3l.8-1-1-2z" stroke-width="1.6"/></symbol>
       <symbol id="g-list" viewBox="0 0 24 24"><path d="M4 6h12M4 11h12M4 16h7"/><path d="M19 8v9"/><circle cx="17" cy="17" r="2"/></symbol>
     </defs>
   </svg>
@@ -196,27 +198,34 @@
         </button>
       </li>
       <li class="item" style="--i:1">
+        <a class="btn" href="<%= locals.communityUrl || '/' %>" target="_blank" rel="noopener">
+          <span class="ic"><svg class="g"><use href="#g-wpp"/></svg></span>
+          <span class="tx"><span class="lb">Comunidade no WhatsApp</span><span class="mn">Entre na nossa comunidade</span><span class="ds">Fique por dentro de tudo em primeira mão.</span></span>
+          <svg class="ar g" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
+        </a>
+      </li>
+      <li class="item" style="--i:2">
         <a class="btn" href="/youtube" rel="noopener">
           <span class="ic"><svg class="g"><use href="#g-play"/></svg></span>
           <span class="tx"><span class="lb">Assista</span><span class="mn">Nosso canal do YouTube</span></span>
           <svg class="ar g" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
         </a>
       </li>
-      <li class="item" style="--i:2">
+      <li class="item" style="--i:3">
         <a class="btn" href="/contato">
           <span class="ic"><svg class="g"><use href="#g-mic"/></svg></span>
           <span class="tx"><span class="lb">Convide</span><span class="mn">Leve a Crewolada para seu evento</span></span>
           <svg class="ar g" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </a>
       </li>
-      <li class="item" style="--i:3">
+      <li class="item" style="--i:4">
         <a class="btn" href="/playlist" rel="noopener">
           <span class="ic"><svg class="g"><use href="#g-list"/></svg></span>
           <span class="tx"><span class="lb">Ouça</span><span class="mn">Playlist</span></span>
           <svg class="ar g" viewBox="0 0 24 24"><path d="M7 17 17 7M8 7h9v9"/></svg>
         </a>
       </li>
-      <li class="item" style="--i:4">
+      <li class="item" style="--i:5">
         <a class="btn" href="/sobre">
           <span class="ic"><svg class="g"><use href="#g-book"/></svg></span>
           <span class="tx"><span class="lb">Conheça</span><span class="mn">Nossa história</span></span>
