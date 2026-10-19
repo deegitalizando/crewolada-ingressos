@@ -9,6 +9,7 @@ const { notifyMusicaAprovada, notifyMusicaEmail } = require('./n8n');
 const { isValidCpf } = require('./cpf');
 const { draftLyrics, validarLetraCrista, MENSAGEM_CUNHO_CRISTAO } = require('./gemini');
 const afiliados = require('./afiliados');
+const push = require('./push');
 
 const PRECO = Number(process.env.MUSICA_PRECO || 10);
 
@@ -140,6 +141,7 @@ async function aprovarPedidoMusica(pedidoId, paymentId) {
 
   if (!pedido) return null;
 
+  push.notificar(push.avisoMusica(pedido)); // "Música vendida" on the admin's phone
   if (pedido.afiliacao) {
     afiliados.registrarVenda(pedido).catch((err) => console.error('Falha ao registrar comissao de afiliado:', err.message));
   }

@@ -13,6 +13,7 @@ const { registerEventosRoutes } = require('./eventos');
 const { registerContatoRoutes } = require('./contato');
 const { registerLinksRoutes } = require('./links');
 const { registerAfiliadosRoutes } = require('./afiliados');
+const { registerPushRoutes } = require('./push');
 const { getProducts, getChildRules, buildPurchase } = require('./produtos');
 
 // Once a lote has this many tickets or fewer left, the sales page starts
@@ -286,6 +287,7 @@ function requireAdminAuth(req, res, next) {
 
 // Affiliate programme (registered before the pages so a ?ref= link on any of them is counted).
 registerAfiliadosRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
+registerPushRoutes(app, { requireAdminAuth, eventInfo });
 
 app.get('/', (req, res) => {
   if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
