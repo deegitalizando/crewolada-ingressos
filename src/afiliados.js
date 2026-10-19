@@ -138,6 +138,30 @@ function atribuirCompra({ vid, email, cpf }) {
   };
 }
 
+// WhatsApp sales: the cookie cannot follow the lead into WhatsApp, so the tracking link puts a
+// short code (first 12 hex chars of the visitor id) in the pre-filled message. The bot hands it
+// back when it creates the order and the same click history is used.
+function atribuirPorRef(ref, { email, cpf } = {}) {
+  const r = String(ref || '').toLowerCase().replace(/[^0-9a-f]/g, '');
+  if (r.length < 12) return null;
+  const d = data.load();
+  const desde = Date.now() - DIAS * DAY;
+  const hit = d.cliques.find(([v, , ts]) => ts >= desde && v.startsWith(r));
+  return hit ? atribuirCompra({ vid: hit[0], email, cpf }) : null;
+}
+
+const numeroBot = () => {
+  const ddi = process.env.DEFAULT_COUNTRY_CODE || '55';
+  const raw = onlyDigits(process.env.BUSINESS_WHATSAPP_NUMBER || '2139557816');
+  return raw.startsWith(ddi) && raw.length > 11 ? raw : ddi + raw;
+};
+// wa.me link that opens the music bot with the "criar musica" message + the referral code
+function linkWhatsapp(vid) {
+  const code = /^[a-f0-9]{16,32}$/.test(String(vid || '')) ? ' Ref: ' + vid.slice(0, 12) : '';
+  const texto = 'Olá! Quero criar minha música personalizada.' + code;
+  return 'https://wa.me/' + numeroBot() + '?text=' + encodeURIComponent(texto);
+}
+
 // Called when a music order is paid: turns the attribution snapshot into commissions.
 async function registrarVenda(pedido) {
   const af = pedido && pedido.afiliacao;
@@ -155,7 +179,7 @@ async function registrarVenda(pedido) {
       const id = `${pedido.id}:${p.codigo}`;
       if (!a || p.cent <= 0 || d.comissoes[id]) return;
       d.comissoes[id] = {
-        id, pedidoId: pedido.id, codigo: p.codigo, afiliadoId: a.id, valor: p.cent / 100, valorVenda: valor, cliques: p.cliques,
+        id, pedidoId: pedido.id, canal: pedido.canal || 'site', codigo: p.codigo, afiliadoId: a.id, valor: p.cent / 100, valorVenda: valor, cliques: p.cliques,
         parte: round2(p.parte), status: 'ativa', criadaEm: new Date().toISOString(), liberaEm: new Date(Date.now() + CARENCIA_DIAS * DAY).toISOString(),
       };
       criadas.push(id);
@@ -220,6 +244,19 @@ function registerAfiliadosRoutes(app, { requireAdminAuth, eventInfo, formatDatet
   app.get('/a/:codigo', (req, res) => {
     registraClique(req, res, String(req.params.codigo || '').toLowerCase());
     res.redirect(302, '/criesuamusica');
+  });
+
+  // WhatsApp tracking link: counts the click, then opens the bot with the referral code.
+  app.get('/a/:codigo/zap', (req, res) => {
+    registraClique(req, res, String(req.params.codigo || '').toLowerCase());
+    // the cookie was just set in this response, so read the id from either source
+    const setado = (res.getHeader('Set-Cookie') || []).toString().match(new RegExp(COOKIE_VID + '=([a-f0-9]{16,32})'));
+    const vid = (req.cookies && req.cookies[COOKIE_VID]) || (setado && setado[1]) || '';
+    res.redirect(302, linkWhatsapp(vid));
+  });
+  // "Prefer WhatsApp?" button of the tool page: uses the visitor's cookie, if any
+  app.get('/criesuamusica/whatsapp', (req, res) => {
+    res.redirect(302, linkWhatsapp(req.cookies && req.cookies[COOKIE_VID]));
   });
 
   // ?ref=CODE on any page also counts (e.g. a link to the home page or to /links)
@@ -296,7 +333,7 @@ function registerAfiliadosRoutes(app, { requireAdminAuth, eventInfo, formatDatet
       .sort((x, y) => (y.criadaEm || '').localeCompare(x.criadaEm || ''))
       .slice(0, 100).map((c) => ({ ...c, situacao: situacao(c), em: formatDatetimeBrasiliaDisplay(c.criadaEm), libera: formatDatetimeBrasiliaDisplay(c.liberaEm) }));
     res.render('afiliados_painel', {
-      eventInfo, info, afiliado: publico(a), link: linkDe(a), resumo: resumo(d, a), comissoes, money,
+      eventInfo, info, afiliado: publico(a), link: linkDe(a), linkZap: linkDe(a) + '/zap', resumo: resumo(d, a), comissoes, money,
       salvo: req.query.salvo === '1', pagamentos: Object.values(d.pagamentos).filter((p) => p.afiliadoId === a.id).sort((x, y) => y.em.localeCompare(x.em)).map((p) => ({ ...p, quando: formatDatetimeBrasiliaDisplay(p.em) })),
     });
   });
@@ -375,4 +412,4 @@ function registerAfiliadosRoutes(app, { requireAdminAuth, eventInfo, formatDatet
   });
 }
 
-module.exports = { registerAfiliadosRoutes, atribuirCompra, registrarVenda, registraClique, PCT, DIAS, MIN_SAQUE, COOKIE_VID };
+module.exports = { registerAfiliadosRoutes, atribuirCompra, atribuirPorRef, linkWhatsapp, registrarVenda, registraClique, PCT, DIAS, MIN_SAQUE, COOKIE_VID };

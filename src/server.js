@@ -1168,7 +1168,7 @@ app.post('/api/n8n/musica/pedido', async (req, res) => {
     return res.status(401).json({ ok: false, error: 'unauthorized' });
   }
 
-  const { remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia } = req.body;
+  const { remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia, ref } = req.body;
   if (!remoteJid || !cpf || !estilo || !letra) {
     return res.status(400).json({ ok: false, error: 'missing_fields' });
   }
@@ -1183,7 +1183,9 @@ app.post('/api/n8n/musica/pedido', async (req, res) => {
   }
 
   try {
-    const resultado = await criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia });
+    // WhatsApp sale that came from an affiliate link: the bot sends the referral code it read.
+    const afiliacao = ref ? require('./afiliados').atribuirPorRef(ref, { email, cpf }) : null;
+    const resultado = await criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia, afiliacao });
     return res.json({ ok: true, ...resultado });
   } catch (err) {
     console.error('Erro ao criar pedido de musica:', err.message);

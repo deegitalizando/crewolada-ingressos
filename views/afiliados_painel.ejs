@@ -50,8 +50,13 @@
         <input type="text" id="meu-link" value="<%= link %>" readonly onclick="this.select()" />
         <button type="button" id="copiar">Copiar</button>
       </div>
+      <p class="note" style="margin:14px 0 6px"><strong>Link para o WhatsApp</strong>: abre a conversa com o bot de músicas já marcando que a indicação foi sua. Use quando quiser levar a pessoa direto para o WhatsApp.</p>
+      <div class="linkbox">
+        <input type="text" id="meu-link-zap" value="<%= linkZap %>" readonly onclick="this.select()" />
+        <button type="button" id="copiar-zap">Copiar</button>
+      </div>
       <a class="btn2" id="zap" target="_blank" rel="noopener" href="https://wa.me/?text=<%= encodeURIComponent('Já pensou em ter uma música feita só pra você, com a sua história? 🎶 Crie a sua aqui: ' + link) %>">Compartilhar no WhatsApp</a>
-      <p class="note">Quem entrar pelo seu link e comprar em até <strong><%= info.dias %> dias</strong> conta para você. Se a pessoa também clicou no link de outro afiliado, a comissão é dividida entre vocês <%= info.modo === 'igual' ? 'em partes iguais' : 'na proporção dos cliques' %>.</p>
+      <p class="note">Quem entrar pelo seu link e comprar em até <strong><%= info.dias %> dias</strong> conta para você, seja comprando no site ou pelo WhatsApp. Se a pessoa também clicou no link de outro afiliado, a comissão é dividida entre vocês <%= info.modo === 'igual' ? 'em partes iguais' : 'na proporção dos cliques' %>.</p>
     </section>
 
     <section class="card">
@@ -138,6 +143,11 @@
         var o = b.textContent; b.textContent = 'Copiado!'; setTimeout(function () { b.textContent = o; }, 1800);
       };
     });
+    document.getElementById('copiar-zap').onclick = function () {
+      var i = document.getElementById('meu-link-zap'); i.select();
+      (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).catch(function () { document.execCommand('copy'); });
+      this.textContent = 'Copiado!'; var b = this; setTimeout(function () { b.textContent = 'Copiar'; }, 1800);
+    };
     var f = document.getElementById('f-repasse');
     f.addEventListener('submit', function (e) {
       e.preventDefault();

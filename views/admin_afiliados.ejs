@@ -95,10 +95,10 @@
       <h3 style="margin-top:0">Últimas comissões</h3>
       <% if (comissoes.length === 0) { %><p class="hint">Sem comissões ainda.</p><% } else { %>
       <div class="table-wrap"><table>
-        <thead><tr><th>Data</th><th>Afiliado</th><th>Venda</th><th>Comissão</th><th>Parte</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>Data</th><th>Afiliado</th><th>Canal</th><th>Venda</th><th>Comissão</th><th>Parte</th><th>Status</th><th></th></tr></thead>
         <tbody>
           <% comissoes.forEach(function(c) { %>
-            <tr><td><%= c.em %></td><td><%= c.nome %></td><td><%= money(c.valorVenda) %></td><td><strong><%= money(c.valor) %></strong></td><td><%= Math.round(c.parte * 100) %>% (<%= c.cliques %> clique<%= c.cliques === 1 ? '' : 's' %>)</td>
+            <tr><td><%= c.em %></td><td><%= c.nome %></td><td><%= c.canal === 'whatsapp' ? 'WhatsApp' : 'Site' %></td><td><%= money(c.valorVenda) %></td><td><strong><%= money(c.valor) %></strong></td><td><%= Math.round(c.parte * 100) %>% (<%= c.cliques %> clique<%= c.cliques === 1 ? '' : 's' %>)</td>
             <td><span class="pill <%= c.situacao %>"><%= c.situacao %></span></td>
             <td><% if (c.status === 'ativa') { %><form action="/admin/afiliados/comissoes/<%= encodeURIComponent(c.id) %>/cancelar" method="POST" onsubmit="return confirm('Cancelar esta comissão?')" style="margin:0"><button type="submit" class="btn-secondary" style="width:auto;margin:0;padding:4px 10px;font-size:12px">Cancelar</button></form><% } %></td></tr>
           <% }) %>
