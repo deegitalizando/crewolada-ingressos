@@ -53,13 +53,20 @@
           </label>
         </div>
 
-        <!-- Passo 2: Andamento / BPM -->
+        <!-- Passo 2: Andamento / BPM + vocal -->
         <div class="wiz-step" data-step="2">
           <label>
             Qual andamento (BPM aproximado)?
             <select id="andamento" required>
               <option value="" disabled selected>Escolha o andamento</option>
               <% andamentos.forEach(function(a) { %><option value="<%= a.value %>"><%= a.label %></option><% }) %>
+            </select>
+          </label>
+          <label style="margin-top:14px">
+            Qual vocal você prefere?
+            <select id="vocal" required>
+              <option value="" disabled selected>Escolha o vocal</option>
+              <% vocais.forEach(function(v) { %><option value="<%= v.value %>"><%= v.label %></option><% }) %>
             </select>
           </label>
         </div>
@@ -216,6 +223,10 @@
         showError('Escolha o andamento antes de continuar.');
         return false;
       }
+      if (n === 2 && !document.getElementById('vocal').value) {
+        showError('Escolha o vocal antes de continuar.');
+        return false;
+      }
       if (n === 4 && !document.getElementById('letra').value.trim()) {
         showError('Preencha a letra (sugira com a IA ou cole a sua) antes de continuar.');
         return false;
@@ -261,10 +272,11 @@
       const cpfDigits = cpfInput.value.replace(/\D/g, '');
       const estilo = document.getElementById('estilo').value;
       const andamento = document.getElementById('andamento').value;
+      const vocal = document.getElementById('vocal').value;
       const referencia = document.getElementById('referencia').value.trim();
       const letra = document.getElementById('letra').value.trim();
 
-      if (!nome || !email || cpfDigits.length !== 11 || !estilo || !andamento || !letra) {
+      if (!nome || !email || cpfDigits.length !== 11 || !estilo || !andamento || !vocal || !letra) {
         showError('Preencha todos os campos antes de continuar.');
         return;
       }
@@ -273,10 +285,10 @@
       [...musicaForm.elements].forEach((el) => (el.disabled = true));
       sugerirBtn.disabled = true;
       brickCreated = true;
-      createBrick({ nome, email, cpfDigits, estilo, andamento, referencia, letra });
+      createBrick({ nome, email, cpfDigits, estilo, andamento, vocal, referencia, letra });
     });
 
-    function createBrick({ nome, email, cpfDigits, estilo, andamento, referencia, letra }) {
+    function createBrick({ nome, email, cpfDigits, estilo, andamento, vocal, referencia, letra }) {
       const mpSdk = new MercadoPago('<%= mpPublicKey %>', { locale: 'pt-BR' });
       const bricksBuilder = mpSdk.bricks();
 
@@ -298,7 +310,7 @@
               fetch('/api/musica/pedido', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nome, email, cpf: cpfDigits, estilo, andamento, referencia, letra, formData }),
+                body: JSON.stringify({ nome, email, cpf: cpfDigits, estilo, andamento, vocal, referencia, letra, formData }),
               })
                 .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
                 .then(({ ok, data }) => {

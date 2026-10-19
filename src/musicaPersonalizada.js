@@ -15,6 +15,14 @@ const ESTILOS = ['R&B', 'Soul', 'Neosoul', 'Hip-Hop', 'Boom Bap', 'Rap', 'Trap',
 // `value` is what's actually sent to the lyric/music generation prompts;
 // `label` adds an approximate BPM range just so the picker reads as a tempo
 // choice, not a mood choice.
+// Vocal of the song (sent to the generator as a style hint).
+const VOCAIS = [
+  { value: 'Feminino', label: 'Feminino' },
+  { value: 'Masculino', label: 'Masculino' },
+  { value: 'Ambos', label: 'Ambos (feminino e masculino)' },
+];
+const vocalValido = (v) => (VOCAIS.some((x) => x.value === v) ? v : '');
+
 const ANDAMENTOS = [
   { value: 'Lenta e suave', label: 'Lenta e suave (~70-90 BPM)' },
   { value: 'Media', label: 'Media (~95-115 BPM)' },
@@ -44,7 +52,7 @@ function rateLimited(ip) {
 //    buyer's choice, same as the ticket checkout.
 // Ids are prefixed "musica_" and live in db.musicaPedidos (not db.orders) so
 // the shared Mercado Pago webhook can tell the two products apart.
-async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, letra, referencia, canal }, formData = null) {
+async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia, canal }, formData = null) {
   const id = `musica_${crypto.randomUUID()}`;
   const description = `Musica personalizada - ${currentEvent.brand || 'Crewolada'}`;
 
@@ -79,6 +87,7 @@ async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andament
     email,
     estilo,
     andamento,
+    vocal: vocalValido(vocal),
     letra,
     referencia,
     valor: PRECO,
@@ -235,6 +244,7 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
       eventInfo,
       estilos: ESTILOS,
       andamentos: ANDAMENTOS,
+      vocais: VOCAIS,
       preco: PRECO,
       mpPublicKey: process.env.MP_PUBLIC_KEY,
     });
@@ -270,10 +280,14 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
     const cpfDigits = String(req.body.cpf || '').replace(/\D/g, '');
     const estilo = String(req.body.estilo || '').slice(0, 60);
     const andamento = String(req.body.andamento || '').slice(0, 60);
+    const vocal = vocalValido(String(req.body.vocal || ''));
     const letra = String(req.body.letra || '').trim().slice(0, 4000);
     const referencia = String(req.body.referencia || '').trim().slice(0, 200);
     const formData = req.body.formData;
 
+    if (!vocal) {
+      return res.status(400).json({ error: 'Escolha o vocal (feminino, masculino ou ambos).' });
+    }
     if (!nome || !email || !estilo || !letra || !formData) {
       return res.status(400).json({ error: 'Preencha todos os campos obrigatorios.' });
     }
@@ -283,7 +297,7 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
 
     try {
       const resultado = await criarPedidoMusica(
-        { nome, cpf: cpfDigits, email, estilo, andamento, letra, referencia, canal: 'site' },
+        { nome, cpf: cpfDigits, email, estilo, andamento, vocal, letra, referencia, canal: 'site' },
         formData
       );
       if (resultado.rejected) {
@@ -347,4 +361,5 @@ module.exports = {
   codigoCurto,
   registerMusicaPersonalizadaRoutes,
   PRECO,
+  vocalValido,
 };
