@@ -43,6 +43,30 @@ async function getPayment(paymentId) {
   return paymentApi.get({ id: paymentId });
 }
 
+// Pix-only payment for simpler, non-ticket products (e.g. the WhatsApp music
+// bot), where there is no card/installments option and no Payment Brick —
+// just a QR code / copia-e-cola string handed back to the caller.
+async function createPixPayment({ amount, description, payerEmail, payerCpf, externalReference }) {
+  const result = await paymentApi.create({
+    body: {
+      transaction_amount: Number(amount),
+      description,
+      payment_method_id: 'pix',
+      payer: {
+        email: payerEmail,
+        identification: { type: 'CPF', number: payerCpf },
+      },
+      external_reference: externalReference,
+      notification_url: `${process.env.BASE_URL}/api/webhooks/mercadopago`,
+      statement_descriptor: 'CREWOLADA',
+    },
+    requestOptions: {
+      idempotencyKey: crypto.randomUUID(),
+    },
+  });
+  return result;
+}
+
 // Full refund of an approved payment, returned to the buyer's original
 // method (Pix -> account, card -> card statement). Needs available balance
 // in the Mercado Pago account. Uses a fresh idempotency key per call so a
@@ -79,6 +103,7 @@ function isValidWebhookSignature({ xSignature, xRequestId, dataId }) {
 
 module.exports = {
   createPayment,
+  createPixPayment,
   getPayment,
   refundPayment,
   isValidWebhookSignature,
