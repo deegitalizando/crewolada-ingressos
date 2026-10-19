@@ -9,6 +9,12 @@ const DEFAULT_TEMPLATES = {
   dia1: 'Oi {{nome}}! Amanha e o grande dia da {{evento}}! Nao esqueca de levar seu ingresso (QR Code, impresso ou no celular) e documento com foto. Ate amanha! 🎉',
   diaEvento: 'Oi {{nome}}! Hoje e o dia da {{evento}}! Nos vemos la: {{local}}. Guarde seu ingresso a mao para a entrada. 🎉',
   hora1: 'Oi {{nome}}! Falta 1 hora para a {{evento}} comecar! Ja pode vir chegando. Nos vemos ja ja! 🎉',
+  musicaAbandono:
+    'Oi {{nome}}! Vimos que voce comecou a criar sua musica personalizada mas o pagamento ainda nao foi confirmado. ' +
+    'E rapidinho terminar: {{link}} 🎵',
+  musicaRecompra:
+    'Oi {{nome}}! Que tal surpreender alguem especial com outra musica exclusiva, criada por IA so pra essa pessoa? ' +
+    'Crie a sua aqui: {{link}} 🎶',
 };
 
 // A template the admin left empty falls back to the default, so a blank

@@ -53,6 +53,7 @@ function buildAdminWhatsappResendLink(order) {
 }
 const { getTemplates } = require('./templates');
 const { startReminderScheduler } = require('./reminders');
+const { startMusicaFollowUpScheduler } = require('./musicaFollowUps');
 const musicas = require('./musicas');
 
 const app = express();
@@ -1242,14 +1243,16 @@ app.get('/admin/mensagens', requireAdminAuth, (req, res) => {
     eventStartAtLocal: formatDatetimeLocalBrasilia(db.eventStartAt),
     remindersSent: db.remindersSent || {},
     campaigns: campaigns.map((c) => ({ ...c, sendAtLocal: formatDatetimeLocalBrasilia(c.sendAt) })),
+    musicaAbandonoHoras: Number(process.env.MUSICA_ABANDONO_HORAS || 2),
+    musicaRecompraDias: Number(process.env.MUSICA_RECOMPRA_DIAS || 45),
     saved: req.query.saved === '1',
   });
 });
 
 app.post('/api/admin/mensagens', requireAdminAuth, async (req, res) => {
-  const { compra, dias5, dia1, diaEvento, hora1, eventStartAt } = req.body;
+  const { compra, dias5, dia1, diaEvento, hora1, musicaAbandono, musicaRecompra, eventStartAt } = req.body;
   await store.withDb((db) => {
-    db.messageTemplates = { compra, dias5, dia1, diaEvento, hora1 };
+    db.messageTemplates = { compra, dias5, dia1, diaEvento, hora1, musicaAbandono, musicaRecompra };
     if (eventStartAt) {
       const parsed = parseDatetimeLocalAsBrasilia(eventStartAt);
       if (parsed !== db.eventStartAt) db.remindersSent = {};
@@ -1265,10 +1268,12 @@ app.post('/api/admin/campanhas', requireAdminAuth, async (req, res) => {
   if (!mensagem || !sendAtLocal) {
     return res.redirect('/admin/mensagens');
   }
+  const audiencia = ['ingressos', 'musica', 'todos'].includes(req.body.audiencia) ? req.body.audiencia : 'ingressos';
 
   const campaign = {
     id: crypto.randomUUID(),
     mensagem,
+    audiencia,
     sendAt: parseDatetimeLocalAsBrasilia(sendAtLocal),
     sent: false,
     createdAt: new Date().toISOString(),
@@ -1485,5 +1490,6 @@ app.post('/:slug/inscricao', async (req, res, next) => {
 app.listen(PORT, () => {
   console.log(`Crewolada rodando em http://localhost:${PORT}`);
   startReminderScheduler();
+  startMusicaFollowUpScheduler();
   musicas.startMusicScheduler();
 });

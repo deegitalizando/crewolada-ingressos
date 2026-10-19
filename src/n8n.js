@@ -103,6 +103,10 @@ async function sendBroadcast(message) {
 }
 
 // Sends a plain text reminder (no PDF) to a single buyer via WhatsApp + e-mail.
+// `whatsapp` is optional here (unlike ticket buyers, a music order placed on
+// the site has no phone on file) - left blank rather than normalized into a
+// bogus "55" number, so the n8n flow's "Tem WhatsApp?" guard can skip that
+// channel cleanly instead of trying to message a non-existent contact.
 async function sendReminder({ nome, whatsapp, email, mensagem }) {
   const webhookUrl = process.env.N8N_REMINDER_WEBHOOK_URL;
   if (!webhookUrl) {
@@ -110,7 +114,7 @@ async function sendReminder({ nome, whatsapp, email, mensagem }) {
   }
   await axios.post(
     webhookUrl,
-    { nome, whatsapp: normalizePhone(whatsapp), email, mensagem },
+    { nome, whatsapp: whatsapp ? normalizePhone(whatsapp) : '', email, mensagem },
     { timeout: 10000 }
   );
 }

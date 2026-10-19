@@ -68,6 +68,27 @@ async function sendToAllPaidBuyers(db, messageTemplate, eventId = currentEvent.i
   }
 }
 
+// Same broadcast, aimed at everyone who has ever received a custom song -
+// the admin-scheduled counterpart to the automatic re-engagement nudge in
+// musicaFollowUps.js, meant for a one-off push tied to a calendar date (e.g.
+// Dia dos Namorados, Natal) rather than to how long ago each buyer ordered.
+async function sendToAllMusicaBuyers(db, messageTemplate) {
+  const buyers = Object.values(db.musicaPedidos || {}).filter((p) => p.status === 'entregue');
+  for (let i = 0; i < buyers.length; i++) {
+    const pedido = buyers[i];
+    const mensagem = renderTemplate(pickVariation(messageTemplate), {
+      nome: pedido.nome,
+      link: `${process.env.BASE_URL || 'https://www.crewolada.com'}/criesuamusica`,
+    });
+    try {
+      await sendReminder({ nome: pedido.nome, whatsapp: pedido.remoteJid || '', email: pedido.email, mensagem });
+    } catch (err) {
+      console.error(`Falha ao enviar campanha de musica para ${pedido.email || pedido.remoteJid}:`, err.message);
+    }
+    if (i < buyers.length - 1) await wait(4000 + Math.random() * 5000);
+  }
+}
+
 async function checkAndSendReminders() {
   // First run for a new event: point the milestones at its start time and
   // clear the "already sent" flags left over from the previous event.
@@ -143,7 +164,12 @@ async function checkAndSendReminders() {
       if (c) c.sent = true;
     });
 
-    await sendToAllPaidBuyers(db, campaign.mensagem);
+    if (campaign.audiencia === 'musica' || campaign.audiencia === 'todos') {
+      await sendToAllMusicaBuyers(db, campaign.mensagem);
+    }
+    if (campaign.audiencia !== 'musica') {
+      await sendToAllPaidBuyers(db, campaign.mensagem);
+    }
   }
 }
 

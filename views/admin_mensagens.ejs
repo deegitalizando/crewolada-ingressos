@@ -81,18 +81,46 @@
           </label>
         </div>
 
+        <h3>Crie Sua Própria Música: follow-ups automáticos</h3>
+        <p class="hint" style="margin-top:0">
+          Enviados automaticamente por pedido (não em massa), uma única vez cada. Use {{nome}} e {{link}} na mensagem.
+          Carrinho abandonado dispara <%= musicaAbandonoHoras %>h após o início do pedido sem pagamento confirmado;
+          a sugestão de nova música dispara <%= musicaRecompraDias %> dias após a entrega. Prazos são definidos por
+          variável de ambiente (MUSICA_ABANDONO_HORAS / MUSICA_RECOMPRA_DIAS).
+        </p>
+        <div class="template-box">
+          <label>
+            Carrinho abandonado (pagamento não confirmado)
+            <textarea name="musicaAbandono" rows="3"><%= templates.musicaAbandono %></textarea>
+          </label>
+        </div>
+        <div class="template-box">
+          <label>
+            Sugestão de nova música (após entrega)
+            <textarea name="musicaRecompra" rows="3"><%= templates.musicaRecompra %></textarea>
+          </label>
+        </div>
+
         <button type="submit">Salvar</button>
       </form>
     </main>
 
     <main class="card">
       <h3>Campanhas agendadas</h3>
-      <p class="hint" style="margin-top:0">Crie uma mensagem avulsa (WhatsApp + e-mail) com data/hora livre para disparar para todos os compradores pagos. Use {{nome}} na mensagem. Para reduzir risco de bloqueio no WhatsApp, escreva 3-5 variações do mesmo texto separadas por <code>|||</code> — uma é sorteada por destinatário.</p>
+      <p class="hint" style="margin-top:0">Crie uma mensagem avulsa (WhatsApp + e-mail) com data/hora livre para disparar para o público escolhido. Use {{nome}} na mensagem (e {{link}} se escolher o público de música). Para reduzir risco de bloqueio no WhatsApp, escreva 3-5 variações do mesmo texto separadas por <code>|||</code> — uma é sorteada por destinatário. Útil para datas comemorativas (Dia dos Namorados, Natal, etc.) incentivando quem já comprou uma música a criar outra.</p>
 
       <form action="/api/admin/campanhas" method="POST" class="form">
         <label>
           Mensagem
           <textarea name="mensagem" rows="3" required></textarea>
+        </label>
+        <label>
+          Público
+          <select name="audiencia">
+            <option value="ingressos">Compradores de ingresso</option>
+            <option value="musica">Compradores de música</option>
+            <option value="todos">Todos</option>
+          </select>
         </label>
         <label>
           Enviar em (horario de Brasilia)
@@ -104,12 +132,13 @@
       <div class="table-wrap" style="margin-top:20px">
         <table>
           <thead>
-            <tr><th>Mensagem</th><th>Enviar em</th><th>Status</th><th></th></tr>
+            <tr><th>Mensagem</th><th>Público</th><th>Enviar em</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
             <% campaigns.forEach(function(c) { %>
               <tr>
                 <td><%= c.mensagem %></td>
+                <td><%= ({ ingressos: 'Ingresso', musica: 'Música', todos: 'Todos' })[c.audiencia] || 'Ingresso' %></td>
                 <td><%= c.sendAtLocal.replace('T', ' ') %></td>
                 <td><%= c.sent ? 'Enviada' : 'Pendente' %></td>
                 <td>
@@ -122,7 +151,7 @@
               </tr>
             <% }) %>
             <% if (campaigns.length === 0) { %>
-              <tr><td colspan="4" style="text-align:center">Nenhuma campanha agendada.</td></tr>
+              <tr><td colspan="5" style="text-align:center">Nenhuma campanha agendada.</td></tr>
             <% } %>
           </tbody>
         </table>
