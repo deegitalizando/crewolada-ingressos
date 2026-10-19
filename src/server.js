@@ -327,6 +327,20 @@ app.get('/api/disponibilidade', (req, res) => {
   res.json({ open: salesOpenNow(), total, left, sold: Math.max(0, total - left) });
 });
 
+// Lets the WhatsApp FAQ bot (n8n) always quote the real current event instead
+// of a date baked into its prompt, and tell live from "no event on sale yet".
+app.get('/api/evento-atual', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    salesOpen: salesOpenNow(),
+    eventName: currentEvent.name,
+    dateLabel: currentEvent.dateLabel,
+    timeLabel: currentEvent.timeLabel || '',
+    venue: currentEvent.venue,
+    communityUrl: app.locals.communityUrl,
+  });
+});
+
 app.get('/politica-de-privacidade', (req, res) => {
   res.render('privacidade', { eventInfo, updatedAt: LEGAL_UPDATED_AT });
 });
