@@ -195,6 +195,15 @@
     .buy-inline { width: min(420px, 100%); margin-top: 28px; }
     .buy-inline .qty { margin: 0 0 18px; }
     .buy-inline .trust { margin-top: 22px; }
+    .avail { margin-top: 18px; text-align: left; }
+    .avail-top { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 15px; color: var(--ink); }
+    .avail-top strong { font-size: 30px; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .avail-of { font-size: 13px; color: rgba(14, 22, 38, 0.7); }
+    .avail-bar { height: 9px; border-radius: 5px; background: rgba(14, 22, 38, 0.12); overflow: hidden; margin-top: 8px; }
+    .avail-bar i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, #FFD21E, #FF9F1C); transition: width 0.8s var(--ease); }
+    .avail.low .avail-bar i { background: linear-gradient(90deg, #FF8A00, #FF3D2E); }
+    .avail.low .avail-top strong { color: #D8321F; }
+    .avail-note { margin-top: 8px; font-size: 12.5px; color: rgba(14, 22, 38, 0.65); line-height: 1.4; }
     .hero-note { margin-top: 16px; font-size: 14px; color: rgba(14, 22, 38, 0.7); }
     .hero-note strong { color: var(--ink); }
     .scroll-hint { position: absolute; z-index: 4; left: 50%; bottom: 18px; width: 22px; height: 36px; margin-left: -11px; border: 1.5px solid rgba(14, 22, 38, 0.45); border-radius: 12px; }
@@ -280,7 +289,7 @@
       <% if (lote && !comingSoon && productMode) { %>
         <div class="buy-inline">
           <button type="button" class="cta-buy" id="open-sheet" aria-haspopup="dialog">
-            <span class="lbl"><span>Garantir meu ingresso</span> <small>a partir de R$ <%= priceLabel %></small></span>
+            <span class="lbl"><span>Garantir meu ingresso</span> <small>a partir de R$ <%= priceLabel %> · restam <b id="cta-left"><%= left %></b></small></span>
             <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
           </button>
           <p class="trust">Pix ou cartão · QR Code por e-mail · Desista em até <%= refundDays %> dias</p>
@@ -289,7 +298,14 @@
           </p>
           <p class="menu-line kids">Crianças até <%= childRules.freeUntil %> anos não pagam · até <%= childRules.halfUntil %> anos pagam meia</p>
         </div>
-        <p class="hero-note">Restam <strong><%= left %></strong> de <%= totalCapacity %> · <span id="days-left"></span></p>
+        <div class="avail<%= (totalCapacity && left / totalCapacity <= 0.2) ? ' low' : '' %>" id="avail" aria-live="polite">
+          <div class="avail-top">
+            <span><strong id="avail-left"><%= left %></strong> <span id="avail-word"><%= left === 1 ? 'ingresso disponível' : 'ingressos disponíveis' %></span></span>
+            <span class="avail-of">de <%= totalCapacity %> · <span id="days-left"></span></span>
+          </div>
+          <div class="avail-bar"><i id="avail-fill" style="width: <%= totalCapacity ? Math.round(left / totalCapacity * 100) : 0 %>%"></i></div>
+          <% if (productMode) { %><p class="avail-note">Atualizado ao vivo a cada ingresso vendido. Crianças até <%= childRules.freeUntil %> anos não pagam e não ocupam vaga.</p><% } else { %><p class="avail-note">Atualizado ao vivo a cada ingresso vendido.</p><% } %>
+        </div>
       <% } else if (lote && !comingSoon) { %>
         <form action="/checkout/dados" method="GET" id="qty-form" class="buy-inline">
           <input type="hidden" name="qty" id="qty-input" value="1" />
@@ -305,7 +321,14 @@
           </button>
           <p class="trust">Pix ou cartão · QR Code por e-mail · Desista em até <%= refundDays %> dias</p>
         </form>
-        <p class="hero-note">Restam <strong><%= left %></strong> de <%= totalCapacity %> · <span id="days-left"></span></p>
+        <div class="avail<%= (totalCapacity && left / totalCapacity <= 0.2) ? ' low' : '' %>" id="avail" aria-live="polite">
+          <div class="avail-top">
+            <span><strong id="avail-left"><%= left %></strong> <span id="avail-word"><%= left === 1 ? 'ingresso disponível' : 'ingressos disponíveis' %></span></span>
+            <span class="avail-of">de <%= totalCapacity %> · <span id="days-left"></span></span>
+          </div>
+          <div class="avail-bar"><i id="avail-fill" style="width: <%= totalCapacity ? Math.round(left / totalCapacity * 100) : 0 %>%"></i></div>
+          <% if (productMode) { %><p class="avail-note">Atualizado ao vivo a cada ingresso vendido. Crianças até <%= childRules.freeUntil %> anos não pagam e não ocupam vaga.</p><% } else { %><p class="avail-note">Atualizado ao vivo a cada ingresso vendido.</p><% } %>
+        </div>
       <% } else if (comingSoon) { %>
         <a class="btn hero-cta" href="#comunidade">Avisar quando abrir</a>
       <% } else { %>
@@ -483,6 +506,26 @@
         if (reduce) { vid.pause(); vid.removeAttribute('autoplay'); }
         else { var pr = vid.play(); if (pr && pr.catch) pr.catch(function () {}); }
       }
+
+      // ----- live availability
+      (function () {
+        var box = document.getElementById('avail');
+        if (!box) return;
+        var total = <%= totalCapacity || 0 %>;
+        function poll() {
+          if (document.hidden) return;
+          fetch('/api/disponibilidade', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+            if (!d.open || d.left <= 0) { location.reload(); return; }
+            document.getElementById('avail-left').textContent = d.left;
+            var cl = document.getElementById('cta-left'); if (cl) cl.textContent = d.left;
+            document.getElementById('avail-word').textContent = d.left === 1 ? 'ingresso disponível' : 'ingressos disponíveis';
+            document.getElementById('avail-fill').style.width = (total ? Math.round(d.left / total * 100) : 0) + '%';
+            box.classList.toggle('low', total > 0 && d.left / total <= 0.2);
+          }).catch(function () {});
+        }
+        setInterval(poll, 15000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
+      })();
 
       // ----- days left
       var dl = document.getElementById('days-left');

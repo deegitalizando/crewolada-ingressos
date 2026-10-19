@@ -27,7 +27,7 @@ function isConfigured(key, db) {
 
 // Events a visitor can still get a ticket for: the one on sale on the home page
 // and the free ones that have their own registration page.
-function ticketEvents(salesOpen) {
+function ticketEvents(salesOpen, availableNow) {
   const now = Date.now();
   return EVENTS
     .filter((e) => {
@@ -47,16 +47,18 @@ function ticketEvents(salesOpen) {
       free: Boolean(e.free),
       note: e.tagline || '',
       status: eventStatus(e),
+      left: e.id === currentEvent.id && availableNow ? availableNow() : null,
+      total: e.id === currentEvent.id ? e.capacity || null : null,
     }));
 }
 
-function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow }) {
+function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow, availableNow }) {
   app.get('/links', (req, res) => {
     res.render('links', {
       eventInfo,
       // "Em breve" while the ticket sale of the current event has not opened yet.
       emBreve: !(salesOpenNow ? salesOpenNow() : app.locals.salesOpen),
-      events: ticketEvents(salesOpenNow ? salesOpenNow() : app.locals.salesOpen),
+      events: ticketEvents(salesOpenNow ? salesOpenNow() : app.locals.salesOpen, availableNow),
       baseUrl: process.env.BASE_URL || '',
     });
   });

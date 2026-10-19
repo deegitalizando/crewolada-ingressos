@@ -85,7 +85,7 @@
               <p class="ev-meta" style="color:#f6c441; font-weight:700; margin-top:-4px">Vendas fechadas (site mostra "Em breve") até <%= c.salesOpenAtLocal.replace('T', ' às ') %>.</p>
             <% } %>
             <div class="ev-nums">
-              <div class="ev-num"><div class="l">Ingressos vendidos</div><div class="v"><%= c.stats.tickets %><%= (c.capacity || c.lotesCapacity) ? ' / ' + (c.capacity || c.lotesCapacity) : '' %></div></div>
+              <div class="ev-num"><div class="l"><%= c.hasProducts ? 'Vagas ocupadas' : 'Ingressos vendidos' %></div><div class="v"><%= c.hasProducts ? c.stats.seats : c.stats.tickets %><%= (c.capacity || c.lotesCapacity) ? ' / ' + (c.capacity || c.lotesCapacity) : '' %></div><% if (c.hasProducts && c.stats.babies > 0) { %><div class="l">+ <%= c.stats.babies %> bebê(s) grátis, fora da conta</div><% } %></div>
               <div class="ev-num"><div class="l">Receita bruta</div><div class="v"><%= money(c.stats.revenue) %></div></div>
               <div class="ev-num"><div class="l">Compareceram</div><div class="v"><%= c.stats.attended %></div></div>
               <div class="ev-num"><div class="l">Cortesias</div><div class="v"><%= c.stats.courtesy %></div></div>

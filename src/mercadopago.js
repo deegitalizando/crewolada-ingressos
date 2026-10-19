@@ -12,9 +12,18 @@ const refundApi = new PaymentRefund(client);
 // buyer never leaves our site. `formData` is whatever the Payment Brick's
 // onSubmit callback produced on the frontend (token for card payments is
 // absent for Pix; issuer_id/installments only apply to cards).
+// Pix codes live for 30 min (the minimum Mercado Pago accepts): that is how long the
+// seats of an unpaid Pix order stay held (see HOLD_MS in server.js).
+function pixExpiration(paymentMethodId) {
+  if (paymentMethodId !== 'pix') return {};
+  const brt = new Date(Date.now() + 31 * 60 * 1000 - 3 * 3600 * 1000);
+  return { date_of_expiration: brt.toISOString().replace('Z', '-03:00') };
+}
+
 async function createPayment(order, formData) {
   const result = await paymentApi.create({
     body: {
+      ...pixExpiration(formData.payment_method_id),
       transaction_amount: Number(order.totalAmount),
       token: formData.token,
       description: `Ingresso ${require('./event').currentEvent.name} - ${order.loteName}`,
