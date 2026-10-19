@@ -34,7 +34,7 @@ function ticketEvents(salesOpen, availableNow) {
       const upcoming = !e.startAt || Date.parse(e.startAt) + 5 * 3600000 > now;
       if (!upcoming) return false;
       if (e.id === currentEvent.id) return salesOpen;
-      return Boolean(e.free && e.slug);
+      return Boolean(e.free && e.slug && !e.hidden);
     })
     .sort((a, b) => String(a.startAt || '9999').localeCompare(String(b.startAt || '9999')))
     .map((e) => ({

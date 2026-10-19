@@ -79,6 +79,7 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
         hasProducts: getProducts(e).length > 0,
         free: Boolean(e.free),
         slug: e.slug || '',
+        hidden: Boolean(e.hidden),
         hasOrders: s.orders + s.courtesy + s.cancelled > 0,
       };
     });
@@ -181,6 +182,20 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
     });
     onChange();
     res.redirect('/admin/eventos?msg=liberado');
+  });
+
+  // Free-registration pages: publish (visible to everyone) or hide again.
+  ['publicar', 'ocultar'].forEach((action) => {
+    app.post(`/admin/eventos/:id/${action}`, requireAdminAuth, async (req, res) => {
+      const ev = EVENTS.find((e) => e.id === req.params.id);
+      if (!ev || !ev.slug) return res.redirect('/admin/eventos?msg=dados');
+      await store.withDb((db) => {
+        db.events = db.events || {};
+        db.events[ev.id] = { ...(db.events[ev.id] || {}), id: ev.id, hidden: action === 'ocultar' };
+      });
+      onChange();
+      res.redirect(`/admin/eventos?msg=${action === 'publicar' ? 'publicado' : 'oculto'}`);
+    });
   });
 
   app.post('/admin/eventos/:id/atual', requireAdminAuth, async (req, res) => {
