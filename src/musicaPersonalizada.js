@@ -66,6 +66,7 @@ async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andament
     return { rejected: true, statusDetail: payment.status_detail };
   }
 
+  const transactionData = payment.point_of_interaction?.transaction_data || {};
   const pedido = {
     id,
     remoteJid: remoteJid || null,
@@ -80,6 +81,11 @@ async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andament
     valor: PRECO,
     status: 'aguardando_pagamento',
     mpPaymentId: String(payment.id),
+    // Persisted so the /musica/pedido/:id status page can render the QR
+    // code / copia-e-cola on reload or on first render after redirect —
+    // the API response alone isn't enough, the page needs it too.
+    pixCode: transactionData.qr_code || '',
+    pixQrBase64: transactionData.qr_code_base64 || '',
     createdAt: new Date().toISOString(),
   };
 
@@ -92,7 +98,6 @@ async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andament
     await aprovarPedidoMusica(id, payment.id);
   }
 
-  const transactionData = payment.point_of_interaction?.transaction_data || {};
   return {
     pedidoId: id,
     status: payment.status,

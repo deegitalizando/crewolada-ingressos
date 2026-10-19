@@ -24,32 +24,66 @@
           Esta página atualiza sozinha, não precisa recarregar.
         </p>
         <div class="total-row" id="spinner-text">⏳ Aguardando...</div>
+      <% } else if (pedido.pixQrBase64) { %>
+        <h2>Pague com Pix para confirmar</h2>
+        <p class="hint" style="margin-top:0">Escaneie o QR Code abaixo ou copie o código Pix e cole no app do seu banco.</p>
+        <img class="qr" src="data:image/png;base64,<%= pedido.pixQrBase64 %>" alt="QR Code Pix" />
+        <label>
+          Pix copia e cola
+          <input type="text" id="pix-code" readonly value="<%= pedido.pixCode %>" onclick="this.select()" />
+        </label>
+        <button type="button" id="btn-copiar-pix">Copiar código</button>
+        <p class="hint">O favorecido exibido pelo seu banco será <strong>Diego Carreiro Moura</strong> — pode confirmar normalmente.</p>
+        <p class="hint" style="display:flex; align-items:center; justify-content:center; gap:8px">
+          <span class="spinner" style="margin:0; width:16px; height:16px"></span>
+          Aguardando confirmação do pagamento... esta página atualiza sozinha.
+        </p>
       <% } else { %>
         <h2>Aguardando pagamento</h2>
-        <p class="hint" style="margin-top:0">Ainda não recebemos a confirmação do seu pagamento. Se você acabou de pagar, aguarde alguns instantes — esta página atualiza sozinha.</p>
+        <p class="hint" style="margin-top:0">Ainda não recebemos a confirmação do seu pagamento (pagamento no cartão pode levar alguns instantes). Esta página atualiza sozinha.</p>
+        <div class="spinner"></div>
       <% } %>
     </main>
 
     <%- include('partials/footer_legal') %>
   </div>
 
+  <% if (pedido.status === 'aguardando_pagamento' && pedido.pixQrBase64) { %>
+  <script>
+    document.getElementById('btn-copiar-pix').addEventListener('click', async () => {
+      const input = document.getElementById('pix-code');
+      const btn = document.getElementById('btn-copiar-pix');
+      try {
+        await navigator.clipboard.writeText(input.value);
+      } catch (e) {
+        input.select();
+        document.execCommand('copy');
+      }
+      const original = btn.textContent;
+      btn.textContent = 'Copiado!';
+      setTimeout(() => { btn.textContent = original; }, 2000);
+    });
+  </script>
+  <% } %>
+
   <% if (!(pedido.status === 'entregue' && pedido.audioUrl)) { %>
   <script>
     (function () {
+      var estadoInicial = '<%= pedido.status %>';
       var tentativas = 0;
       function checar() {
         tentativas += 1;
         fetch('/api/musica/pedido/<%= pedido.id %>/status')
           .then(function (r) { return r.json(); })
           .then(function (data) {
-            if (data.status === 'entregue' && data.audioUrl) {
+            if (data.status !== estadoInicial) {
               window.location.reload();
               return;
             }
-            if (tentativas < 60) setTimeout(checar, 5000);
+            if (tentativas < 120) setTimeout(checar, 5000);
           })
           .catch(function () {
-            if (tentativas < 60) setTimeout(checar, 5000);
+            if (tentativas < 120) setTimeout(checar, 5000);
           });
       }
       setTimeout(checar, 5000);
