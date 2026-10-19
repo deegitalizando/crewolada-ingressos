@@ -1268,7 +1268,7 @@ app.get('/admin/mensagens', requireAdminAuth, (req, res) => {
     remindersSent: db.remindersSent || {},
     campaigns: campaigns.map((c) => ({ ...c, sendAtLocal: formatDatetimeLocalBrasilia(c.sendAt) })),
     musicaAbandonoHoras: Number(process.env.MUSICA_ABANDONO_HORAS || 2),
-    musicaRecompraDias: Number(process.env.MUSICA_RECOMPRA_DIAS || 45),
+    musicaRecompraDias: Number(process.env.MUSICA_RECOMPRA_DIAS || 7),
     saved: req.query.saved === '1',
   });
 });

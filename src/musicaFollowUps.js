@@ -6,7 +6,7 @@ const { getTemplates, renderTemplate } = require('./templates');
 // finished paying, and before suggesting a past buyer create a new one.
 // Both configurable since the right cadence is a business call, not a constant.
 const ABANDONO_HORAS = Number(process.env.MUSICA_ABANDONO_HORAS || 2);
-const RECOMPRA_DIAS = Number(process.env.MUSICA_RECOMPRA_DIAS || 45);
+const RECOMPRA_DIAS = Number(process.env.MUSICA_RECOMPRA_DIAS || 7);
 
 function linkMusica() {
   return `${process.env.BASE_URL || 'https://www.crewolada.com'}/criesuamusica`;
