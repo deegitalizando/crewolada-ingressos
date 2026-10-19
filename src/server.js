@@ -335,6 +335,10 @@ app.get('/api/disponibilidade', (req, res) => {
 // of a date baked into its prompt, and tell live from "no event on sale yet".
 app.get('/api/evento-atual', (req, res) => {
   res.set('Cache-Control', 'no-store');
+  const db = store.load();
+  const products = getProducts(currentEvent);
+  const rules = products.length ? getChildRules(currentEvent) : null;
+  const heldUntil = salesHeldBack(currentEvent) ? salesOpensAt(currentEvent) : null;
   res.json({
     salesOpen: salesOpenNow(),
     eventName: currentEvent.name,
@@ -342,6 +346,12 @@ app.get('/api/evento-atual', (req, res) => {
     timeLabel: currentEvent.timeLabel || '',
     venue: currentEvent.venue,
     communityUrl: app.locals.communityUrl,
+    // Used by the WhatsApp bot (Davi) to announce the party, tickets left and prices.
+    capacity: currentEvent.capacity || null,
+    ticketsLeft: products.length ? getAvailable(db) : null,
+    products: products.map((p) => ({ name: p.name, price: p.price, includes: p.includes || [] })),
+    childRules: rules ? { freeUntil: rules.freeUntil, halfUntil: rules.halfUntil } : null,
+    salesOpensAtLabel: heldUntil ? opensLabelBR(heldUntil) : null,
   });
 });
 
