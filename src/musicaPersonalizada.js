@@ -185,6 +185,16 @@ function buscarPedidoPorCodigo(codigo) {
   return Object.values(db.musicaPedidos || {}).find((p) => codigoCurto(p.id) === c) || null;
 }
 
+// Tip shown after the song is delivered (page, e-mail and WhatsApp): invites the buyer to post it.
+// The page of the order is private (it shows the buyer's e-mail), so people are asked to share
+// the downloaded audio and the tool's public link, never the order page.
+const LEGENDA_DIVULGACAO = 'Ganhei uma m\u00fasica feita s\u00f3 pra mim, com a minha hist\u00f3ria \ud83c\udfb6\ud83d\ude4f\ud83c\udffe Crie a sua: crewolada.com/criesuamusica #CriesuaMusicaCrewolada #BlackMusicCrist\u00e3';
+const DICAS_DIVULGACAO = [
+  'Baixe o MP3 e use como \u00e1udio de um v\u00eddeo (Reels, TikTok ou Stories) com fotos ou v\u00eddeos de quem a m\u00fasica homenageia.',
+  'Mostre a rea\u00e7\u00e3o da pessoa ao ouvir a m\u00fasica pela primeira vez: \u00e9 o tipo de v\u00eddeo que mais emociona.',
+  'Use a legenda abaixo e marque a Crewolada: a gente vai adorar ver a sua m\u00fasica por a\u00ed.',
+];
+
 const MENSAGEM_WHATSAPP = 'Olá, gostaria de receber minha música por aqui.';
 function whatsappMusicaUrl(pedido) {
   const ddi = process.env.DEFAULT_COUNTRY_CODE || '55';
@@ -228,6 +238,9 @@ async function posEntregaMusica(pedido) {
     'Download direto (MP3): ' + pagina + '/baixar',
     '',
     'Quer receber também no WhatsApp? Abra o link acima e toque em "Receber no WhatsApp".',
+    '',
+    'Dica: divulgue a sua música nas redes! ' + DICAS_DIVULGACAO[0],
+    'Sugestão de legenda: ' + LEGENDA_DIVULGACAO,
     '',
     'Equipe Crewolada',
   ].join('\n');
@@ -346,6 +359,8 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
       codigo: codigoCurto(pedido.id),
       whatsappUrl: whatsappMusicaUrl(pedido),
       audioSrc: '/musica/pedido/' + pedido.id + '/audio',
+      legenda: LEGENDA_DIVULGACAO,
+      dicas: DICAS_DIVULGACAO,
     });
   });
 

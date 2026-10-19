@@ -10,6 +10,13 @@
     .dl:hover, .wa:hover { filter: brightness(1.08); }
     .sent { margin-top: 14px; padding: 12px 14px; border: 1.5px solid var(--card-border); border-radius: 6px; font-size: 13px; color: var(--text-dim); line-height: 1.5; }
     .sent b { color: var(--text); }
+    .share { margin-top: 18px; padding: 16px; border: 1.5px solid var(--card-border); border-radius: 6px; background: #0b0b0b; }
+    .share h3 { margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em; font-size: 15px; }
+    .share ol { margin: 0 0 12px; padding-left: 20px; font-size: 14px; line-height: 1.55; color: #dcdcdc; }
+    .share .cap { padding: 12px; border: 1.5px dashed var(--card-border); border-radius: 6px; font-size: 14px; line-height: 1.5; color: #fff; white-space: pre-wrap; }
+    .share .row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .share .row button, .share .row a { flex: 1; min-width: 140px; margin: 0; padding: 12px; font-size: 13px; text-align: center; text-decoration: none; }
+    .share .row a { display: block; border-radius: 4px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; background: #1faa59; color: #fff; }
   </style>
 </head>
 <body>
@@ -29,6 +36,16 @@
         <div class="sent">
           <% if (pedido.email) { %>📧 Também enviamos o link para <b><%= pedido.email %></b>.<br /><% } %>
           💬 No WhatsApp, toque no botão: a mensagem já vai pronta (código <b><%= codigo %></b>). É só enviar e a gente manda o áudio na conversa.
+        </div>
+
+        <div class="share">
+          <h3>📣 Divulgue a sua música</h3>
+          <ol><% dicas.forEach(function(d) { %><li><%= d %></li><% }) %></ol>
+          <div class="cap" id="legenda"><%= legenda %></div>
+          <div class="row">
+            <button type="button" id="copiar-legenda">Copiar legenda</button>
+            <a href="https://wa.me/?text=<%= encodeURIComponent(legenda) %>" target="_blank" rel="noopener">Postar no WhatsApp</a>
+          </div>
         </div>
       <% } else if (pedido.status === 'pago' || pedido.status === 'gerando') { %>
         <h2>Gerando sua música...</h2>
@@ -60,6 +77,16 @@
 
     <%- include('partials/footer_musica') %>
   </div>
+
+  <% if (pedido.status === 'entregue' && pedido.audioUrl) { %>
+  <script>
+    document.getElementById('copiar-legenda').addEventListener('click', function () {
+      var b = this, t = document.getElementById('legenda').textContent;
+      (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).catch(function () {});
+      var o = b.textContent; b.textContent = 'Copiada!'; setTimeout(function () { b.textContent = o; }, 1800);
+    });
+  </script>
+  <% } %>
 
   <% if (pedido.status === 'aguardando_pagamento' && pedido.pixQrBase64) { %>
   <script>
