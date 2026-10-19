@@ -38,7 +38,7 @@ const { registerPesquisaRoutes } = require('./pesquisa');
 const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNotification } = require('./comprovante');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
-const { criarPedidoMusica, aprovarPedidoMusica } = require('./musicaPersonalizada');
+const { criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, registerMusicaPersonalizadaRoutes } = require('./musicaPersonalizada');
 
 // Builds a wa.me link, pre-filled with the ticket link, that the ADMIN opens
 // in their own WhatsApp to resend a ticket by hand. This bypasses the
@@ -1086,6 +1086,21 @@ app.post('/api/n8n/musica/pedido', async (req, res) => {
   }
 });
 
+// Called by n8n once Mureka finishes generating a song, so the
+// /musica/pedido/:id status page (site-originated orders) can show/play it.
+app.post('/api/n8n/musica/pronta', async (req, res) => {
+  const secret = process.env.N8N_CALLBACK_SECRET;
+  if (secret && req.headers['x-callback-secret'] !== secret) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  const { pedidoId, audioUrl } = req.body;
+  if (!pedidoId || !audioUrl) return res.status(400).json({ ok: false, error: 'missing_fields' });
+
+  const pedido = await marcarMusicaPronta(pedidoId, audioUrl);
+  if (!pedido) return res.status(404).json({ ok: false, error: 'not_found' });
+  return res.json({ ok: true });
+});
+
 registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
@@ -1096,6 +1111,7 @@ registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,
 });
 registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
+registerMusicaPersonalizadaRoutes(app, { eventInfo });
 
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
   const db = store.load();

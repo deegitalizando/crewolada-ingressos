@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Crie Sua Própria Música - <%= eventInfo.name %></title>
+  <meta name="description" content="Sua música personalizada, no estilo Black Music Cristã, por R$ <%= preco.toFixed(2).replace('.', ',') %>. Criada por IA a partir da sua história." />
+  <%- include('partials/head') %>
+  <script src="https://sdk.mercadopago.com/js/v2"></script>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Crie Sua Própria Música</h1>
+    </header>
+
+    <main class="card">
+      <h2>Como funciona</h2>
+      <p class="hint" style="margin-top:0">
+        Escolha o estilo, conte sua história (ou cole uma letra pronta) e receba uma música
+        original, cantada, no clima Black Music Cristã (R&amp;B, Soul, Neosoul, Hip-Hop, Rap, Trap,
+        Soulful Rap...). Por apenas <strong>R$ <%= preco.toFixed(2).replace('.', ',') %></strong>.
+      </p>
+
+      <div id="form-error" class="alert" style="display:none"></div>
+
+      <form class="form" id="musica-form">
+        <label>
+          Estilo musical
+          <select id="estilo" required>
+            <option value="" disabled selected>Escolha um estilo</option>
+            <% estilos.forEach(function(e) { %><option value="<%= e %>"><%= e %></option><% }) %>
+          </select>
+        </label>
+
+        <label>
+          Andamento
+          <select id="andamento" required>
+            <option value="" disabled selected>Escolha o andamento</option>
+            <% andamentos.forEach(function(a) { %><option value="<%= a %>"><%= a %></option><% }) %>
+          </select>
+        </label>
+
+        <label>
+          Referência musical (opcional)
+          <input type="text" id="referencia" placeholder="Ex: parecido com tal artista/música" maxlength="200" />
+        </label>
+
+        <fieldset style="border:1px solid var(--card-border, #333); border-radius:6px; padding:12px">
+          <legend class="hint" style="margin:0 0 6px">Você já tem uma letra pronta?</legend>
+          <label style="display:inline-flex; align-items:center; gap:6px; width:auto">
+            <input type="radio" name="temLetra" id="temLetraSim" style="width:auto" /> Já tenho a letra
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; width:auto; margin-left:18px">
+            <input type="radio" name="temLetra" id="temLetraNao" style="width:auto" checked /> Quero que a IA sugira
+          </label>
+        </fieldset>
+
+        <div id="bloco-detalhes">
+          <label>
+            Conte sobre a música: pra quem é, a ocasião, uma história ou detalhe que deve aparecer na letra
+            <textarea id="detalhes" rows="4" maxlength="1000" placeholder="Ex: é pro aniversário da minha esposa Maria, 10 anos juntos, conhecemos na igreja..."></textarea>
+          </label>
+          <button type="button" id="sugerir-btn">Sugerir letra com IA</button>
+        </div>
+
+        <label>
+          Letra <span class="hint" style="display:inline">(gerada pela IA ou colada por você — revise e edite à vontade antes de continuar)</span>
+          <textarea id="letra" rows="8" maxlength="4000"></textarea>
+        </label>
+
+        <label>
+          Nome completo
+          <input type="text" id="nome" required autocomplete="name" />
+        </label>
+        <label>
+          E-mail
+          <input type="email" id="email" required autocomplete="email" />
+        </label>
+        <label>
+          CPF
+          <input type="text" id="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" />
+        </label>
+
+        <button type="submit" id="continuar-btn">Continuar para o pagamento</button>
+      </form>
+
+      <div id="paymentBrick_container" style="margin-top:20px"></div>
+
+      <p class="hint" style="margin-top:16px">
+        Ao concluir o pagamento, você concorda com nossos
+        <a href="/termos-de-uso" target="_blank">Termos de Uso</a> e nossa
+        <a href="/politica-de-privacidade" target="_blank">Política de Privacidade</a>.
+        Por ser um produto digital personalizado, gerado logo após o pagamento, não há reembolso
+        após a entrega da música.
+      </p>
+    </main>
+
+    <%- include('partials/footer_legal') %>
+  </div>
+
+  <script>
+    const errorBox = document.getElementById('form-error');
+    function showError(msg) {
+      errorBox.textContent = msg;
+      errorBox.style.display = 'block';
+      errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    const cpfInput = document.getElementById('cpf');
+    cpfInput.addEventListener('input', () => {
+      let v = cpfInput.value.replace(/\D/g, '').slice(0, 11);
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      cpfInput.value = v;
+    });
+
+    const temLetraSim = document.getElementById('temLetraSim');
+    const temLetraNao = document.getElementById('temLetraNao');
+    const blocoDetalhes = document.getElementById('bloco-detalhes');
+    function syncLetraMode() {
+      blocoDetalhes.style.display = temLetraNao.checked ? '' : 'none';
+    }
+    temLetraSim.addEventListener('change', syncLetraMode);
+    temLetraNao.addEventListener('change', syncLetraMode);
+    syncLetraMode();
+
+    const sugerirBtn = document.getElementById('sugerir-btn');
+    sugerirBtn.addEventListener('click', () => {
+      const detalhes = document.getElementById('detalhes').value.trim();
+      const estilo = document.getElementById('estilo').value;
+      const andamento = document.getElementById('andamento').value;
+      const referencia = document.getElementById('referencia').value.trim();
+      if (!detalhes) { showError('Conte um pouco sobre a música antes de pedir a sugestão.'); return; }
+      errorBox.style.display = 'none';
+      sugerirBtn.disabled = true;
+      sugerirBtn.textContent = 'Gerando sugestão...';
+      fetch('/api/musica/rascunhar-letra', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estilo, andamento, detalhes, referencia }),
+      })
+        .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok) { showError(data.error || 'Nao foi possivel sugerir a letra.'); return; }
+          document.getElementById('letra').value = data.letra;
+        })
+        .catch(() => showError('Erro de conexao. Tente novamente.'))
+        .finally(() => {
+          sugerirBtn.disabled = false;
+          sugerirBtn.textContent = 'Sugerir letra com IA';
+        });
+    });
+
+    const musicaForm = document.getElementById('musica-form');
+    const continuarBtn = document.getElementById('continuar-btn');
+    let brickCreated = false;
+
+    musicaForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      if (brickCreated) return;
+
+      const nome = document.getElementById('nome').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const cpfDigits = cpfInput.value.replace(/\D/g, '');
+      const estilo = document.getElementById('estilo').value;
+      const andamento = document.getElementById('andamento').value;
+      const referencia = document.getElementById('referencia').value.trim();
+      const letra = document.getElementById('letra').value.trim();
+
+      if (!nome || !email || cpfDigits.length !== 11 || !estilo || !andamento || !letra) {
+        showError('Preencha todos os campos, incluindo a letra (sugira com a IA ou cole a sua).');
+        return;
+      }
+      errorBox.style.display = 'none';
+
+      [...musicaForm.elements].forEach((el) => (el.disabled = true));
+      sugerirBtn.disabled = true;
+      brickCreated = true;
+      createBrick({ nome, email, cpfDigits, estilo, andamento, referencia, letra });
+    });
+
+    function createBrick({ nome, email, cpfDigits, estilo, andamento, referencia, letra }) {
+      const mpSdk = new MercadoPago('<%= mpPublicKey %>', { locale: 'pt-BR' });
+      const bricksBuilder = mpSdk.bricks();
+
+      bricksBuilder.create('payment', 'paymentBrick_container', {
+        initialization: {
+          amount: <%= preco %>,
+          payer: { email, identification: { type: 'CPF', number: cpfDigits } },
+        },
+        customization: {
+          paymentMethods: { creditCard: 'all', bankTransfer: 'all' },
+          visual: { style: { theme: 'dark' } },
+        },
+        callbacks: {
+          onReady: () => {},
+          onError: (error) => { console.error(error); },
+          onSubmit: ({ formData }) => {
+            return new Promise((resolve, reject) => {
+              errorBox.style.display = 'none';
+              fetch('/api/musica/pedido', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome, email, cpf: cpfDigits, estilo, andamento, referencia, letra, formData }),
+              })
+                .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+                .then(({ ok, data }) => {
+                  if (!ok) { showError(data.error || 'Nao foi possivel processar o pagamento.'); reject(); return; }
+                  resolve();
+                  window.location.href = data.redirectUrl;
+                })
+                .catch(() => { showError('Erro de conexao. Tente novamente.'); reject(); });
+            });
+          },
+        },
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Sua música - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Sua música</h1>
+    </header>
+
+    <main class="card" id="status-card">
+      <% if (pedido.status === 'entregue' && pedido.audioUrl) { %>
+        <h2>Pronta! 🎉</h2>
+        <p class="hint" style="margin-top:0">Sua música personalizada ficou pronta. Pode ouvir e baixar abaixo.</p>
+        <audio controls style="width:100%; margin-top:10px" src="<%= pedido.audioUrl %>"></audio>
+        <p style="margin-top:12px"><a href="<%= pedido.audioUrl %>" download>Baixar música (MP3)</a></p>
+      <% } else if (pedido.status === 'pago' || pedido.status === 'gerando') { %>
+        <h2>Gerando sua música...</h2>
+        <p class="hint" style="margin-top:0">
+          Pagamento confirmado! Estamos criando sua música agora — isso costuma levar cerca de 1 minuto.
+          Esta página atualiza sozinha, não precisa recarregar.
+        </p>
+        <div class="total-row" id="spinner-text">⏳ Aguardando...</div>
+      <% } else { %>
+        <h2>Aguardando pagamento</h2>
+        <p class="hint" style="margin-top:0">Ainda não recebemos a confirmação do seu pagamento. Se você acabou de pagar, aguarde alguns instantes — esta página atualiza sozinha.</p>
+      <% } %>
+    </main>
+
+    <%- include('partials/footer_legal') %>
+  </div>
+
+  <% if (!(pedido.status === 'entregue' && pedido.audioUrl)) { %>
+  <script>
+    (function () {
+      var tentativas = 0;
+      function checar() {
+        tentativas += 1;
+        fetch('/api/musica/pedido/<%= pedido.id %>/status')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.status === 'entregue' && data.audioUrl) {
+              window.location.reload();
+              return;
+            }
+            if (tentativas < 60) setTimeout(checar, 5000);
+          })
+          .catch(function () {
+            if (tentativas < 60) setTimeout(checar, 5000);
+          });
+      }
+      setTimeout(checar, 5000);
+    })();
+  </script>
+  <% } %>
+</body>
+</html>

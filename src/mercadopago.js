@@ -39,6 +39,33 @@ async function createPayment(order, formData) {
   return result;
 }
 
+// Payment Brick (card or Pix, buyer's choice) for simple non-ticket products
+// sold directly on a standalone page (e.g. /criesuamusica), parameterized
+// instead of taking a ticket "order" object like createPayment does.
+async function createBrickPayment({ amount, description, formData, payerEmail, payerCpf, externalReference }) {
+  const result = await paymentApi.create({
+    body: {
+      transaction_amount: Number(amount),
+      token: formData.token,
+      description,
+      installments: Number(formData.installments) || 1,
+      payment_method_id: formData.payment_method_id,
+      issuer_id: formData.issuer_id,
+      payer: {
+        email: payerEmail,
+        identification: { type: 'CPF', number: payerCpf },
+      },
+      external_reference: externalReference,
+      notification_url: `${process.env.BASE_URL}/api/webhooks/mercadopago`,
+      statement_descriptor: 'CREWOLADA',
+    },
+    requestOptions: {
+      idempotencyKey: crypto.randomUUID(),
+    },
+  });
+  return result;
+}
+
 async function getPayment(paymentId) {
   return paymentApi.get({ id: paymentId });
 }
@@ -104,6 +131,7 @@ function isValidWebhookSignature({ xSignature, xRequestId, dataId }) {
 module.exports = {
   createPayment,
   createPixPayment,
+  createBrickPayment,
   getPayment,
   refundPayment,
   isValidWebhookSignature,
