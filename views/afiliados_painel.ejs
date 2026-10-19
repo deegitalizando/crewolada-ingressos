@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Painel do afiliado · Crewolada</title>
+  <meta name="robots" content="noindex" />
+  <%- include('partials/head') %>
+  <style>
+    .pn .wrap { width: min(620px, 100%); margin-inline: auto; padding: 18px 16px 70px; }
+    .pn .top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .pn .top h1 { margin: 0; font-size: 1.25rem; text-transform: uppercase; letter-spacing: 0.04em; }
+    .pn .top h1 small { display: block; color: var(--text-dim); font-size: 12px; letter-spacing: 0; text-transform: none; font-weight: 400; }
+    .pn .top form { margin: 0; } .pn .top button { width: auto; margin: 0; padding: 9px 14px; font-size: 12px; background: transparent; color: var(--text-dim); border: 1.5px solid var(--card-border); }
+    .pn section.card { margin: 14px 0 0; padding: 18px 16px; }
+    .pn h2 { margin: 0 0 10px; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.06em; }
+    .linkbox { display: flex; gap: 8px; }
+    .linkbox input { flex: 1; min-width: 0; font-size: 14px; }
+    .linkbox button { width: auto; margin: 0; padding: 0 16px; }
+    .pn .btn2 { display: block; text-align: center; margin-top: 10px; padding: 13px; border-radius: 4px; background: #1faa59; color: #fff; text-decoration: none; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; font-size: 14px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .num { padding: 12px; border: 1.5px solid var(--card-border); border-radius: 6px; background: #0b0b0b; }
+    .num span { display: block; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+    .num b { display: block; margin-top: 4px; font-family: 'Bricolage Grotesque', sans-serif; font-size: 24px; }
+    .num small { display: block; color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+    .num.hi { grid-column: 1 / -1; background: linear-gradient(180deg, rgba(246,196,65,.14), rgba(229,167,27,.05)); border-color: var(--accent); }
+    .num.hi b { font-size: 32px; color: var(--accent); }
+    .note { margin: 10px 0 0; font-size: 13px; color: #cfcfcf; line-height: 1.5; }
+    .tpl { padding: 12px; border: 1.5px dashed var(--card-border); border-radius: 6px; margin-bottom: 10px; font-size: 14px; line-height: 1.5; color: #e5e5e5; white-space: pre-wrap; }
+    .tpl button { margin: 10px 0 0; width: auto; padding: 8px 14px; font-size: 12px; }
+    table { font-size: 13px; }
+    .st { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+    .st.pendente { background: rgba(255,255,255,.1); color: #ddd; } .st.liberada { background: rgba(229,167,27,.2); color: var(--accent); }
+    .st.paga { background: rgba(34,197,94,.2); color: #86efac; } .st.cancelada { background: rgba(239,68,68,.2); color: #fecaca; }
+    .pn .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .pn .row { display: grid; gap: 12px; }
+    .pn select { background: #1a1a1a; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: 12px 10px; color: var(--text); font-size: 16px; }
+    .pn details { border: 1.5px solid var(--card-border); border-radius: 6px; padding: 10px 12px; } .pn details summary { cursor: pointer; color: var(--accent); font-weight: 700; font-size: 14px; }
+    .ok { padding: 10px 12px; border: 1px solid var(--ok); background: rgba(34,197,94,.12); color: #86efac; border-radius: 6px; font-size: 14px; margin-top: 10px; display: none; }
+    @media (max-width: 420px) { .pn .two { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="pn">
+  <div class="wrap">
+    <div class="top">
+      <h1>Olá, <%= afiliado.nome.split(' ')[0] %>!<small>Painel do afiliado Crewolada</small></h1>
+      <form action="/afiliados/sair" method="POST"><button type="submit">Sair</button></form>
+    </div>
+
+    <section class="card">
+      <h2>Seu link de divulgação</h2>
+      <div class="linkbox">
+        <input type="text" id="meu-link" value="<%= link %>" readonly onclick="this.select()" />
+        <button type="button" id="copiar">Copiar</button>
+      </div>
+      <a class="btn2" id="zap" target="_blank" rel="noopener" href="https://wa.me/?text=<%= encodeURIComponent('Já pensou em ter uma música feita só pra você, com a sua história? 🎶 Crie a sua aqui: ' + link) %>">Compartilhar no WhatsApp</a>
+      <p class="note">Quem entrar pelo seu link e comprar em até <strong><%= info.dias %> dias</strong> conta para você. Se a pessoa também clicou no link de outro afiliado, a comissão é dividida entre vocês <%= info.modo === 'igual' ? 'em partes iguais' : 'na proporção dos cliques' %>.</p>
+    </section>
+
+    <section class="card">
+      <h2>Seus resultados</h2>
+      <div class="grid">
+        <div class="num hi"><span>Disponível para saque</span><b><%= money(resumo.liberada) %></b><small><%= resumo.liberada >= info.minSaque ? 'Você já atingiu o mínimo: a equipe faz o seu Pix em breve.' : ('Faltam ' + money(info.minSaque - resumo.liberada) + ' para o mínimo de ' + money(info.minSaque) + ' para saque.') %></small></div>
+        <div class="num"><span>A liberar</span><b><%= money(resumo.pendente) %></b><small>libera <%= info.carencia %> dias após a venda</small></div>
+        <div class="num"><span>Já recebido</span><b><%= money(resumo.paga) %></b><small>pago por Pix</small></div>
+        <div class="num"><span>Pessoas que clicaram</span><b><%= resumo.visitantes %></b><small>nos últimos <%= info.dias %> dias</small></div>
+        <div class="num"><span>Vendas</span><b><%= resumo.vendas %></b><small>vindas do seu link</small></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Textos prontos para divulgar</h2>
+      <div class="tpl" id="t1">Gente, olha que ideia linda: você conta a sua história e recebe uma música original, cantada, com cunho cristão, feita só pra você 🎶🙏🏾 Ótima pra presentear! Crie a sua aqui: <%= link %></div>
+      <button type="button" data-copia="t1">Copiar texto 1</button>
+      <div class="tpl" id="t2" style="margin-top:12px">🎁 Presente que emociona: uma música com a história da pessoa que você ama (casamento, aniversário, namoro, gratidão). Você escolhe estilo, voz e a letra. Faz em minutos 👉 <%= link %></div>
+      <button type="button" data-copia="t2">Copiar texto 2</button>
+    </section>
+
+    <section class="card">
+      <h2>Últimas comissões</h2>
+      <% if (comissoes.length === 0) { %>
+        <p class="note" style="margin:0">Ainda não há vendas. Divulgue seu link: a primeira comissão aparece aqui assim que alguém comprar.</p>
+      <% } else { %>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Data</th><th>Valor</th><th>Sua parte</th><th>Status</th></tr></thead>
+          <tbody>
+            <% comissoes.forEach(function(c) { %>
+              <tr><td><%= c.em %></td><td><%= money(c.valor) %></td><td><%= Math.round(c.parte * 100) %>%</td>
+              <td><span class="st <%= c.situacao %>"><%= ({ pendente: 'A liberar', liberada: 'Disponível', paga: 'Paga', cancelada: 'Cancelada' })[c.situacao] %></span></td></tr>
+            <% }) %>
+          </tbody>
+        </table></div>
+      <% } %>
+      <% if (pagamentos.length) { %>
+        <h2 style="margin-top:18px">Repasses recebidos</h2>
+        <div class="table-wrap"><table><tbody>
+          <% pagamentos.forEach(function(p) { %><tr><td><%= p.quando %></td><td><strong><%= money(p.valor) %></strong></td><td><%= p.obs || 'Pix' %></td></tr><% }) %>
+        </tbody></table></div>
+      <% } %>
+    </section>
+
+    <section class="card">
+      <h2>Dados para receber</h2>
+      <form id="f-repasse" class="form" novalidate>
+        <div class="two">
+          <label>Tipo da chave Pix
+            <select name="pixTipo">
+              <% ['cpf','email','telefone','aleatoria','cnpj'].forEach(function(t) { %><option value="<%= t %>" <%= afiliado.pix && afiliado.pix.tipo === t ? 'selected' : '' %>><%= ({cpf:'CPF',email:'E-mail',telefone:'Telefone',aleatoria:'Chave aleatória',cnpj:'CNPJ'})[t] %></option><% }) %>
+            </select>
+          </label>
+          <label>Chave Pix <input type="text" name="pixChave" value="<%= afiliado.pix ? afiliado.pix.chave : '' %>" required /></label>
+        </div>
+        <details <%= afiliado.banco ? 'open' : '' %>>
+          <summary>Conta bancária (opcional)</summary>
+          <div class="row" style="margin-top:10px">
+            <label>Banco <input type="text" name="banco" maxlength="60" value="<%= afiliado.banco ? afiliado.banco.banco : '' %>" /></label>
+            <div class="two">
+              <label>Agência <input type="text" name="agencia" maxlength="12" value="<%= afiliado.banco ? afiliado.banco.agencia : '' %>" /></label>
+              <label>Conta <input type="text" name="conta" maxlength="20" value="<%= afiliado.banco ? afiliado.banco.conta : '' %>" /></label>
+            </div>
+            <label>Tipo <select name="tipoConta"><option value="corrente">Corrente</option><option value="poupanca" <%= afiliado.banco && afiliado.banco.tipoConta === 'poupanca' ? 'selected' : '' %>>Poupança</option></select></label>
+          </div>
+        </details>
+        <div class="alert" id="rep-err" style="display:none"></div>
+        <div class="ok" id="rep-ok">Dados salvos.</div>
+        <button type="submit">Salvar dados de repasse</button>
+      </form>
+      <p class="note">Os repasses são feitos por Pix, em nome do titular do CPF cadastrado. <a href="/afiliados/termos" style="color:var(--accent)">Ver termos</a></p>
+    </section>
+  </div>
+  <script>
+    document.getElementById('copiar').onclick = function () {
+      var i = document.getElementById('meu-link'); i.select();
+      (navigator.clipboard ? navigator.clipboard.writeText(i.value) : Promise.reject()).catch(function () { document.execCommand('copy'); });
+      this.textContent = 'Copiado!'; var b = this; setTimeout(function () { b.textContent = 'Copiar'; }, 1800);
+    };
+    document.querySelectorAll('[data-copia]').forEach(function (b) {
+      b.onclick = function () {
+        var t = document.getElementById(b.getAttribute('data-copia')).textContent;
+        (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).catch(function () {});
+        var o = b.textContent; b.textContent = 'Copiado!'; setTimeout(function () { b.textContent = o; }, 1800);
+      };
+    });
+    var f = document.getElementById('f-repasse');
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = document.getElementById('rep-err'), ok = document.getElementById('rep-ok'); err.style.display = 'none'; ok.style.display = 'none';
+      var body = {}; new FormData(f).forEach(function (v, k) { body[k] = v; });
+      fetch('/api/afiliados/repasse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (x) { if (x.ok) { ok.style.display = 'block'; } else { err.textContent = x.d.error || 'Não foi possível salvar.'; err.style.display = 'block'; } });
+    });
+  </script>
+</body>
+</html>

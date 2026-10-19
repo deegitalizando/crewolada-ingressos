@@ -8,6 +8,7 @@ const { currentEvent } = require('./event');
 const { notifyMusicaAprovada, notifyMusicaEmail } = require('./n8n');
 const { isValidCpf } = require('./cpf');
 const { draftLyrics, validarLetraCrista, MENSAGEM_CUNHO_CRISTAO } = require('./gemini');
+const afiliados = require('./afiliados');
 
 const PRECO = Number(process.env.MUSICA_PRECO || 10);
 
@@ -52,7 +53,7 @@ function rateLimited(ip) {
 //    buyer's choice, same as the ticket checkout.
 // Ids are prefixed "musica_" and live in db.musicaPedidos (not db.orders) so
 // the shared Mercado Pago webhook can tell the two products apart.
-async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia, canal }, formData = null) {
+async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia, canal, afiliacao }, formData = null) {
   const id = `musica_${crypto.randomUUID()}`;
   const description = `Musica personalizada - ${currentEvent.brand || 'Crewolada'}`;
 
@@ -88,6 +89,7 @@ async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andament
     estilo,
     andamento,
     vocal: vocalValido(vocal),
+    afiliacao: afiliacao || null, // who gets commission for this sale (see afiliados.js)
     letra,
     referencia,
     valor: PRECO,
@@ -138,6 +140,9 @@ async function aprovarPedidoMusica(pedidoId, paymentId) {
 
   if (!pedido) return null;
 
+  if (pedido.afiliacao) {
+    afiliados.registrarVenda(pedido).catch((err) => console.error('Falha ao registrar comissao de afiliado:', err.message));
+  }
   await notifyMusicaAprovada(pedido);
   return pedido;
 }
@@ -314,7 +319,10 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
 
     try {
       const resultado = await criarPedidoMusica(
-        { nome, cpf: cpfDigits, email, estilo, andamento, vocal, letra, referencia, canal: 'site' },
+        {
+          nome, cpf: cpfDigits, email, estilo, andamento, vocal, letra, referencia, canal: 'site',
+          afiliacao: afiliados.atribuirCompra({ vid: req.cookies && req.cookies[afiliados.COOKIE_VID], email, cpf: cpfDigits }),
+        },
         formData
       );
       if (resultado.rejected) {
