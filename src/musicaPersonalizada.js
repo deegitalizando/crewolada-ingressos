@@ -175,7 +175,10 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
       return res.json({ letra });
     } catch (err) {
       console.error('Erro ao rascunhar letra:', err.message);
-      return res.status(500).json({ error: 'Nao consegui sugerir uma letra agora, tente novamente em instantes.' });
+      // TEMP debug: surface the real cause in the response while we track this
+      // down (no server log access from here). Remove once resolved.
+      const debugDetail = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      return res.status(500).json({ error: 'Nao consegui sugerir uma letra agora, tente novamente em instantes.', debugDetail });
     }
   });
 
