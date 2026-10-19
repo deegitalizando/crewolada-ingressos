@@ -1,8 +1,11 @@
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
 const store = require('./store');
 const mp = require('./mercadopago');
 const { currentEvent } = require('./event');
-const { notifyMusicaAprovada } = require('./n8n');
+const { notifyMusicaAprovada, notifyMusicaEmail } = require('./n8n');
 const { isValidCpf } = require('./cpf');
 const { draftLyrics } = require('./gemini');
 
@@ -148,6 +151,79 @@ async function marcarMusicaPronta(pedidoId, audioUrl) {
   return pedido;
 }
 
+// ---- delivery: saved copy, download link, e-mail and WhatsApp --------------------------------
+// The generator's audio URL can expire, so a copy of every finished song is kept next to the
+// database (data/musicas/<id>.mp3) and served from our own address.
+const AUDIO_DIR = path.join(__dirname, '..', 'data', 'musicas');
+const audioPath = (id) => path.join(AUDIO_DIR, String(id).replace(/[^a-zA-Z0-9_-]/g, '') + '.mp3');
+const baseUrl = () => (process.env.BASE_URL || '').replace(/\/$/, '');
+
+// Short code the buyer sends on WhatsApp so the bot knows which song to deliver.
+function codigoCurto(id) {
+  return String(id).replace(/^musica_/, '').replace(/-/g, '').slice(0, 12).toUpperCase();
+}
+function buscarPedidoPorCodigo(codigo) {
+  const c = String(codigo || '').toUpperCase().replace(/[^0-9A-F]/g, '');
+  if (c.length < 12) return null;
+  const db = store.load();
+  return Object.values(db.musicaPedidos || {}).find((p) => codigoCurto(p.id) === c) || null;
+}
+
+const MENSAGEM_WHATSAPP = 'Olá, gostaria de receber minha música por aqui.';
+function whatsappMusicaUrl(pedido) {
+  const ddi = process.env.DEFAULT_COUNTRY_CODE || '55';
+  const raw = (process.env.BUSINESS_WHATSAPP_NUMBER || '2139557816').replace(/\D/g, '');
+  const number = raw.startsWith(ddi) && raw.length > 11 ? raw : ddi + raw;
+  return 'https://wa.me/' + number + '?text=' + encodeURIComponent(MENSAGEM_WHATSAPP + ' Código: ' + codigoCurto(pedido.id));
+}
+
+async function guardarAudio(pedido) {
+  if (!pedido || !pedido.audioUrl) return false;
+  try {
+    fs.mkdirSync(AUDIO_DIR, { recursive: true });
+    const res = await axios.get(pedido.audioUrl, { responseType: 'arraybuffer', timeout: 60000, maxContentLength: 30 * 1024 * 1024 });
+    fs.writeFileSync(audioPath(pedido.id), Buffer.from(res.data));
+    return true;
+  } catch (err) {
+    console.error('Nao foi possivel guardar o audio do pedido ' + pedido.id + ':', err.message);
+    return false;
+  }
+}
+
+// After n8n reports the song ready: keep a copy and e-mail the buyer the listen/download link.
+// Idempotent: n8n may repeat the callback, the e-mail goes out once.
+async function posEntregaMusica(pedido) {
+  if (!pedido) return;
+  await guardarAudio(pedido);
+  if (pedido.canal !== 'site' || !pedido.email) return;
+
+  let enviar = false;
+  await store.withDb((db) => {
+    const p = (db.musicaPedidos || {})[pedido.id];
+    if (p && !p.emailIniciadoEm) { p.emailIniciadoEm = new Date().toISOString(); enviar = true; }
+  });
+  if (!enviar) return;
+
+  const pagina = baseUrl() + '/musica/pedido/' + pedido.id;
+  const mensagem = [
+    'Oi, ' + (pedido.nome || 'tudo bem') + '! Sua música personalizada ficou pronta 🎶🧡',
+    '',
+    'Ouça e baixe aqui: ' + pagina,
+    'Download direto (MP3): ' + pagina + '/baixar',
+    '',
+    'Quer receber também no WhatsApp? Abra o link acima e toque em "Receber no WhatsApp".',
+    '',
+    'Equipe Crewolada',
+  ].join('\n');
+  try {
+    await notifyMusicaEmail({ email: pedido.email, nome: pedido.nome, assunto: 'Sua música Crewolada ficou pronta 🎶', mensagem });
+    await store.withDb((db) => { const p = (db.musicaPedidos || {})[pedido.id]; if (p) p.emailEnviadoEm = new Date().toISOString(); });
+  } catch (err) {
+    console.error('Falha ao enviar e-mail da musica ' + pedido.id + ':', err.message);
+    await store.withDb((db) => { const p = (db.musicaPedidos || {})[pedido.id]; if (p) delete p.emailIniciadoEm; }); // allow a retry
+  }
+}
+
 function buscarPedidoMusica(pedidoId) {
   const db = store.load();
   return (db.musicaPedidos || {})[pedidoId] || null;
@@ -223,8 +299,36 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
   app.get('/musica/pedido/:id', (req, res) => {
     const pedido = buscarPedidoMusica(req.params.id);
     if (!pedido || pedido.canal !== 'site') return res.status(404).send('Pedido nao encontrado.');
-    res.render('musica_status', { eventInfo, pedido });
+    res.render('musica_status', {
+      eventInfo,
+      pedido,
+      codigo: codigoCurto(pedido.id),
+      whatsappUrl: whatsappMusicaUrl(pedido),
+      audioSrc: '/musica/pedido/' + pedido.id + '/audio',
+    });
   });
+
+  // Audio of a finished song: inline for the player (and for the WhatsApp bot), or as a download.
+  function enviarAudio(req, res, attachment) {
+    const pedido = buscarPedidoMusica(req.params.id);
+    if (!pedido || pedido.status !== 'entregue' || !pedido.audioUrl) return res.status(404).send('Musica nao encontrada.');
+    const file = audioPath(pedido.id);
+    const nome = 'minha-musica-crewolada.mp3';
+    res.set('Cache-Control', 'private, max-age=3600');
+    if (fs.existsSync(file)) {
+      if (attachment) return res.download(file, nome);
+      res.type('audio/mpeg');
+      return res.sendFile(file);
+    }
+    // No local copy (yet): stream it from the generator.
+    return axios.get(pedido.audioUrl, { responseType: 'stream', timeout: 30000 }).then((up) => {
+      res.type('audio/mpeg');
+      if (attachment) res.set('Content-Disposition', 'attachment; filename="' + nome + '"');
+      up.data.pipe(res);
+    }).catch(() => res.status(502).send('Nao foi possivel carregar a musica agora.'));
+  }
+  app.get('/musica/pedido/:id/audio', (req, res) => enviarAudio(req, res, false));
+  app.get('/musica/pedido/:id/baixar', (req, res) => enviarAudio(req, res, true));
 
   app.get('/api/musica/pedido/:id/status', (req, res) => {
     const pedido = buscarPedidoMusica(req.params.id);
@@ -237,7 +341,10 @@ module.exports = {
   criarPedidoMusica,
   aprovarPedidoMusica,
   marcarMusicaPronta,
+  posEntregaMusica,
   buscarPedidoMusica,
+  buscarPedidoPorCodigo,
+  codigoCurto,
   registerMusicaPersonalizadaRoutes,
   PRECO,
 };

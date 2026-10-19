@@ -94,6 +94,14 @@ async function notifyMusicaAprovada(pedido) {
   );
 }
 
+// Sends the "your song is ready" e-mail (link to listen + download) through its own
+// webhook of the "WORKFLOW CREWOLADA" n8n workflow ("Receber Musica por Email").
+async function notifyMusicaEmail({ email, nome, assunto, mensagem }) {
+  const webhookUrl = process.env.N8N_MUSICA_EMAIL_WEBHOOK_URL
+    || 'https://n8n-n8n.wmbyj1.easypanel.host/webhook/crewolada-musica-email';
+  await axios.post(webhookUrl, { email, nome, assunto, mensagem }, { timeout: 15000 });
+}
+
 async function sendBroadcast(message) {
   const webhookUrl = process.env.N8N_BROADCAST_WEBHOOK_URL;
   if (!webhookUrl) {
@@ -115,4 +123,4 @@ async function sendReminder({ nome, whatsapp, email, mensagem }) {
   );
 }
 
-module.exports = { notifyOrderApproved, normalizePhone, sendBroadcast, sendReminder, notifyMusicaAprovada };
+module.exports = { notifyOrderApproved, normalizePhone, sendBroadcast, sendReminder, notifyMusicaAprovada, notifyMusicaEmail };
