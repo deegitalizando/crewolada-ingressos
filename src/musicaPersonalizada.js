@@ -11,7 +11,7 @@ const { draftLyrics } = require('./gemini');
 
 const PRECO = Number(process.env.MUSICA_PRECO || 10);
 
-const ESTILOS = ['R&B', 'Soul', 'Neosoul', 'Hip-Hop', 'Rap', 'Trap', 'Soulful Rap', 'Gospel/Louvor', 'Outro'];
+const ESTILOS = ['R&B', 'Soul', 'Neosoul', 'Hip-Hop', 'Boom Bap', 'Rap', 'Trap', 'Soulful Rap', 'Gospel/Louvor', 'Outro'];
 // `value` is what's actually sent to the lyric/music generation prompts;
 // `label` adds an approximate BPM range just so the picker reads as a tempo
 // choice, not a mood choice.
