@@ -227,7 +227,7 @@ function registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetim
   const base = { opcoes: OPCOES, ufs: UFS };
 
   app.get('/contato', (req, res) => {
-    res.render('contato', { eventInfo, ...base, minDate: new Date().toISOString().slice(0, 10) });
+    res.render('contato', { eventInfo, ...base, inbox: INBOX(), minDate: new Date().toISOString().slice(0, 10) });
   });
 
   // JSON endpoint used by the quiz (no page reload at the end).
@@ -256,7 +256,14 @@ function registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetim
       console.error(`Erro ao enviar e-mail do convite ${contato.id}:`, err.message);
     }
     const waUrl = contato.via === 'whatsapp' ? `https://wa.me/${TEAM_WHATSAPP()}?text=${encodeURIComponent(buildWhatsText(contato))}` : null;
-    return res.json({ ok: true, emailed, waUrl });
+    // Readable summary the page forwards by e-mail through FormSubmit (the n8n SMTP mail
+    // to Gmail is accepted but never delivered).
+    const { lines, contact } = describe(contato, formatDatetimeBrasiliaDisplay);
+    const subject = `Novo convite: ${contato.nome} · ${contato.cidade}/${contato.uf}${contato.via === 'whatsapp' ? ' (escolheu WhatsApp)' : ''}`;
+    const resumo = { _subject: subject, _template: 'table', _captcha: 'false' };
+    [...lines, ...contact].forEach(([l, val]) => { resumo[l] = val; });
+    resumo['Responder pelo WhatsApp'] = `https://wa.me/55${contato.whatsapp}`;
+    return res.json({ ok: true, emailed, waUrl, resumo });
   });
 
   // ---- admin

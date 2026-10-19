@@ -456,6 +456,12 @@
             again.hidden = !wa;
             done.classList.add('active');
             window.scrollTo({ top: 0, behavior: reduce ? 'auto' : 'smooth' });
+            if (res.d.resumo) {
+              // Team copy by e-mail (FormSubmit). Best effort: the invite is already saved in the panel.
+              fetch('https://formsubmit.co/ajax/' + <%- JSON.stringify(inbox) %>, {
+                method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify(res.d.resumo)
+              }).catch(function () {});
+            }
             if (wa) { again.href = wa; again.target = '_blank'; again.rel = 'noopener'; if (waWin) waWin.location.href = wa; else window.location.href = wa; }
           })
           .catch(function (err) {
