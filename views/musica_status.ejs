@@ -3,6 +3,14 @@
 <head>
   <title>Sua música - <%= eventInfo.name %></title>
   <%- include('partials/head') %>
+  <style>
+    .dl, .wa { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; margin-top: 12px; padding: 16px 18px; border-radius: 4px; text-decoration: none; font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: 0.08em; text-transform: uppercase; box-sizing: border-box; }
+    .dl { color: #000; background: linear-gradient(180deg, var(--gold-hi), var(--accent)); }
+    .wa { color: #fff; background: #1faa59; }
+    .dl:hover, .wa:hover { filter: brightness(1.08); }
+    .sent { margin-top: 14px; padding: 12px 14px; border: 1.5px solid var(--card-border); border-radius: 6px; font-size: 13px; color: var(--text-dim); line-height: 1.5; }
+    .sent b { color: var(--text); }
+  </style>
 </head>
 <body>
   <div class="page">
@@ -14,9 +22,14 @@
     <main class="card" id="status-card">
       <% if (pedido.status === 'entregue' && pedido.audioUrl) { %>
         <h2>Pronta! 🎉</h2>
-        <p class="hint" style="margin-top:0">Sua música personalizada ficou pronta. Pode ouvir e baixar abaixo.</p>
-        <audio controls style="width:100%; margin-top:10px" src="<%= pedido.audioUrl %>"></audio>
-        <p style="margin-top:12px"><a href="<%= pedido.audioUrl %>" download>Baixar música (MP3)</a></p>
+        <p class="hint" style="margin-top:0">Sua música personalizada ficou pronta. Ouça aqui, baixe o arquivo ou peça no seu WhatsApp.</p>
+        <audio controls style="width:100%; margin-top:10px" src="<%= audioSrc %>"></audio>
+        <a class="dl" href="/musica/pedido/<%= pedido.id %>/baixar" download>⬇ Baixar música (MP3)</a>
+        <a class="wa" href="<%= whatsappUrl %>" target="_blank" rel="noopener">💬 Receber no WhatsApp</a>
+        <div class="sent">
+          <% if (pedido.email) { %>📧 Também enviamos o link para <b><%= pedido.email %></b>.<br /><% } %>
+          💬 No WhatsApp, toque no botão: a mensagem já vai pronta (código <b><%= codigo %></b>). É só enviar e a gente manda o áudio na conversa.
+        </div>
       <% } else if (pedido.status === 'pago' || pedido.status === 'gerando') { %>
         <h2>Gerando sua música...</h2>
         <p class="hint" style="margin-top:0">

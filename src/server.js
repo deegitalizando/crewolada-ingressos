@@ -38,7 +38,9 @@ const { registerPesquisaRoutes } = require('./pesquisa');
 const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNotification } = require('./comprovante');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
-const { criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, registerMusicaPersonalizadaRoutes } = require('./musicaPersonalizada');
+const {
+  criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, posEntregaMusica, buscarPedidoPorCodigo, registerMusicaPersonalizadaRoutes,
+} = require('./musicaPersonalizada');
 
 // Builds a wa.me link, pre-filled with the ticket link, that the ADMIN opens
 // in their own WhatsApp to resend a ticket by hand. This bypasses the
@@ -1178,7 +1180,29 @@ app.post('/api/n8n/musica/pronta', async (req, res) => {
 
   const pedido = await marcarMusicaPronta(pedidoId, audioUrl);
   if (!pedido) return res.status(404).json({ ok: false, error: 'not_found' });
-  return res.json({ ok: true });
+  res.json({ ok: true });
+  // Saved copy + e-mail with the listen/download link (after answering n8n).
+  posEntregaMusica(pedido).catch((err) => console.error('Erro na pos-entrega da musica:', err.message));
+});
+
+// The buyer asked for the song on WhatsApp ("Olá, gostaria de receber minha música por aqui.
+// Código: XXXX"): n8n looks the order up by that code and, if the song is ready, sends the audio.
+app.post('/api/n8n/musica/entrega', (req, res) => {
+  const secret = process.env.N8N_CALLBACK_SECRET;
+  if (secret && req.headers['x-callback-secret'] !== secret) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+  const pedido = buscarPedidoPorCodigo(req.body.codigo);
+  if (!pedido) return res.json({ ok: true, found: false, ready: false });
+  const ready = pedido.status === 'entregue' && Boolean(pedido.audioUrl);
+  return res.json({
+    ok: true,
+    found: true,
+    ready,
+    nome: pedido.nome || '',
+    status: pedido.status,
+    audioUrl: ready ? (process.env.BASE_URL || '').replace(/\/$/, '') + '/musica/pedido/' + pedido.id + '/audio' : null,
+  });
 });
 
 registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
