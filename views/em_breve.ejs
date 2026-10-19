@@ -36,7 +36,7 @@
     <img class="logo-big" src="/img/logo.jpg" alt="<%= eventInfo.brand || eventInfo.name %>" />
     <p class="kick"><span></span>Black music cristã<span></span></p>
     <h1><%= eventInfo.name %><br /><em>Ingressos abrem <%= opensLabel %></em></h1>
-    <p class="sub">Volte aqui no horário. A venda abre sozinha, sem precisar atualizar a página.</p>
+    <p class="sub"><%= total ? total + ' ingressos disponíveis. ' : '' %>Volte aqui no horário: a venda abre sozinha, sem precisar atualizar a página.</p>
 
     <div class="count" id="count" data-at="<%= opensAtIso %>" aria-live="polite">
       <div><b id="c-h">--</b><span>horas</span></div>

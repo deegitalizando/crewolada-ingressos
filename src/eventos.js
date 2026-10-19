@@ -18,15 +18,22 @@ function dateLabelBR(iso) {
   return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
 }
 
+const eventById = (id) => EVENTS.find((e) => e.id === id) || LEGACY_EVENT;
+
 function eventStats(db) {
   const stats = {};
-  const get = (id) => (stats[id] = stats[id] || { orders: 0, tickets: 0, revenue: 0, attended: 0, courtesy: 0, cancelled: 0 });
+  const get = (id) => (stats[id] = stats[id] || { orders: 0, tickets: 0, seats: 0, babies: 0, revenue: 0, attended: 0, courtesy: 0, cancelled: 0 });
   const orders = db.orders || {};
   Object.values(orders).forEach((o) => {
     const s = get(orderEventId(o));
     if (o.status === 'paid' && !o.isCourtesy) {
       s.orders += 1;
       s.tickets += o.quantity;
+      // Free babies are sold but never take one of the limited seats.
+      const babies = Array.isArray(o.items) ? o.items.filter((i) => i.kind === 'bebe').reduce((n, i) => n + i.qty, 0) : 0;
+      const seatBabies = getChildRules(eventById(orderEventId(o))).freeCountsInCapacity ? 0 : babies;
+      s.babies += seatBabies;
+      s.seats += o.quantity - seatBabies;
       s.revenue += o.totalAmount;
     } else if (o.status === 'paid' && o.isCourtesy) {
       s.courtesy += o.quantity;
@@ -58,7 +65,7 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
     const stats = eventStats(db);
     const now = Date.now();
     const cards = EVENTS.map((e) => {
-      const s = stats[e.id] || { orders: 0, tickets: 0, revenue: 0, attended: 0, courtesy: 0, cancelled: 0 };
+      const s = stats[e.id] || { orders: 0, tickets: 0, seats: 0, babies: 0, revenue: 0, attended: 0, courtesy: 0, cancelled: 0 };
       const lotesCap = getLotes(db, e.id).reduce((sum, l) => sum + l.quantity, 0);
       return {
         ...e,

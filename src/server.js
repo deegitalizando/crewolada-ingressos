@@ -192,6 +192,27 @@ function getSoldCount(db, eventId = currentEvent.id) {
   }).length;
 }
 
+// Seats of unpaid orders (Pix waiting, card in review) stay held for a while so that
+// two buyers can never both get the last tickets. Free babies never hold a seat.
+const HOLD_MS = 35 * 60 * 1000;
+function payingSeats(order, rules) {
+  if (Array.isArray(order.items)) {
+    return order.items.reduce((sum, i) => sum + (i.kind === 'bebe' && !rules.freeCountsInCapacity ? 0 : i.qty), 0);
+  }
+  return order.quantity || 0;
+}
+function getHeldCount(db, eventId = currentEvent.id, now = Date.now()) {
+  const rules = getChildRules(getEventById(eventId));
+  return Object.values(db.orders || {})
+    .filter((o) => o.status === 'pending' && !o.isCourtesy && o.loteName !== 'Lote Teste' && inEvent(o, eventId) && now - Date.parse(o.createdAt) < HOLD_MS)
+    .reduce((sum, o) => sum + payingSeats(o, rules), 0);
+}
+// Tickets still on sale for a capacity-based (products) event.
+function getAvailable(db, eventId = currentEvent.id) {
+  const capacity = getEventById(eventId).capacity || 0;
+  return Math.max(0, capacity - getSoldCount(db, eventId) - getHeldCount(db, eventId));
+}
+
 function formatDatetimeLocalBrasilia(isoString) {
   if (!isoString) return '';
   const d = new Date(isoString);
@@ -262,11 +283,12 @@ app.get('/', (req, res) => {
   if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
   if (!salesOpenNow()) {
     const at = salesOpensAt(currentEvent);
-    return res.render('em_breve', { eventInfo, opensAtIso: new Date(at).toISOString(), opensLabel: opensLabelBR(at), communityUrl: app.locals.communityUrl });
+    return res.render('em_breve', { eventInfo, total: currentEvent.capacity || 0, opensAtIso: new Date(at).toISOString(), opensLabel: opensLabelBR(at), communityUrl: app.locals.communityUrl });
   }
   const db = store.load();
   const lotes = getLotes(db);
-  const soldCount = getSoldCount(db);
+  let soldCount = getSoldCount(db);
+  let soldForView = soldCount;
   const products = getProducts(currentEvent);
   const productMode = products.length > 0;
   const capacity = currentEvent.capacity || 0;
@@ -275,7 +297,8 @@ app.get('/', (req, res) => {
   let totalCapacity = lotes.reduce((sum, l) => sum + l.quantity, 0) || eventInfo.capacity || 0;
   if (productMode) {
     // Products replace lotes: availability is the event capacity minus what was sold.
-    const remaining = Math.max(0, capacity - soldCount);
+    const remaining = getAvailable(db);
+    soldForView = capacity - remaining;
     totalCapacity = capacity;
     comingSoon = false;
     lote = remaining > 0 ? { name: products[0].name, price: Math.min(...products.map((p) => p.price)), remaining } : null;
@@ -284,7 +307,7 @@ app.get('/', (req, res) => {
     eventInfo, lote, maxQty, error: null, soldOutLotes: productMode ? [] : getSoldOutLotes(lotes, soldCount),
     lowStockThreshold: LOW_STOCK_THRESHOLD,
     comingSoon,
-    soldCount,
+    soldCount: soldForView,
     totalCapacity,
     productMode,
     products: products.map((p) => ({ ...p, half: Math.round((p.price / 2) * 100) / 100 })),
@@ -294,6 +317,15 @@ app.get('/', (req, res) => {
 });
 
 const LEGAL_UPDATED_AT = '09/10/2026';
+
+// Live ticket count for the home page (read only, never writes the DB).
+app.get('/api/disponibilidade', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  const db = store.load();
+  const total = currentEvent.capacity || 0;
+  const left = getProducts(currentEvent).length > 0 ? getAvailable(db) : Math.max(0, total - getSoldCount(db));
+  res.json({ open: salesOpenNow(), total, left, sold: Math.max(0, total - left) });
+});
 
 app.get('/politica-de-privacidade', (req, res) => {
   res.render('privacidade', { eventInfo, updatedAt: LEGAL_UPDATED_AT });
@@ -312,7 +344,7 @@ app.get('/checkout/dados', (req, res) => {
   const db = store.load();
 
   if (getProducts(currentEvent).length > 0) {
-    const remaining = Math.max(0, (currentEvent.capacity || 0) - getSoldCount(db));
+    const remaining = getAvailable(db);
     const purchase = buildPurchase(currentEvent, req.query, { maxPersons: maxQty, remaining });
     if (purchase.error) return res.redirect('/');
     return res.render('checkout_dados', {
@@ -363,47 +395,62 @@ app.post('/api/pagamentos', async (req, res) => {
 
     // Product purchase (Ingresso Simples / Passaporte + children): priced here, never by the client.
     if (getProducts(currentEvent).length > 0) {
-      const remaining = Math.max(0, (currentEvent.capacity || 0) - getSoldCount(db));
-      if (remaining <= 0) return res.status(400).json({ error: 'Os ingressos se esgotaram.' });
-      const purchase = buildPurchase(currentEvent, req.body, { maxPersons: maxQty, remaining });
-      if (purchase.error) return res.status(400).json({ error: purchase.error });
+      // Check and reserve the seats in one atomic step, before talking to Mercado Pago.
+      const reservation = await store.withDb((d) => {
+        const remaining = getAvailable(d);
+        if (remaining <= 0) return { error: 'Os ingressos se esgotaram.' };
+        const purchase = buildPurchase(currentEvent, req.body, { maxPersons: maxQty, remaining });
+        if (purchase.error) return { error: purchase.error };
+        const order = {
+          id: crypto.randomUUID(),
+          buyerName,
+          buyerEmail,
+          buyerPhone,
+          buyerCpf: String(buyerCpf).replace(/D/g, ''),
+          quantity: purchase.persons,
+          eventId: currentEvent.id,
+          productId: purchase.product.id,
+          loteName: purchase.product.name,
+          unitPrice: purchase.product.price,
+          items: purchase.items,
+          includes: purchase.includes,
+          totalAmount: purchase.total,
+          status: 'pending',
+          mpPaymentId: null,
+          paymentMethodId: formData.payment_method_id || null,
+          pixQrCode: null,
+          pixQrCodeBase64: null,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        d.orders[order.id] = order;
+        return { order };
+      });
+      if (reservation.error) return res.status(400).json({ error: reservation.error });
+      const productOrder = reservation.order;
 
-      const productOrder = {
-        id: crypto.randomUUID(),
-        buyerName,
-        buyerEmail,
-        buyerPhone,
-        buyerCpf: String(buyerCpf).replace(/\D/g, ''),
-        quantity: purchase.persons,
-        eventId: currentEvent.id,
-        productId: purchase.product.id,
-        loteName: purchase.product.name,
-        unitPrice: purchase.product.price,
-        items: purchase.items,
-        includes: purchase.includes,
-        totalAmount: purchase.total,
-        status: 'pending',
-        mpPaymentId: null,
-        paymentMethodId: formData.payment_method_id || null,
-        pixQrCode: null,
-        pixQrCodeBase64: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const productPayment = await mp.createPayment(productOrder, formData);
-      productOrder.mpPaymentId = String(productPayment.id);
+      let productPayment;
+      try {
+        productPayment = await mp.createPayment(productOrder, formData);
+      } catch (err) {
+        await store.withDb((d) => { delete d.orders[productOrder.id]; }); // release the seats
+        throw err;
+      }
 
       if (productPayment.status === 'rejected') {
-        await store.withDb((d) => { d.orders[productOrder.id] = { ...productOrder, status: 'rejected' }; });
+        await store.withDb((d) => { d.orders[productOrder.id] = { ...productOrder, status: 'rejected', mpPaymentId: String(productPayment.id) }; });
         return res.status(400).json({ error: describeRejection(productPayment.status_detail) });
       }
       const qr = productPayment.point_of_interaction?.transaction_data;
-      if (qr) {
-        productOrder.pixQrCode = qr.qr_code || null;
-        productOrder.pixQrCodeBase64 = qr.qr_code_base64 || null;
-      }
-      await store.withDb((d) => { d.orders[productOrder.id] = productOrder; });
+      await store.withDb((d) => {
+        d.orders[productOrder.id] = {
+          ...(d.orders[productOrder.id] || productOrder),
+          mpPaymentId: String(productPayment.id),
+          pixQrCode: qr ? qr.qr_code || null : null,
+          pixQrCodeBase64: qr ? qr.qr_code_base64 || null : null,
+          updatedAt: new Date().toISOString(),
+        };
+      });
       if (productPayment.status === 'approved') await approveOrder(productOrder.id, productPayment.id, eventInfo);
       return res.json({ redirectUrl: `/pedido/${productOrder.id}` });
     }
@@ -1124,7 +1171,10 @@ registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBras
 registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
 registerRelatorioRoutes(app, { requireAdminAuth, eventInfo });
 registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
-registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow: () => salesOpenNow() });
+registerLinksRoutes(app, {
+  requireAdminAuth, eventInfo, salesOpenNow: () => salesOpenNow(),
+  availableNow: () => (getProducts(currentEvent).length > 0 ? getAvailable(store.load()) : null),
+});
 registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,
 });

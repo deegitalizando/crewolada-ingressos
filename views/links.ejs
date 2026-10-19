@@ -122,6 +122,8 @@
     .ev .v i { font-style: normal; color: var(--gold); }
     .ev .v.sm { font-size: 15px; }
     .ev .hr { display: block; margin-top: 3px; font-size: 13px; color: #cfcfcf; }
+    .ev .left { margin-top: 12px; font-size: 14px; color: #fff; }
+    .ev .left strong { color: var(--gold-hi); font-size: 18px; }
     .tag { display: inline-block; margin-top: 14px; padding: 5px 12px; border-radius: 2px; font-size: 11px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; background: var(--gold); color: #000; }
     .tag.free { background: #fff; }
     .none { color: var(--muted); margin-top: 18px; }
@@ -274,6 +276,7 @@
                 <span class="v sm"><%= e.venue || 'A definir' %></span>
               </span>
             </span>
+            <% if (e.left !== null && e.left !== undefined) { %><span class="hr left"><strong><%= e.left %></strong> de <%= e.total %> ingressos disponíveis</span><% } %>
             <span class="tag <%= e.free ? 'free' : '' %>"><%= e.free ? 'Inscrição gratuita' : 'Ingressos à venda' %></span>
           </a>
         <% }) %>
