@@ -55,7 +55,7 @@
 
     <% if (msg) { %>
       <div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac">
-        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
+        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', liberado: 'Vendas liberadas agora: o site já mostra a compra de ingressos.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
       </div>
     <% } %>
 
@@ -81,6 +81,9 @@
               <%= c.dateLabel %><%= c.timeLabel ? ' · ' + c.timeLabel : '' %> &middot; <%= c.venue || 'Local a definir' %>
             </p>
             <% if (c.slug) { %><p class="ev-meta" style="margin-top:-6px">Inscrição gratuita: <a href="/<%= c.slug %>" target="_blank" style="color:var(--accent)">/<%= c.slug.toUpperCase() %></a></p><% } %>
+            <% if (c.salesHeld) { %>
+              <p class="ev-meta" style="color:#f6c441; font-weight:700; margin-top:-4px">Vendas fechadas (site mostra "Em breve") até <%= c.salesOpenAtLocal.replace('T', ' às ') %>.</p>
+            <% } %>
             <div class="ev-nums">
               <div class="ev-num"><div class="l">Ingressos vendidos</div><div class="v"><%= c.stats.tickets %><%= (c.capacity || c.lotesCapacity) ? ' / ' + (c.capacity || c.lotesCapacity) : '' %></div></div>
               <div class="ev-num"><div class="l">Receita bruta</div><div class="v"><%= money(c.stats.revenue) %></div></div>
@@ -91,6 +94,11 @@
               <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas</button></a>
               <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
               <% if (!c.free) { %><a href="<%= c.hasProducts ? '/admin/ingressos' : '/admin/lotes' %>?evento=<%= c.id %>"><button type="button" class="btn-secondary"><%= c.hasProducts ? 'Ingressos' : 'Lotes' %></button></a><% } %>
+              <% if (c.salesHeld) { %>
+                <form action="/admin/eventos/<%= c.id %>/liberar" method="POST" onsubmit="return confirm('Liberar a venda de ingressos agora?')">
+                  <button type="submit">Liberar vendas agora</button>
+                </form>
+              <% } %>
               <% if (c.status !== 'atual' && !c.free) { %>
                 <form action="/admin/eventos/<%= c.id %>/atual" method="POST" onsubmit="return confirm('Definir este evento como atual? O site passa a vender os ingressos dele.')">
                   <button type="submit">Definir como atual</button>
@@ -110,6 +118,8 @@
                 <label>Horário (texto exibido) <input type="text" name="timeLabel" value="<%= c.timeLabel %>" maxlength="40" placeholder="Das 15h às 22h" /></label>
                 <label>Capacidade (ingressos) <input type="number" name="capacity" value="<%= c.capacity || '' %>" min="0" /></label>
                 <label class="full">Local <input type="text" name="venue" value="<%= c.venue %>" maxlength="100" /></label>
+                <% if (!c.free) { %><label class="full">Abertura das vendas (horário de Brasília) <input type="datetime-local" name="salesOpenAt" value="<%= c.salesOpenAtLocal %>" /></label>
+                <p class="hint full" style="margin:-6px 0 0; text-align:left">Antes desse horário o site mostra "Em breve" e não vende. Deixe em branco para vender sem espera.</p><% } %>
                 <div class="full"><button type="submit">Salvar alterações</button></div>
               </form>
             </details>

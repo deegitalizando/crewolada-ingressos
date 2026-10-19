@@ -2,7 +2,7 @@ const store = require('./store');
 const { getLotes } = require('./lotes');
 const { getProducts, getChildRules } = require('./produtos');
 const {
-  EVENTS, currentEvent, LEGACY_EVENT, NEXT_EVENT, syncEvents, orderEventId, eventStatus,
+  EVENTS, currentEvent, LEGACY_EVENT, NEXT_EVENT, syncEvents, orderEventId, eventStatus, salesHeldBack,
 } = require('./event');
 
 const SEED_IDS = new Set([LEGACY_EVENT.id, NEXT_EVENT.id]);
@@ -49,7 +49,8 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
     const timeLabel = String(body.timeLabel || '').trim().slice(0, 40);
     const capacity = Math.max(0, parseInt(body.capacity, 10) || 0) || null;
     const startAt = body.startAt ? parseDatetimeLocalAsBrasilia(body.startAt) : null;
-    return { name, venue, timeLabel, capacity, startAt };
+    const salesOpenAt = body.salesOpenAt ? parseDatetimeLocalAsBrasilia(body.salesOpenAt) : null;
+    return { name, venue, timeLabel, capacity, startAt, salesOpenAt };
   }
 
   app.get('/admin/eventos', requireAdminAuth, (req, res) => {
@@ -65,6 +66,8 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
         stats: s,
         lotesCapacity: lotesCap,
         startAtLocal: e.startAt ? formatDatetimeLocalBrasilia(e.startAt) : '',
+        salesOpenAtLocal: e.salesOpenAt ? formatDatetimeLocalBrasilia(e.salesOpenAt) : '',
+        salesHeld: e.id === currentEvent.id && salesHeldBack(e),
         isSeed: SEED_IDS.has(e.id),
         hasProducts: getProducts(e).length > 0,
         free: Boolean(e.free),
@@ -155,11 +158,22 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
       db.events[req.params.id] = {
         ...(db.events[req.params.id] || {}),
         id: req.params.id, name: f.name, dateLabel: dateLabelBR(f.startAt), timeLabel: f.timeLabel,
-        venue: f.venue, startAt: f.startAt, capacity: f.capacity,
+        venue: f.venue, startAt: f.startAt, capacity: f.capacity, salesOpenAt: f.salesOpenAt,
       };
     });
     onChange();
     res.redirect('/admin/eventos?msg=salvo');
+  });
+
+  // Releases the ticket sale right now (clears the "Em breve" hold).
+  app.post('/admin/eventos/:id/liberar', requireAdminAuth, async (req, res) => {
+    if (!EVENTS.some((e) => e.id === req.params.id)) return res.redirect('/admin/eventos?msg=dados');
+    await store.withDb((db) => {
+      db.events = db.events || {};
+      db.events[req.params.id] = { ...(db.events[req.params.id] || {}), id: req.params.id, salesOpenAt: null };
+    });
+    onChange();
+    res.redirect('/admin/eventos?msg=liberado');
   });
 
   app.post('/admin/eventos/:id/atual', requireAdminAuth, async (req, res) => {

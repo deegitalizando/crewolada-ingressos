@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title><%= eventInfo.name %> · Ingressos em breve</title>
+  <meta name="description" content="Os ingressos da <%= eventInfo.name %> abrem <%= opensLabel %>. Entre na comunidade e saiba primeiro." />
+  <meta name="theme-color" content="#000000" />
+  <%- include('partials/head') %>
+  <style>
+    body.soon { margin: 0; background: #000; color: #fff; }
+    .soon .wrap { width: min(480px, 100%); margin-inline: auto; padding: 22px 20px 60px; text-align: center; }
+    .soon .logo-big { display: block; width: min(260px, 70vw); height: auto; margin: 0 auto; box-shadow: none; border-radius: 0; background: transparent; -webkit-mask-image: radial-gradient(closest-side, #000 90%, transparent 100%); mask-image: radial-gradient(closest-side, #000 90%, transparent 100%); }
+    .soon .kick { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 6px 0 0; font-size: 12px; letter-spacing: 0.4em; text-transform: uppercase; font-weight: 500; }
+    .soon .kick span { flex: 1; max-width: 60px; height: 1.5px; background: var(--accent); }
+    .soon h1 { margin: 22px 0 6px; font-size: clamp(2rem, 9vw, 2.8rem); line-height: 1.05; text-transform: uppercase; letter-spacing: 0.03em; }
+    .soon h1 em { font-style: normal; color: var(--accent); }
+    .soon .sub { margin: 0; color: var(--text-dim); font-size: 15px; }
+    .count { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 26px 0 6px; }
+    .count div { padding: 14px 6px 10px; border: 1.5px solid var(--card-border); border-radius: 4px; background: #0b0b0b; }
+    .count b { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(2rem, 11vw, 3rem); line-height: 1; letter-spacing: 0.02em; color: #fff; font-variant-numeric: tabular-nums; }
+    .count span { display: block; margin-top: 6px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+    .info { display: grid; grid-template-columns: auto 1fr; margin: 26px 0 0; text-align: left; border: 1.5px solid var(--card-border); border-radius: 4px; background: #0b0b0b; }
+    .info > div { padding: 14px 16px; }
+    .info > div + div { border-left: 1.5px solid var(--card-border); }
+    .info .l { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+    .info .v { display: block; margin-top: 2px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 19px; text-transform: uppercase; line-height: 1.15; }
+    .info .v i { font-style: normal; color: var(--accent); }
+    .info .v.sm { font-size: 14px; }
+    .info .h { display: block; margin-top: 3px; font-size: 13px; color: #cfcfcf; }
+    .soon .cta { display: block; margin-top: 26px; text-decoration: none; }
+    .soon .cta button { margin: 0; padding: 18px; font-size: 16px; }
+    .soon .note { margin: 14px 0 0; font-size: 13px; color: var(--text-dim); }
+  </style>
+</head>
+<body class="soon">
+  <div class="wrap">
+    <img class="logo-big" src="/img/logo.jpg" alt="<%= eventInfo.brand || eventInfo.name %>" />
+    <p class="kick"><span></span>Black music cristã<span></span></p>
+    <h1><%= eventInfo.name %><br /><em>Ingressos abrem <%= opensLabel %></em></h1>
+    <p class="sub">Volte aqui no horário. A venda abre sozinha, sem precisar atualizar a página.</p>
+
+    <div class="count" id="count" data-at="<%= opensAtIso %>" aria-live="polite">
+      <div><b id="c-h">--</b><span>horas</span></div>
+      <div><b id="c-m">--</b><span>min</span></div>
+      <div><b id="c-s">--</b><span>seg</span></div>
+    </div>
+
+    <div class="info">
+      <div>
+        <span class="l">Data:</span>
+        <span class="v"><% String(eventInfo.dateLabel || '').split('/').forEach(function(p, i, a) { %><%= p %><% if (i < a.length - 1) { %><i>/</i><% } %><% }) %></span>
+        <% if (eventInfo.timeLabel) { %><span class="h"><%= eventInfo.timeLabel %></span><% } %>
+      </div>
+      <div>
+        <span class="l">Local:</span>
+        <span class="v sm"><%= eventInfo.venue || 'A definir' %></span>
+      </div>
+    </div>
+
+    <a class="cta" href="<%= communityUrl %>" target="_blank" rel="noopener"><button type="button">Quero saber primeiro: entrar na comunidade</button></a>
+    <p class="note">Aviso em primeira mão no WhatsApp quando as vendas abrirem.</p>
+  </div>
+
+  <script>
+    (function () {
+      var el = document.getElementById('count');
+      var at = Date.parse(el.getAttribute('data-at'));
+      if (!at) return;
+      var h = document.getElementById('c-h'), m = document.getElementById('c-m'), s = document.getElementById('c-s');
+      function pad(n) { return n < 10 ? '0' + n : String(n); }
+      function tick() {
+        var left = Math.max(0, Math.floor((at - Date.now()) / 1000));
+        h.textContent = pad(Math.floor(left / 3600));
+        m.textContent = pad(Math.floor((left % 3600) / 60));
+        s.textContent = pad(left % 60);
+        if (left <= 0) { setTimeout(function () { location.replace('/'); }, 800); return; }
+        setTimeout(tick, 1000);
+      }
+      tick();
+    })();
+  </script>
+</body>
+</html>

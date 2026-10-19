@@ -249,8 +249,8 @@
   <div class="sheet-bg" id="bg"></div>
   <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title" hidden>
     <div class="grab"></div>
-    <%# Temporario: enquanto true, o botao Ingressos so mostra "Em breve". Troque para false para voltar a listar os eventos. %>
-    <% var emBreve = true; %>
+    <%# Em breve enquanto as vendas do evento atual nao abriram (ver salesOpenAt em src/event.js ou /admin/eventos). %>
+    <% var emBreve = locals.emBreve !== false; %>
     <% if (emBreve) { %>
       <h2 id="sheet-title">Em <span>breve</span></h2>
       <p class="sub">Os ingressos dos próximos eventos Crewolada vão abrir em breve. Entre na nossa comunidade do WhatsApp para saber primeiro.</p>

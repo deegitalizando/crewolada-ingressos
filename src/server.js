@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const store = require('./store');
 const mp = require('./mercadopago');
 const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
-const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents, getEventById } = require('./event');
+const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents, getEventById, salesOpensAt, salesHeldBack } = require('./event');
 const { registerEventosRoutes } = require('./eventos');
 const { registerContatoRoutes } = require('./contato');
 const { registerLinksRoutes } = require('./links');
@@ -75,6 +75,20 @@ app.locals.metaPixelId = process.env.FACEBOOK_PIXEL_ID || '';
 // Sales are open for the current event. SALES_OPEN=false closes them (the home
 // then shows the thank-you page and /checkout is blocked), e.g. after the event.
 app.locals.salesOpen = process.env.SALES_OPEN !== 'false';
+
+// Sales also stay closed while the current event has a future salesOpenAt ("Em breve").
+const salesOpenNow = () => app.locals.salesOpen && !salesHeldBack(currentEvent);
+function opensLabelBR(ts) {
+  const tz = 'America/Sao_Paulo';
+  const day = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
+  const parts = new Intl.DateTimeFormat('pt-BR', { timeZone: tz, hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }).formatToParts(new Date(ts));
+  const g = (t) => (parts.find((p) => p.type === t) || {}).value;
+  const hm = g('minute') === '00' ? `${Number(g('hour'))}h` : `${Number(g('hour'))}h${g('minute')}`;
+  const now = Date.now();
+  if (day(ts) === day(now)) return `hoje às ${hm}`;
+  if (day(ts) === day(now + 86400000)) return `amanhã às ${hm}`;
+  return `${g('day')}/${g('month')} às ${hm}`;
+}
 app.locals.communityUrl = process.env.COMMUNITY_URL || 'https://chat.whatsapp.com/IfH31ObCm3o66OHOM46oup';
 const REFUND_DAYS = Number(process.env.REFUND_DAYS || 7);
 app.locals.refundDays = REFUND_DAYS;
@@ -246,6 +260,10 @@ function requireAdminAuth(req, res, next) {
 
 app.get('/', (req, res) => {
   if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
+  if (!salesOpenNow()) {
+    const at = salesOpensAt(currentEvent);
+    return res.render('em_breve', { eventInfo, opensAtIso: new Date(at).toISOString(), opensLabel: opensLabelBR(at), communityUrl: app.locals.communityUrl });
+  }
   const db = store.load();
   const lotes = getLotes(db);
   const soldCount = getSoldCount(db);
@@ -290,7 +308,7 @@ app.get('/politica-de-cancelamento', (req, res) => {
 });
 
 app.get('/checkout/dados', (req, res) => {
-  if (!app.locals.salesOpen) return res.redirect('/');
+  if (!salesOpenNow()) return res.redirect('/');
   const db = store.load();
 
   if (getProducts(currentEvent).length > 0) {
@@ -328,8 +346,8 @@ app.get('/checkout/dados', (req, res) => {
 });
 
 app.post('/api/pagamentos', async (req, res) => {
-  if (!app.locals.salesOpen) {
-    return res.status(403).json({ error: 'As vendas de ingressos estão encerradas.' });
+  if (!salesOpenNow()) {
+    return res.status(403).json({ error: app.locals.salesOpen ? 'As vendas ainda não começaram. Volte no horário de abertura.' : 'As vendas de ingressos estão encerradas.' });
   }
   try {
     const { buyerName, buyerEmail, buyerPhone, buyerCpf, quantity, formData } = req.body;
@@ -1106,7 +1124,7 @@ registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBras
 registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
 registerRelatorioRoutes(app, { requireAdminAuth, eventInfo });
 registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
-registerLinksRoutes(app, { requireAdminAuth, eventInfo });
+registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow: () => salesOpenNow() });
 registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,
 });

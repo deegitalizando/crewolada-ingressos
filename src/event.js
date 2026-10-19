@@ -25,6 +25,9 @@ const NEXT_EVENT = {
   venue: 'Rio da Prata - Campo Grande/RJ',
   startAt: '2026-11-14T18:00:00.000Z', // 14/11/2026 15h (Brasilia)
   capacity: 300,
+  // Sales stay closed (site shows "Em breve") until this moment: 19/10/2026 18h (Brasilia).
+  // Editable (or cleared to sell right away) in /admin/eventos.
+  salesOpenAt: '2026-10-19T21:00:00.000Z',
   // Programmed here so the sale opens on deploy; editable later in /admin/ingressos.
   defaultLotes: [{ name: 'Lote Único', quantity: 300, price: 25 }],
   childRules: { freeUntil: 2, halfUntil: 12, freeCountsInCapacity: false },
@@ -110,6 +113,16 @@ function eventStatus(event, now = Date.now()) {
   return 'futuro';
 }
 
+// Ticket sales of an event are held back until its salesOpenAt (when set).
+function salesOpensAt(event = currentEvent) {
+  const t = event && event.salesOpenAt ? Date.parse(event.salesOpenAt) : NaN;
+  return Number.isNaN(t) ? null : t;
+}
+function salesHeldBack(event = currentEvent, now = Date.now()) {
+  const t = salesOpensAt(event);
+  return t !== null && now < t;
+}
+
 // Variables available to message templates ({{evento}}, {{data}}...).
 function eventTemplateVars(event = currentEvent) {
   return { evento: event.name, data: event.dateLabel, hora: event.timeLabel || '', local: event.venue };
@@ -118,4 +131,5 @@ function eventTemplateVars(event = currentEvent) {
 module.exports = {
   LEGACY_EVENT, NEXT_EVENT, SP_EVENT, EVENTS, currentEvent, syncEvents,
   orderEventId, inEvent, getEventById, eventForOrder, eventStatus, eventTemplateVars,
+  salesOpensAt, salesHeldBack,
 };

@@ -50,11 +50,13 @@ function ticketEvents(salesOpen) {
     }));
 }
 
-function registerLinksRoutes(app, { requireAdminAuth, eventInfo }) {
+function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow }) {
   app.get('/links', (req, res) => {
     res.render('links', {
       eventInfo,
-      events: ticketEvents(app.locals.salesOpen),
+      // "Em breve" while the ticket sale of the current event has not opened yet.
+      emBreve: !(salesOpenNow ? salesOpenNow() : app.locals.salesOpen),
+      events: ticketEvents(salesOpenNow ? salesOpenNow() : app.locals.salesOpen),
       baseUrl: process.env.BASE_URL || '',
     });
   });
