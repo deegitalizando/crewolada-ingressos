@@ -40,6 +40,7 @@ const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
 const {
   criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, posEntregaMusica, buscarPedidoPorCodigo, registerMusicaPersonalizadaRoutes,
+  validarLetraCrista,
 } = require('./musicaPersonalizada');
 
 // Builds a wa.me link, pre-filled with the ticket link, that the ADMIN opens
@@ -1157,6 +1158,12 @@ app.post('/api/n8n/musica/pedido', async (req, res) => {
   }
   if (!isValidCpf(cpf)) {
     return res.status(400).json({ ok: false, error: 'invalid_cpf' });
+  }
+
+  // Only Christian lyrics: screened before the Pix is created (n8n tells the buyer what to fix).
+  const veredito = await validarLetraCrista(String(letra));
+  if (!veredito.aprovada) {
+    return res.json({ ok: false, error: 'conteudo_nao_cristao', motivo: veredito.motivo });
   }
 
   try {

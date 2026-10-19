@@ -34,7 +34,7 @@
     <main class="card">
       <p class="hint" style="margin-top:0">
         Uma música original, cantada, no clima Black Music Cristã (R&amp;B, Soul, Neosoul, Hip-Hop, Boom Bap, Rap,
-        Trap, Soulful Rap...), feita a partir da sua história.
+        Trap, Soulful Rap...), feita a partir da sua história. Todas as músicas têm cunho cristão: louvor, família, amor, gratidão, superação...
       </p>
 
       <div id="form-error" class="alert" style="display:none"></div>
@@ -282,10 +282,32 @@
       }
       clearError();
 
-      [...musicaForm.elements].forEach((el) => (el.disabled = true));
-      sugerirBtn.disabled = true;
-      brickCreated = true;
-      createBrick({ nome, email, cpfDigits, estilo, andamento, vocal, referencia, letra });
+      continuarBtn.disabled = true;
+      continuarBtn.textContent = 'Conferindo a letra...';
+      fetch('/api/musica/validar-letra', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ letra }),
+      })
+        .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          if (!ok) {
+            showError(data.error || 'Não foi possível conferir a letra agora. Tente de novo.');
+            continuarBtn.disabled = false;
+            continuarBtn.textContent = 'Continuar para o pagamento';
+            step = 4; renderStep(); // volta para a letra
+            return;
+          }
+          [...musicaForm.elements].forEach((el) => (el.disabled = true));
+          sugerirBtn.disabled = true;
+          brickCreated = true;
+          createBrick({ nome, email, cpfDigits, estilo, andamento, vocal, referencia, letra });
+        })
+        .catch(() => {
+          showError('Erro de conexão. Tente novamente.');
+          continuarBtn.disabled = false;
+          continuarBtn.textContent = 'Continuar para o pagamento';
+        });
     });
 
     function createBrick({ nome, email, cpfDigits, estilo, andamento, vocal, referencia, letra }) {

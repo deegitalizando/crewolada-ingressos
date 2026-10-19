@@ -7,7 +7,7 @@ const mp = require('./mercadopago');
 const { currentEvent } = require('./event');
 const { notifyMusicaAprovada, notifyMusicaEmail } = require('./n8n');
 const { isValidCpf } = require('./cpf');
-const { draftLyrics } = require('./gemini');
+const { draftLyrics, validarLetraCrista, MENSAGEM_CUNHO_CRISTAO } = require('./gemini');
 
 const PRECO = Number(process.env.MUSICA_PRECO || 10);
 
@@ -271,6 +271,18 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
     }
   });
 
+  app.post('/api/musica/validar-letra', async (req, res) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+    if (rateLimited(ip)) return res.status(429).json({ error: 'Muitas tentativas, aguarde um pouco.' });
+    const letra = String(req.body.letra || '').trim().slice(0, 4000);
+    if (!letra) return res.status(400).json({ error: 'Preencha a letra.' });
+    const v = await validarLetraCrista(letra);
+    if (!v.aprovada) {
+      return res.status(422).json({ ok: false, error: MENSAGEM_CUNHO_CRISTAO + (v.motivo ? 'Ajuste a letra: ' + v.motivo : 'Ajuste a letra e tente de novo.') });
+    }
+    return res.json({ ok: true });
+  });
+
   app.post('/api/musica/pedido', async (req, res) => {
     const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
     if (rateLimited(ip)) return res.status(429).json({ error: 'Muitas tentativas, aguarde um pouco.' });
@@ -293,6 +305,11 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
     }
     if (!isValidCpf(cpfDigits)) {
       return res.status(400).json({ error: 'CPF invalido.' });
+    }
+
+    const veredito = await validarLetraCrista(letra);
+    if (!veredito.aprovada) {
+      return res.status(422).json({ error: MENSAGEM_CUNHO_CRISTAO + (veredito.motivo ? 'Ajuste a letra: ' + veredito.motivo : 'Ajuste a letra e tente de novo.') });
     }
 
     try {
@@ -362,4 +379,5 @@ module.exports = {
   registerMusicaPersonalizadaRoutes,
   PRECO,
   vocalValido,
+  validarLetraCrista,
 };
