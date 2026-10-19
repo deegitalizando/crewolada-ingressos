@@ -5,6 +5,19 @@
   <meta name="description" content="Sua música personalizada, no estilo Black Music Cristã, por R$ <%= preco.toFixed(2).replace('.', ',') %>. Criada por IA a partir da sua história." />
   <%- include('partials/head') %>
   <script src="https://sdk.mercadopago.com/js/v2"></script>
+  <style>
+    .wiz-progress { display: flex; gap: 6px; margin: 0 0 20px; }
+    .wiz-progress i { flex: 1; height: 4px; border-radius: 2px; background: var(--card-border, #333); }
+    .wiz-progress i.on { background: var(--gold, #E5A71B); }
+    .wiz-step { display: none; }
+    .wiz-step.on { display: block; }
+    .wiz-nav { display: flex; gap: 10px; margin-top: 18px; }
+    .wiz-nav button { flex: 1; }
+    .wiz-nav .voltar { background: transparent; border: 1.5px solid var(--card-border, #333); }
+    .wiz-choice { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
+    .wiz-choice label { display: flex; align-items: center; gap: 6px; width: auto; font-weight: normal; }
+    .wiz-choice input { width: auto; }
+  </style>
 </head>
 <body>
   <div class="page">
@@ -14,74 +27,91 @@
     </header>
 
     <main class="card">
-      <h2>Como funciona</h2>
       <p class="hint" style="margin-top:0">
-        Escolha o estilo, conte sua história (ou cole uma letra pronta) e receba uma música
-        original, cantada, no clima Black Music Cristã (R&amp;B, Soul, Neosoul, Hip-Hop, Rap, Trap,
-        Soulful Rap...). Por apenas <strong>R$ <%= preco.toFixed(2).replace('.', ',') %></strong>.
+        Uma música original, cantada, no clima Black Music Cristã (R&amp;B, Soul, Neosoul, Hip-Hop, Rap, Trap,
+        Soulful Rap...), feita a partir da sua história. Por apenas <strong>R$ <%= preco.toFixed(2).replace('.', ',') %></strong>.
       </p>
 
       <div id="form-error" class="alert" style="display:none"></div>
 
-      <form class="form" id="musica-form">
-        <label>
-          Estilo musical
-          <select id="estilo" required>
-            <option value="" disabled selected>Escolha um estilo</option>
-            <% estilos.forEach(function(e) { %><option value="<%= e %>"><%= e %></option><% }) %>
-          </select>
-        </label>
+      <div class="wiz-progress" id="wiz-progress"></div>
 
-        <label>
-          Andamento
-          <select id="andamento" required>
-            <option value="" disabled selected>Escolha o andamento</option>
-            <% andamentos.forEach(function(a) { %><option value="<%= a %>"><%= a %></option><% }) %>
-          </select>
-        </label>
-
-        <label>
-          Referência musical (opcional)
-          <input type="text" id="referencia" placeholder="Ex: parecido com tal artista/música" maxlength="200" />
-        </label>
-
-        <fieldset style="border:1px solid var(--card-border, #333); border-radius:6px; padding:12px">
-          <legend class="hint" style="margin:0 0 6px">Você já tem uma letra pronta?</legend>
-          <label style="display:inline-flex; align-items:center; gap:6px; width:auto">
-            <input type="radio" name="temLetra" id="temLetraSim" style="width:auto" /> Já tenho a letra
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; width:auto; margin-left:18px">
-            <input type="radio" name="temLetra" id="temLetraNao" style="width:auto" checked /> Quero que a IA sugira
-          </label>
-        </fieldset>
-
-        <div id="bloco-detalhes">
+      <form class="form" id="musica-form" novalidate>
+        <!-- Passo 1: Estilo -->
+        <div class="wiz-step on" data-step="1">
           <label>
-            Conte sobre a música: pra quem é, a ocasião, uma história ou detalhe que deve aparecer na letra
-            <textarea id="detalhes" rows="4" maxlength="1000" placeholder="Ex: é pro aniversário da minha esposa Maria, 10 anos juntos, conhecemos na igreja..."></textarea>
+            Qual estilo você quer pra sua música?
+            <select id="estilo" required>
+              <option value="" disabled selected>Escolha um estilo</option>
+              <% estilos.forEach(function(e) { %><option value="<%= e %>"><%= e %></option><% }) %>
+            </select>
           </label>
-          <button type="button" id="sugerir-btn">Sugerir letra com IA</button>
         </div>
 
-        <label>
-          Letra <span class="hint" style="display:inline">(gerada pela IA ou colada por você — revise e edite à vontade antes de continuar)</span>
-          <textarea id="letra" rows="8" maxlength="4000"></textarea>
-        </label>
+        <!-- Passo 2: Andamento / BPM -->
+        <div class="wiz-step" data-step="2">
+          <label>
+            Qual andamento (BPM aproximado)?
+            <select id="andamento" required>
+              <option value="" disabled selected>Escolha o andamento</option>
+              <% andamentos.forEach(function(a) { %><option value="<%= a.value %>"><%= a.label %></option><% }) %>
+            </select>
+          </label>
+        </div>
 
-        <label>
-          Nome completo
-          <input type="text" id="nome" required autocomplete="name" />
-        </label>
-        <label>
-          E-mail
-          <input type="email" id="email" required autocomplete="email" />
-        </label>
-        <label>
-          CPF
-          <input type="text" id="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" />
-        </label>
+        <!-- Passo 3: Tem letra pronta? -->
+        <div class="wiz-step" data-step="3">
+          <p class="hint" style="margin-top:0">Você já tem uma letra pronta, ou quer que a gente sugira uma pra você?</p>
+          <div class="wiz-choice">
+            <label><input type="radio" name="temLetra" id="temLetraSim" /> Já tenho a letra</label>
+            <label><input type="radio" name="temLetra" id="temLetraNao" checked /> Quero que a IA sugira</label>
+          </div>
+        </div>
 
-        <button type="submit" id="continuar-btn">Continuar para o pagamento</button>
+        <!-- Passo 4: Letra (colar pronta OU detalhes + sugestao da IA) -->
+        <div class="wiz-step" data-step="4">
+          <div id="bloco-detalhes">
+            <label>
+              Conte sobre a música: pra quem é, a ocasião, uma história ou detalhe que deve aparecer na letra
+              <textarea id="detalhes" rows="4" maxlength="1000" placeholder="Ex: é pro aniversário da minha esposa Maria, 10 anos juntos, conhecemos na igreja..."></textarea>
+            </label>
+            <button type="button" id="sugerir-btn">Sugerir letra com IA</button>
+          </div>
+          <label style="margin-top:14px">
+            <span id="letra-label">Letra <span class="hint" style="display:inline">(gerada pela IA — revise e edite à vontade)</span></span>
+            <textarea id="letra" rows="10" maxlength="4000"></textarea>
+          </label>
+        </div>
+
+        <!-- Passo 5: Referencia -->
+        <div class="wiz-step" data-step="5">
+          <label>
+            Tem alguma música ou artista de referência? (opcional)
+            <input type="text" id="referencia" placeholder="Ex: parecido com tal artista/música" maxlength="200" />
+          </label>
+        </div>
+
+        <!-- Passo 6: Dados + pagamento -->
+        <div class="wiz-step" data-step="6">
+          <label>
+            Nome completo
+            <input type="text" id="nome" required autocomplete="name" />
+          </label>
+          <label>
+            E-mail
+            <input type="email" id="email" required autocomplete="email" />
+          </label>
+          <label>
+            CPF
+            <input type="text" id="cpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" />
+          </label>
+        </div>
+
+        <div class="wiz-nav" id="wiz-nav">
+          <button type="button" class="voltar" id="wiz-voltar">Voltar</button>
+          <button type="button" id="wiz-proximo">Próximo</button>
+          <button type="submit" id="continuar-btn" style="display:none">Continuar para o pagamento</button>
+        </div>
       </form>
 
       <div id="paymentBrick_container" style="margin-top:20px"></div>
@@ -105,6 +135,7 @@
       errorBox.style.display = 'block';
       errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
+    function clearError() { errorBox.style.display = 'none'; }
 
     const cpfInput = document.getElementById('cpf');
     cpfInput.addEventListener('input', () => {
@@ -118,8 +149,13 @@
     const temLetraSim = document.getElementById('temLetraSim');
     const temLetraNao = document.getElementById('temLetraNao');
     const blocoDetalhes = document.getElementById('bloco-detalhes');
+    const letraLabel = document.getElementById('letra-label');
     function syncLetraMode() {
-      blocoDetalhes.style.display = temLetraNao.checked ? '' : 'none';
+      const semLetra = temLetraNao.checked;
+      blocoDetalhes.style.display = semLetra ? '' : 'none';
+      letraLabel.innerHTML = semLetra
+        ? 'Letra <span class="hint" style="display:inline">(gerada pela IA — revise e edite à vontade)</span>'
+        : 'Cole aqui a sua letra completa';
     }
     temLetraSim.addEventListener('change', syncLetraMode);
     temLetraNao.addEventListener('change', syncLetraMode);
@@ -132,7 +168,7 @@
       const andamento = document.getElementById('andamento').value;
       const referencia = document.getElementById('referencia').value.trim();
       if (!detalhes) { showError('Conte um pouco sobre a música antes de pedir a sugestão.'); return; }
-      errorBox.style.display = 'none';
+      clearError();
       sugerirBtn.disabled = true;
       sugerirBtn.textContent = 'Gerando sugestão...';
       fetch('/api/musica/rascunhar-letra', {
@@ -152,8 +188,62 @@
         });
     });
 
-    const musicaForm = document.getElementById('musica-form');
+    // ---- Wizard navigation ----
+    const TOTAL_STEPS = 6;
+    let step = 1;
+    const progressEl = document.getElementById('wiz-progress');
+    for (let i = 1; i <= TOTAL_STEPS; i++) {
+      const bar = document.createElement('i');
+      bar.dataset.step = i;
+      progressEl.appendChild(bar);
+    }
+    const voltarBtn = document.getElementById('wiz-voltar');
+    const proximoBtn = document.getElementById('wiz-proximo');
     const continuarBtn = document.getElementById('continuar-btn');
+
+    function validateStep(n) {
+      if (n === 1 && !document.getElementById('estilo').value) {
+        showError('Escolha um estilo antes de continuar.');
+        return false;
+      }
+      if (n === 2 && !document.getElementById('andamento').value) {
+        showError('Escolha o andamento antes de continuar.');
+        return false;
+      }
+      if (n === 4 && !document.getElementById('letra').value.trim()) {
+        showError('Preencha a letra (sugira com a IA ou cole a sua) antes de continuar.');
+        return false;
+      }
+      return true;
+    }
+
+    function renderStep() {
+      document.querySelectorAll('.wiz-step').forEach((el) => {
+        el.classList.toggle('on', Number(el.dataset.step) === step);
+      });
+      progressEl.querySelectorAll('i').forEach((bar) => {
+        bar.classList.toggle('on', Number(bar.dataset.step) <= step);
+      });
+      voltarBtn.style.visibility = step === 1 ? 'hidden' : 'visible';
+      proximoBtn.style.display = step === TOTAL_STEPS ? 'none' : '';
+      continuarBtn.style.display = step === TOTAL_STEPS ? '' : 'none';
+    }
+
+    proximoBtn.addEventListener('click', () => {
+      if (!validateStep(step)) return;
+      clearError();
+      step = Math.min(TOTAL_STEPS, step + 1);
+      renderStep();
+    });
+    voltarBtn.addEventListener('click', () => {
+      clearError();
+      step = Math.max(1, step - 1);
+      renderStep();
+    });
+    renderStep();
+
+    // ---- Submit / payment ----
+    const musicaForm = document.getElementById('musica-form');
     let brickCreated = false;
 
     musicaForm.addEventListener('submit', (e) => {
@@ -169,10 +259,10 @@
       const letra = document.getElementById('letra').value.trim();
 
       if (!nome || !email || cpfDigits.length !== 11 || !estilo || !andamento || !letra) {
-        showError('Preencha todos os campos, incluindo a letra (sugira com a IA ou cole a sua).');
+        showError('Preencha todos os campos antes de continuar.');
         return;
       }
-      errorBox.style.display = 'none';
+      clearError();
 
       [...musicaForm.elements].forEach((el) => (el.disabled = true));
       sugerirBtn.disabled = true;
@@ -198,7 +288,7 @@
           onError: (error) => { console.error(error); },
           onSubmit: ({ formData }) => {
             return new Promise((resolve, reject) => {
-              errorBox.style.display = 'none';
+              clearError();
               fetch('/api/musica/pedido', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },

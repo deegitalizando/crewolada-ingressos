@@ -9,7 +9,14 @@ const { draftLyrics } = require('./gemini');
 const PRECO = Number(process.env.MUSICA_PRECO || 10);
 
 const ESTILOS = ['R&B', 'Soul', 'Neosoul', 'Hip-Hop', 'Rap', 'Trap', 'Soulful Rap', 'Gospel/Louvor', 'Outro'];
-const ANDAMENTOS = ['Lenta e suave', 'Media', 'Acelerada e dancante'];
+// `value` is what's actually sent to the lyric/music generation prompts;
+// `label` adds an approximate BPM range just so the picker reads as a tempo
+// choice, not a mood choice.
+const ANDAMENTOS = [
+  { value: 'Lenta e suave', label: 'Lenta e suave (~70-90 BPM)' },
+  { value: 'Media', label: 'Media (~95-115 BPM)' },
+  { value: 'Acelerada e dancante', label: 'Acelerada e dancante (~120-150 BPM)' },
+];
 
 // Simple per-IP throttle for the public endpoints below (payment creation and
 // AI lyric drafts both cost real money/API calls, so an open page needs some
