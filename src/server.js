@@ -1380,9 +1380,12 @@ function freeRateLimited(ip) {
   return list.length > 20;
 }
 
-function findFreeEvent(slug) {
+// Hidden (not yet published) events only exist for the logged-in admin, who can preview them.
+function findFreeEvent(slug, req) {
   const s = String(slug || '').toLowerCase();
-  return EVENTS.find((e) => e.free && e.slug && e.slug.toLowerCase() === s) || null;
+  const ev = EVENTS.find((e) => e.free && e.slug && e.slug.toLowerCase() === s) || null;
+  if (ev && ev.hidden && !(req && isAdmin(req))) return null;
+  return ev;
 }
 
 function freePageData(ev, db) {
@@ -1400,7 +1403,7 @@ function freePageData(ev, db) {
 }
 
 app.get('/:slug', (req, res, next) => {
-  const ev = findFreeEvent(req.params.slug);
+  const ev = findFreeEvent(req.params.slug, req);
   if (!ev) return next();
   res.render('evento_gratuito', {
     eventInfo: { ...eventInfo, ...ev }, ...freePageData(ev, store.load()), error: null, values: {},
@@ -1408,7 +1411,7 @@ app.get('/:slug', (req, res, next) => {
 });
 
 app.post('/:slug/inscricao', async (req, res, next) => {
-  const ev = findFreeEvent(req.params.slug);
+  const ev = findFreeEvent(req.params.slug, req);
   if (!ev) return next();
 
   const evInfo = { ...eventInfo, ...ev };

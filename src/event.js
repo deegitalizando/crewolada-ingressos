@@ -53,6 +53,9 @@ const SP_EVENT = {
   startAt: '2026-11-19T22:00:00.000Z', // 19/11/2026 19h (Brasilia)
   capacity: 500,
   maxPerCpf: 4,
+  // Not public yet: /SP answers 404 (except to the admin) and the event is left out of /links.
+  // Published from /admin/eventos ("Publicar página").
+  hidden: true,
 };
 
 const SEEDS = [LEGACY_EVENT, NEXT_EVENT, SP_EVENT];

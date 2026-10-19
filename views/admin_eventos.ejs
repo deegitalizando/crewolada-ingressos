@@ -55,7 +55,7 @@
 
     <% if (msg) { %>
       <div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac">
-        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', liberado: 'Vendas liberadas agora: o site já mostra a compra de ingressos.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
+        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', publicado: 'Página publicada: agora qualquer pessoa pode acessar.', oculto: 'Página oculta: só você (logado) consegue ver.', liberado: 'Vendas liberadas agora: o site já mostra a compra de ingressos.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
       </div>
     <% } %>
 
@@ -80,6 +80,7 @@
             <p class="ev-meta">
               <%= c.dateLabel %><%= c.timeLabel ? ' · ' + c.timeLabel : '' %> &middot; <%= c.venue || 'Local a definir' %>
             </p>
+            <% if (c.slug && c.hidden) { %><p class="ev-meta" style="color:#f6c441; font-weight:700; margin-top:-4px">Página oculta ao público (só você vê). Ainda não aparece no site nem no /links.</p><% } %>
             <% if (c.slug) { %><p class="ev-meta" style="margin-top:-6px">Inscrição gratuita: <a href="/<%= c.slug %>" target="_blank" style="color:var(--accent)">/<%= c.slug.toUpperCase() %></a></p><% } %>
             <% if (c.salesHeld) { %>
               <p class="ev-meta" style="color:#f6c441; font-weight:700; margin-top:-4px">Vendas fechadas (site mostra "Em breve") até <%= c.salesOpenAtLocal.replace('T', ' às ') %>.</p>
@@ -94,6 +95,11 @@
               <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas</button></a>
               <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
               <% if (!c.free) { %><a href="<%= c.hasProducts ? '/admin/ingressos' : '/admin/lotes' %>?evento=<%= c.id %>"><button type="button" class="btn-secondary"><%= c.hasProducts ? 'Ingressos' : 'Lotes' %></button></a><% } %>
+              <% if (c.slug) { %>
+                <form action="/admin/eventos/<%= c.id %>/<%= c.hidden ? 'publicar' : 'ocultar' %>" method="POST" onsubmit="return confirm('<%= c.hidden ? 'Publicar a página para o público?' : 'Ocultar a página do público?' %>')">
+                  <button type="submit" <%- c.hidden ? '' : 'class="btn-secondary"' %>><%= c.hidden ? 'Publicar página' : 'Ocultar página' %></button>
+                </form>
+              <% } %>
               <% if (c.salesHeld) { %>
                 <form action="/admin/eventos/<%= c.id %>/liberar" method="POST" onsubmit="return confirm('Liberar a venda de ingressos agora?')">
                   <button type="submit">Liberar vendas agora</button>
