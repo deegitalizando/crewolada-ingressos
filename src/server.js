@@ -33,6 +33,7 @@ const { registerPesquisaRoutes } = require('./pesquisa');
 const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNotification } = require('./comprovante');
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
+const { criarPedidoMusica, aprovarPedidoMusica } = require('./musicaPersonalizada');
 
 // Builds a wa.me link, pre-filled with the ticket link, that the ADMIN opens
 // in their own WhatsApp to resend a ticket by hand. This bypasses the
@@ -540,7 +541,11 @@ app.post('/api/webhooks/mercadopago', async (req, res) => {
       return res.sendStatus(200);
     }
 
-    await approveOrder(orderId, dataId, eventInfo);
+    if (orderId.startsWith('musica_')) {
+      await aprovarPedidoMusica(orderId, dataId);
+    } else {
+      await approveOrder(orderId, dataId, eventInfo);
+    }
 
     return res.sendStatus(200);
   } catch (err) {
@@ -905,6 +910,33 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
   } catch (err) {
     console.error(`Erro ao reenviar ingresso por telefone (pedido ${order.id}):`, err.message);
     return res.status(500).json({ found: false, error: 'send_failed' });
+  }
+});
+
+// Called by the "WORKFLOW CREWOLADA" n8n workflow once the WhatsApp music-bot
+// interview is done and approved by the buyer: creates the R$10 Pix charge
+// and hands back the QR code for n8n to send. Payment confirmation arrives
+// later through the shared Mercado Pago webhook below.
+app.post('/api/n8n/musica/pedido', async (req, res) => {
+  const secret = process.env.N8N_CALLBACK_SECRET;
+  if (secret && req.headers['x-callback-secret'] !== secret) {
+    return res.status(401).json({ ok: false, error: 'unauthorized' });
+  }
+
+  const { remoteJid, nome, cpf, email, estilo, andamento, letra, referencia } = req.body;
+  if (!remoteJid || !cpf || !estilo || !letra) {
+    return res.status(400).json({ ok: false, error: 'missing_fields' });
+  }
+  if (!isValidCpf(cpf)) {
+    return res.status(400).json({ ok: false, error: 'invalid_cpf' });
+  }
+
+  try {
+    const resultado = await criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, letra, referencia });
+    return res.json({ ok: true, ...resultado });
+  } catch (err) {
+    console.error('Erro ao criar pedido de musica:', err.message);
+    return res.status(500).json({ ok: false, error: 'payment_failed' });
   }
 });
 

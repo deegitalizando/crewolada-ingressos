@@ -68,6 +68,30 @@ async function notifyOrderApproved(order, tickets, { origin = 'compra', channel 
   }
 }
 
+// Tells the "WORKFLOW CREWOLADA" n8n workflow (node "Receber Musica Aprovada")
+// that a music-bot order was paid, so it can call the Mureka API with the
+// collected style/lyrics/reference and deliver the finished song by WhatsApp.
+async function notifyMusicaAprovada(pedido) {
+  const webhookUrl = process.env.N8N_MUSICA_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.warn('N8N_MUSICA_WEBHOOK_URL nao configurada, pulando notificacao.');
+    return;
+  }
+  await axios.post(
+    webhookUrl,
+    {
+      pedidoId: pedido.id,
+      remoteJid: pedido.remoteJid,
+      nome: pedido.nome,
+      estilo: pedido.estilo,
+      andamento: pedido.andamento,
+      letra: pedido.letra,
+      referencia: pedido.referencia,
+    },
+    { timeout: 15000 }
+  );
+}
+
 async function sendBroadcast(message) {
   const webhookUrl = process.env.N8N_BROADCAST_WEBHOOK_URL;
   if (!webhookUrl) {
@@ -89,4 +113,4 @@ async function sendReminder({ nome, whatsapp, email, mensagem }) {
   );
 }
 
-module.exports = { notifyOrderApproved, normalizePhone, sendBroadcast, sendReminder };
+module.exports = { notifyOrderApproved, normalizePhone, sendBroadcast, sendReminder, notifyMusicaAprovada };
