@@ -28,14 +28,28 @@ async function draftLyrics({ estilo, andamento, detalhes, referencia }) {
     `Detalhes para a letra (tema, ocasiao, pessoas, historia): ${detalhes || 'nao informado'}`,
   ].filter(Boolean).join('\n');
 
-  const { data } = await axios.post(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`,
-    { contents: [{ role: 'user', parts: [{ text: prompt }] }] },
-    { timeout: 20000 }
-  );
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+  const body = { contents: [{ role: 'user', parts: [{ text: prompt }] }] };
 
-  const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-  return texto.trim();
+  // Gemini's shared "flash-latest" endpoint occasionally answers 503/429
+  // under high demand — transient, not a config problem. Retry a couple of
+  // times with backoff before giving up.
+  const MAX_TRIES = 3;
+  let lastErr;
+  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+    try {
+      const { data } = await axios.post(url, body, { timeout: 20000 });
+      const texto = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      return texto.trim();
+    } catch (err) {
+      lastErr = err;
+      const status = err.response?.status;
+      const retriable = status === 503 || status === 429;
+      if (!retriable || attempt === MAX_TRIES) break;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    }
+  }
+  throw lastErr;
 }
 
 module.exports = { draftLyrics };
