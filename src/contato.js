@@ -9,6 +9,9 @@ const { normalizePhone } = require('./n8n');
 // (db.contatos) and e-mailed to the team inbox through the same n8n e-mail
 // flow that delivers tickets, with a PDF summary attached.
 const INBOX = () => process.env.CONTACT_INBOX_EMAIL || 'contatofestacrewolada@gmail.com';
+// Team WhatsApp that receives the invite when the visitor picks "Enviar pelo WhatsApp".
+const TEAM_WHATSAPP = () => String(process.env.CONTACT_WHATSAPP || '5521979713158').replace(/\D/g, '');
+const VIAS = ['email', 'whatsapp'];
 
 const OPCOES = {
   tipoEvento: ['Culto, igreja ou congresso', 'Festa ou balada', 'Aniversário ou casamento', 'Show ou festival', 'Evento institucional ou corporativo', 'Outro'],
@@ -71,6 +74,7 @@ function validate(body) {
     email: clean(body.email, 120).toLowerCase(),
     instagram: clean(body.instagram, 40).replace(/^@+/, ''),
     consent: body.consent === 'on' || body.consent === '1' || body.consent === true,
+    via: pick(body.via, VIAS) || 'email',
   };
   let phone = String(body.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '');
   if (phone.length > 11 && phone.startsWith('55')) phone = phone.slice(2);
@@ -175,6 +179,20 @@ function buildMessage(c, formatDatetime) {
   return parts.join('\n');
 }
 
+// Pre-filled text the visitor sends from their own WhatsApp to the team number.
+function buildWhatsText(c) {
+  const { lines, contact } = describe(c);
+  return [
+    'Olá, Crewolada! Quero convidar vocês para o meu evento. 🙌',
+    '',
+    '*EVENTO*',
+    ...lines.map(([l, val]) => `• ${l}: ${val}`),
+    '',
+    '*CONTATO*',
+    ...contact.filter(([l]) => l !== 'Recebido em').map(([l, val]) => `• ${l}: ${val}`),
+  ].join('\n');
+}
+
 async function sendInviteEmail(c, formatDatetime) {
   const webhookUrl = process.env.N8N_WEBHOOK_URL;
   if (!webhookUrl) throw new Error('N8N_WEBHOOK_URL não configurada.');
@@ -192,7 +210,7 @@ async function sendInviteEmail(c, formatDatetime) {
       pdfBase64: pdf.toString('base64'),
       fileName: `convite-${c.id.slice(0, 8)}.pdf`,
       mensagemPersonalizada: buildMessage(c, formatDatetime),
-      assunto: `Novo convite: ${c.convidar} · ${c.cidade}/${c.uf} · ${c.dataIndefinida ? 'data a definir' : when.split(' ')[0]}`,
+      assunto: `Novo convite${c.via === 'whatsapp' ? ' (enviado pelo WhatsApp)' : ''}: ${c.convidar} · ${c.cidade}/${c.uf} · ${c.dataIndefinida ? 'data a definir' : when.split(' ')[0]}`,
       origem: 'contato',
       canal: 'email',
     },
@@ -228,6 +246,7 @@ function registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetim
     });
 
     // The lead is saved either way; the e-mail is best effort and can be resent from the panel.
+    // It also goes out when the visitor picks WhatsApp, as a record in case they never hit send there.
     let emailed = false;
     try {
       await sendInviteEmail(contato, formatDatetimeBrasiliaDisplay);
@@ -236,7 +255,8 @@ function registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetim
     } catch (err) {
       console.error(`Erro ao enviar e-mail do convite ${contato.id}:`, err.message);
     }
-    return res.json({ ok: true, emailed });
+    const waUrl = contato.via === 'whatsapp' ? `https://wa.me/${TEAM_WHATSAPP()}?text=${encodeURIComponent(buildWhatsText(contato))}` : null;
+    return res.json({ ok: true, emailed, waUrl });
   });
 
   // ---- admin
@@ -280,11 +300,11 @@ function registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetim
 
   app.get('/admin/contatos/exportar.csv', requireAdminAuth, (req, res) => {
     const list = Object.values(store.load().contatos || {}).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    const head = ['Recebido em', 'Status', 'Nome', 'Papel', 'WhatsApp', 'E-mail', 'Instagram', 'Quem convidar', 'Tipo de evento', 'Data', 'Cidade', 'UF', 'Local',
+    const head = ['Recebido em', 'Enviado por', 'Status', 'Nome', 'Papel', 'WhatsApp', 'E-mail', 'Instagram', 'Quem convidar', 'Tipo de evento', 'Data', 'Cidade', 'UF', 'Local',
       'Início', 'Duração', 'Ingressos', 'Público', 'Som e luz', 'Precisa estrutura', 'Orçamento', 'Valor', 'Deslocamento', 'Detalhes'];
     const lines = [head.map(csvCell).join(';')];
     list.forEach((c) => lines.push([
-      formatDatetimeBrasiliaDisplay(c.createdAt), c.status, c.nome, c.papel, c.whatsapp, c.email, c.instagram, c.convidar, c.tipoEvento,
+      formatDatetimeBrasiliaDisplay(c.createdAt), c.via === 'whatsapp' ? 'WhatsApp' : 'E-mail', c.status, c.nome, c.papel, c.whatsapp, c.email, c.instagram, c.convidar, c.tipoEvento,
       c.dataIndefinida ? 'a definir' : c.data, c.cidade, c.uf, c.local, c.inicio, c.duracao, c.bilhetado, c.publico, c.estrutura,
       c.precisaEstrutura, c.orcamento, c.orcamentoValor, c.deslocamento, c.detalhes,
     ].map(csvCell).join(';')));
