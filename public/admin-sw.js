@@ -9,8 +9,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     await self.registration.showNotification(titulo, {
       body: d.corpo || '',
-      icon: '/img/icon-192.png',
-      badge: '/img/icon-192.png',
+      icon: '/img/icon-192.png',   // logo da festa (colorida)
+      badge: '/img/notif-badge.png', // silhueta da logo (barra de status do Android)
       tag: d.tag || 'crewolada',
       renotify: true,
       requireInteraction: false,

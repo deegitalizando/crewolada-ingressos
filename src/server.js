@@ -70,6 +70,11 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// Admin pages get the installable-app tags (manifest, "Crew Admin" icon) in views/partials/head.ejs.
+app.use((req, res, next) => {
+  res.locals.adminPage = /^\/(admin|contabilidade|downloads|validador)/.test(req.path);
+  next();
+});
 
 // Available to every view without needing to be passed into each res.render()
 // call individually.

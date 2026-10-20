@@ -95,25 +95,29 @@ async function notificar({ titulo, corpo, tag, url }) {
 
 const reais = (n) => 'R$ ' + (Math.round(Number(n || 0) * 100) / 100).toFixed(2).replace('.', ',');
 
-// Message builders for the two kinds of sale.
+// Message builders for the two kinds of sale. Every notification says VENDA APROVADA, the amount
+// and the product (ticket type / song), so the phone screen tells the whole story.
+const kindLabel = { adulto: 'Adulto', crianca: 'Crian\u00e7a (meia)', bebe: 'Beb\u00ea (gr\u00e1tis)' };
 function avisoIngresso(order, eventName) {
   const itens = Array.isArray(order.items) && order.items.length
-    ? order.items.filter((i) => i.qty > 0).map((i) => `${i.qty}x ${i.label || i.kind}`).join(', ')
-    : `${order.quantity || 1} ingresso(s)`;
+    ? order.items.filter((i) => i.qty > 0).map((i) => `${i.qty}x ${kindLabel[i.kind] || i.label || i.kind}`).join(', ')
+    : `${order.quantity || 1}x`;
+  const comprador = order.buyerName ? ' \u00b7 ' + String(order.buyerName).trim().split(' ')[0] : '';
   return {
-    titulo: `💰 Venda aprovada: ${reais(order.totalAmount)}`,
-    corpo: `${eventName ? eventName + ' · ' : ''}${order.loteName || 'Ingresso'} · ${itens}${order.buyerName ? ' · ' + order.buyerName.split(' ')[0] : ''}`,
+    titulo: `\u2705 VENDA APROVADA: ${reais(order.totalAmount)}`,
+    corpo: `\ud83c\udf9f\ufe0f Ingresso: ${order.loteName || 'Ingresso'} (${itens})${eventName ? ' \u00b7 ' + eventName : ''}${comprador}`,
     tag: `ingresso-${order.id}`,
     url: '/admin',
   };
 }
 function avisoMusica(pedido) {
-  const origem = pedido.canal === 'whatsapp' ? 'WhatsApp' : 'site';
+  const origem = pedido.canal === 'whatsapp' ? 'pelo WhatsApp' : 'pelo site';
+  const detalhes = [pedido.estilo, pedido.vocal ? 'vocal ' + String(pedido.vocal).toLowerCase() : ''].filter(Boolean).join(', ');
   const af = pedido.afiliacao && pedido.afiliacao.shares && pedido.afiliacao.shares.length
-    ? ' · via afiliado ' + pedido.afiliacao.shares.map((x) => x.codigo).join(', ') : '';
+    ? ' \u00b7 afiliado: ' + pedido.afiliacao.shares.map((x) => x.codigo).join(', ') : '';
   return {
-    titulo: `🎵 Música vendida: ${reais(pedido.valor)}`,
-    corpo: `${pedido.estilo || 'Música personalizada'}${pedido.vocal ? ' · vocal ' + String(pedido.vocal).toLowerCase() : ''} · ${origem}${af}`,
+    titulo: `\u2705 VENDA APROVADA: ${reais(pedido.valor)}`,
+    corpo: `\ud83c\udfb5 M\u00fasica personalizada (IA)${detalhes ? ': ' + detalhes : ''} \u00b7 ${origem}${af}`,
     tag: `musica-${pedido.id}`,
     url: '/admin/musicas',
   };
@@ -137,7 +141,7 @@ function registerPushRoutes(app, { requireAdminAuth, eventInfo }) {
     return res.json({ ok: true, inscritos: quantos() });
   });
   app.post('/api/admin/push/testar', requireAdminAuth, async (req, res) => {
-    const enviados = await notificar({ titulo: '💰 Teste: Venda aprovada: R$ 25,00', corpo: 'Tardezinha Crewolada · Ingresso Simples · 1x Adulto · Maria', tag: 'teste', url: '/admin/avisos' });
+    const enviados = await notificar({ titulo: '\u2705 VENDA APROVADA: R$ 25,00 (teste)', corpo: '\ud83c\udf9f\ufe0f Ingresso: Ingresso Simples (1x Adulto) \u00b7 Tardezinha Crewolada \u00b7 Maria', tag: 'teste', url: '/admin/avisos' });
     return res.json({ ok: true, enviados });
   });
 }
