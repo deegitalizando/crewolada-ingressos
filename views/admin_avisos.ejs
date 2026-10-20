@@ -53,6 +53,8 @@
         <button type="button" id="desativar" class="btn-secondary" style="display:none">Desativar neste aparelho</button>
       </div>
       <div class="msg" id="msg"></div>
+      <div class="msg erro" id="ios-aviso" style="display:none"></div>
+      <p class="hint" id="diag" style="text-align:left; margin-top:12px"></p>
     </main>
 
     <main class="card av" style="margin-top:14px">
@@ -60,7 +62,7 @@
       <p class="hint" style="margin-top:0; text-align:left"><strong>Android (Chrome):</strong></p>
       <ol><li>Abra <strong>crewolada.com/admin/avisos</strong> no Chrome e entre no painel.</li><li>Toque em <strong>Ativar avisos neste aparelho</strong> e permita as notificações.</li><li>Toque em <strong>Enviar notificação de teste</strong>.</li></ol>
       <p class="hint" style="text-align:left"><strong>iPhone (Safari, iOS 16.4 ou mais novo):</strong></p>
-      <ol><li>Abra esta página no <strong>Safari</strong>, toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</li><li>O ícone que aparece na tela de início é a <strong>logo da festa</strong>. Se você já tinha adicionado antes e o ícone está diferente, apague o ícone antigo e adicione de novo (o iPhone guarda o ícone na hora em que ele é adicionado).</li><li>Abra o app <strong>Crew Admin</strong> pela tela de início (não pelo Safari) e entre no painel.</li><li>Nesta página, toque em <strong>Ativar avisos</strong> e permita as notificações.</li></ol>
+      <ol><li>Abra esta página no <strong>Safari</strong>, toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>. Deixe ligada a chave <strong>Abrir como app da web</strong>, se ela aparecer.</li><li>O ícone que aparece na tela de início é a <strong>logo da festa</strong>. Se você já tinha adicionado antes e o ícone está diferente, apague o ícone antigo e adicione de novo (o iPhone guarda o ícone na hora em que ele é adicionado).</li><li>Abra o app <strong>Crew Admin</strong> pela tela de início (não pelo Safari) e entre no painel.</li><li>Dentro do app, o login é separado do Safari: entre no painel de novo. Depois abra <strong>Avisos</strong>, toque em <strong>Ativar avisos</strong> e permita as notificações.</li></ol>
       <p class="hint" style="text-align:left"><strong>Sobre o som:</strong> com o painel aberto na tela, toca o som de caixa registradora. Com o celular bloqueado ou o painel fechado, o aparelho toca o som padrão de notificação: o navegador não deixa um site escolher o som nesse caso. Dá para deixar mais chamativo nas configurações do celular (volume de notificações e, no Android, o som do canal "Crewolada Admin").</p>
     </main>
   </div>
@@ -78,9 +80,27 @@
     }
     function post(url, body) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }); }
 
+    // Diagnosis: on iPhone, notifications only exist inside the app opened from the Home Screen icon.
+    var ua = navigator.userAgent;
+    var ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var instalado = window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    var v = (ua.match(/OS (\d+)[_.](\d+)/) || []);
+    var iosVelho = ios && v.length && (Number(v[1]) < 16 || (Number(v[1]) === 16 && Number(v[2]) < 4));
+    document.getElementById('diag').textContent = 'Diagnóstico: ' + (ios ? 'iPhone' + (v.length ? ' (iOS ' + v[1] + '.' + v[2] + ')' : '') : 'Android/computador') + ' · aberto como app instalado: ' + (instalado ? 'sim' : 'não') + ' · aceita notificações: ' + (suporta ? 'sim' : 'não');
+    var ia = document.getElementById('ios-aviso');
+    function iosMsg(t) { ia.style.display = 'block'; ia.innerHTML = t; }
+
     if (!suporta) {
       estado.textContent = 'sem suporte'; bAtivar.disabled = true;
-      aviso('Este navegador não aceita notificações. No iPhone, instale o painel na Tela de Início (veja abaixo) e abra por lá.', 'erro');
+      if (ios && iosVelho) {
+        iosMsg('<strong>O iOS deste iPhone é antigo.</strong> Notificações do painel precisam do iOS 16.4 ou mais novo. Atualize em Ajustes &gt; Geral &gt; Atualização de Software e tente de novo.');
+      } else if (ios && !instalado) {
+        iosMsg('<strong>Você está no Safari, e o iPhone só libera notificações no app instalado.</strong><ol style="margin:8px 0 0"><li>Feche esta aba do Safari.</li><li>Na <strong>Tela de Início</strong> do iPhone, toque no ícone <strong>Crew Admin</strong> (com a logo da festa).</li><li>Dentro do app, entre no painel de novo e abra <strong>Avisos</strong>.</li><li>Toque em <strong>Ativar avisos</strong>.</li></ol><p style="margin:10px 0 0">Se o ícone abrir o Safari com a barra de endereço, apague o ícone e adicione de novo em Safari &gt; Compartilhar &gt; <strong>Adicionar à Tela de Início</strong>, deixando ligada a chave <strong>Abrir como app da web</strong>.</p>');
+      } else if (ios) {
+        iosMsg('<strong>O app está aberto, mas este iOS não liberou as notificações.</strong> Confira se o iPhone está com o iOS 16.4 ou mais novo (Ajustes &gt; Geral &gt; Atualização de Software) e, se estiver, apague o ícone, adicione de novo e abra por ele.');
+      } else {
+        aviso('Este navegador não aceita notificações. No Android use o Chrome; no computador, Chrome ou Edge.', 'erro');
+      }
     } else {
       navigator.serviceWorker.register('/admin-sw.js').then(function (reg) { return reg.pushManager.getSubscription(); })
         .then(function (sub) { pinta(Boolean(sub) && Notification.permission === 'granted'); })
