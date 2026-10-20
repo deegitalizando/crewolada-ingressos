@@ -1,9 +1,18 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<link rel="icon" type="image/jpeg" href="/img/logo.jpg" />
+<link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/img/apple-touch-icon.png" />
+<% if (locals.adminPage) { %>
+<link rel="manifest" href="/admin.webmanifest" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Crew Admin" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<% } %>
 <link rel="stylesheet" href="/fonts/fonts.css" />
 <link rel="stylesheet" href="/css/style.css" />
 <script src="/js/crew-fx.js" defer></script>
+<script src="/js/admin-push.js" defer></script>
 <% if (metaPixelId) { %>
 <!-- Meta Pixel Code -->
 <script>

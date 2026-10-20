@@ -7,7 +7,9 @@ const mp = require('./mercadopago');
 const { currentEvent } = require('./event');
 const { notifyMusicaAprovada, notifyMusicaEmail } = require('./n8n');
 const { isValidCpf } = require('./cpf');
-const { draftLyrics } = require('./gemini');
+const { draftLyrics, validarLetraCrista, MENSAGEM_CUNHO_CRISTAO } = require('./gemini');
+const afiliados = require('./afiliados');
+const push = require('./push');
 
 const PRECO = Number(process.env.MUSICA_PRECO || 10);
 
@@ -15,6 +17,14 @@ const ESTILOS = ['R&B', 'Soul', 'Neosoul', 'Hip-Hop', 'Boom Bap', 'Rap', 'Trap',
 // `value` is what's actually sent to the lyric/music generation prompts;
 // `label` adds an approximate BPM range just so the picker reads as a tempo
 // choice, not a mood choice.
+// Vocal of the song (sent to the generator as a style hint).
+const VOCAIS = [
+  { value: 'Feminino', label: 'Feminino' },
+  { value: 'Masculino', label: 'Masculino' },
+  { value: 'Ambos', label: 'Ambos (feminino e masculino)' },
+];
+const vocalValido = (v) => (VOCAIS.some((x) => x.value === v) ? v : '');
+
 const ANDAMENTOS = [
   { value: 'Lenta e suave', label: 'Lenta e suave (~70-90 BPM)' },
   { value: 'Media', label: 'Media (~95-115 BPM)' },
@@ -44,7 +54,7 @@ function rateLimited(ip) {
 //    buyer's choice, same as the ticket checkout.
 // Ids are prefixed "musica_" and live in db.musicaPedidos (not db.orders) so
 // the shared Mercado Pago webhook can tell the two products apart.
-async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, letra, referencia, canal }, formData = null) {
+async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia, canal, afiliacao }, formData = null) {
   const id = `musica_${crypto.randomUUID()}`;
   const description = `Musica personalizada - ${currentEvent.brand || 'Crewolada'}`;
 
@@ -79,6 +89,8 @@ async function criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andament
     email,
     estilo,
     andamento,
+    vocal: vocalValido(vocal),
+    afiliacao: afiliacao || null, // who gets commission for this sale (see afiliados.js)
     letra,
     referencia,
     valor: PRECO,
@@ -129,6 +141,10 @@ async function aprovarPedidoMusica(pedidoId, paymentId) {
 
   if (!pedido) return null;
 
+  push.notificar(push.avisoMusica(pedido)); // "Música vendida" on the admin's phone
+  if (pedido.afiliacao) {
+    afiliados.registrarVenda(pedido).catch((err) => console.error('Falha ao registrar comissao de afiliado:', err.message));
+  }
   await notifyMusicaAprovada(pedido);
   return pedido;
 }
@@ -168,6 +184,16 @@ function buscarPedidoPorCodigo(codigo) {
   const db = store.load();
   return Object.values(db.musicaPedidos || {}).find((p) => codigoCurto(p.id) === c) || null;
 }
+
+// Tip shown after the song is delivered (page, e-mail and WhatsApp): invites the buyer to post it.
+// The page of the order is private (it shows the buyer's e-mail), so people are asked to share
+// the downloaded audio and the tool's public link, never the order page.
+const LEGENDA_DIVULGACAO = 'Ganhei uma m\u00fasica feita s\u00f3 pra mim, com a minha hist\u00f3ria \ud83c\udfb6\ud83d\ude4f\ud83c\udffe Crie a sua: crewolada.com/criesuamusica #CriesuaMusicaCrewolada #BlackMusicCrist\u00e3';
+const DICAS_DIVULGACAO = [
+  'Baixe o MP3 e use como \u00e1udio de um v\u00eddeo (Reels, TikTok ou Stories) com fotos ou v\u00eddeos de quem a m\u00fasica homenageia.',
+  'Mostre a rea\u00e7\u00e3o da pessoa ao ouvir a m\u00fasica pela primeira vez: \u00e9 o tipo de v\u00eddeo que mais emociona.',
+  'Use a legenda abaixo e marque a Crewolada: a gente vai adorar ver a sua m\u00fasica por a\u00ed.',
+];
 
 const MENSAGEM_WHATSAPP = 'Olá, gostaria de receber minha música por aqui.';
 function whatsappMusicaUrl(pedido) {
@@ -213,6 +239,9 @@ async function posEntregaMusica(pedido) {
     '',
     'Quer receber também no WhatsApp? Abra o link acima e toque em "Receber no WhatsApp".',
     '',
+    'Dica: divulgue a sua música nas redes! ' + DICAS_DIVULGACAO[0],
+    'Sugestão de legenda: ' + LEGENDA_DIVULGACAO,
+    '',
     'Equipe Crewolada',
   ].join('\n');
   try {
@@ -235,6 +264,7 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
       eventInfo,
       estilos: ESTILOS,
       andamentos: ANDAMENTOS,
+      vocais: VOCAIS,
       preco: PRECO,
       mpPublicKey: process.env.MP_PUBLIC_KEY,
     });
@@ -261,6 +291,18 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
     }
   });
 
+  app.post('/api/musica/validar-letra', async (req, res) => {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
+    if (rateLimited(ip)) return res.status(429).json({ error: 'Muitas tentativas, aguarde um pouco.' });
+    const letra = String(req.body.letra || '').trim().slice(0, 4000);
+    if (!letra) return res.status(400).json({ error: 'Preencha a letra.' });
+    const v = await validarLetraCrista(letra);
+    if (!v.aprovada) {
+      return res.status(422).json({ ok: false, error: MENSAGEM_CUNHO_CRISTAO + (v.motivo ? 'Ajuste a letra: ' + v.motivo : 'Ajuste a letra e tente de novo.') });
+    }
+    return res.json({ ok: true });
+  });
+
   app.post('/api/musica/pedido', async (req, res) => {
     const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() || req.socket.remoteAddress;
     if (rateLimited(ip)) return res.status(429).json({ error: 'Muitas tentativas, aguarde um pouco.' });
@@ -270,10 +312,14 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
     const cpfDigits = String(req.body.cpf || '').replace(/\D/g, '');
     const estilo = String(req.body.estilo || '').slice(0, 60);
     const andamento = String(req.body.andamento || '').slice(0, 60);
+    const vocal = vocalValido(String(req.body.vocal || ''));
     const letra = String(req.body.letra || '').trim().slice(0, 4000);
     const referencia = String(req.body.referencia || '').trim().slice(0, 200);
     const formData = req.body.formData;
 
+    if (!vocal) {
+      return res.status(400).json({ error: 'Escolha o vocal (feminino, masculino ou ambos).' });
+    }
     if (!nome || !email || !estilo || !letra || !formData) {
       return res.status(400).json({ error: 'Preencha todos os campos obrigatorios.' });
     }
@@ -281,9 +327,17 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
       return res.status(400).json({ error: 'CPF invalido.' });
     }
 
+    const veredito = await validarLetraCrista(letra);
+    if (!veredito.aprovada) {
+      return res.status(422).json({ error: MENSAGEM_CUNHO_CRISTAO + (veredito.motivo ? 'Ajuste a letra: ' + veredito.motivo : 'Ajuste a letra e tente de novo.') });
+    }
+
     try {
       const resultado = await criarPedidoMusica(
-        { nome, cpf: cpfDigits, email, estilo, andamento, letra, referencia, canal: 'site' },
+        {
+          nome, cpf: cpfDigits, email, estilo, andamento, vocal, letra, referencia, canal: 'site',
+          afiliacao: afiliados.atribuirCompra({ vid: req.cookies && req.cookies[afiliados.COOKIE_VID], email, cpf: cpfDigits }),
+        },
         formData
       );
       if (resultado.rejected) {
@@ -305,6 +359,8 @@ function registerMusicaPersonalizadaRoutes(app, { eventInfo }) {
       codigo: codigoCurto(pedido.id),
       whatsappUrl: whatsappMusicaUrl(pedido),
       audioSrc: '/musica/pedido/' + pedido.id + '/audio',
+      legenda: LEGENDA_DIVULGACAO,
+      dicas: DICAS_DIVULGACAO,
     });
   });
 
@@ -347,4 +403,6 @@ module.exports = {
   codigoCurto,
   registerMusicaPersonalizadaRoutes,
   PRECO,
+  vocalValido,
+  validarLetraCrista,
 };

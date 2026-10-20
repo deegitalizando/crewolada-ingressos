@@ -12,6 +12,8 @@ const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus,
 const { registerEventosRoutes } = require('./eventos');
 const { registerContatoRoutes } = require('./contato');
 const { registerLinksRoutes } = require('./links');
+const { registerAfiliadosRoutes } = require('./afiliados');
+const { registerPushRoutes } = require('./push');
 const { getProducts, getChildRules, buildPurchase } = require('./produtos');
 
 // Once a lote has this many tickets or fewer left, the sales page starts
@@ -40,7 +42,7 @@ const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
 const {
   criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, posEntregaMusica, buscarPedidoPorCodigo, codigoCurto,
-  registerMusicaPersonalizadaRoutes, PRECO: PRECO_MUSICA,
+  registerMusicaPersonalizadaRoutes, validarLetraCrista, PRECO: PRECO_MUSICA,
 } = require('./musicaPersonalizada');
 
 // Builds a wa.me link, pre-filled with the ticket link, that the ADMIN opens
@@ -68,6 +70,11 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// Admin pages get the installable-app tags (manifest, "Crew Admin" icon) in views/partials/head.ejs.
+app.use((req, res, next) => {
+  res.locals.adminPage = /^\/(admin|contabilidade|downloads|validador)/.test(req.path);
+  next();
+});
 
 // Available to every view without needing to be passed into each res.render()
 // call individually.
@@ -283,6 +290,10 @@ function requireAdminAuth(req, res, next) {
 // Public pages
 // ---------------------------------------------------------------------
 
+// Affiliate programme (registered before the pages so a ?ref= link on any of them is counted).
+registerAfiliadosRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
+registerPushRoutes(app, { requireAdminAuth, eventInfo });
+
 app.get('/', (req, res) => {
   if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
   if (!salesOpenNow()) {
@@ -335,6 +346,10 @@ app.get('/api/disponibilidade', (req, res) => {
 // of a date baked into its prompt, and tell live from "no event on sale yet".
 app.get('/api/evento-atual', (req, res) => {
   res.set('Cache-Control', 'no-store');
+  const db = store.load();
+  const products = getProducts(currentEvent);
+  const rules = products.length ? getChildRules(currentEvent) : null;
+  const heldUntil = salesHeldBack(currentEvent) ? salesOpensAt(currentEvent) : null;
   res.json({
     salesOpen: salesOpenNow(),
     eventName: currentEvent.name,
@@ -342,6 +357,12 @@ app.get('/api/evento-atual', (req, res) => {
     timeLabel: currentEvent.timeLabel || '',
     venue: currentEvent.venue,
     communityUrl: app.locals.communityUrl,
+    // Used by the WhatsApp bot (Davi) to announce the party, tickets left and prices.
+    capacity: currentEvent.capacity || null,
+    ticketsLeft: products.length ? getAvailable(db) : null,
+    products: products.map((p) => ({ name: p.name, price: p.price, includes: p.includes || [] })),
+    childRules: rules ? { freeUntil: rules.freeUntil, halfUntil: rules.halfUntil } : null,
+    salesOpensAtLabel: heldUntil ? opensLabelBR(heldUntil) : null,
   });
 });
 
@@ -1152,7 +1173,7 @@ app.post('/api/n8n/musica/pedido', async (req, res) => {
     return res.status(401).json({ ok: false, error: 'unauthorized' });
   }
 
-  const { remoteJid, nome, cpf, email, estilo, andamento, letra, referencia } = req.body;
+  const { remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia, ref } = req.body;
   if (!remoteJid || !cpf || !estilo || !letra) {
     return res.status(400).json({ ok: false, error: 'missing_fields' });
   }
@@ -1160,8 +1181,16 @@ app.post('/api/n8n/musica/pedido', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'invalid_cpf' });
   }
 
+  // Only Christian lyrics: screened before the Pix is created (n8n tells the buyer what to fix).
+  const veredito = await validarLetraCrista(String(letra));
+  if (!veredito.aprovada) {
+    return res.json({ ok: false, error: 'conteudo_nao_cristao', motivo: veredito.motivo });
+  }
+
   try {
-    const resultado = await criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, letra, referencia });
+    // WhatsApp sale that came from an affiliate link: the bot sends the referral code it read.
+    const afiliacao = ref ? require('./afiliados').atribuirPorRef(ref, { email, cpf }) : null;
+    const resultado = await criarPedidoMusica({ remoteJid, nome, cpf, email, estilo, andamento, vocal, letra, referencia, afiliacao });
     return res.json({ ok: true, ...resultado });
   } catch (err) {
     console.error('Erro ao criar pedido de musica:', err.message);

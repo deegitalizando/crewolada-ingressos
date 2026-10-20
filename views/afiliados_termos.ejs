@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Termos do Programa de Afiliados · Crewolada</title>
+  <%- include('partials/head') %>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="Crewolada" />
+      <h1>Termos do programa de afiliados</h1>
+    </header>
+    <main class="card legal">
+      <p class="hint" style="text-align:left">Ferramenta indicada: <strong>Crie Sua Própria Música</strong> (crewolada.com/criesuamusica).</p>
+
+      <h3>1. Como funciona</h3>
+      <p>Qualquer pessoa maior de 18 anos, com CPF, pode se cadastrar de graça. Cada afiliado recebe um link exclusivo. Quando alguém compra a ferramenta depois de clicar nesse link, o afiliado recebe uma comissão.</p>
+
+      <h3>2. Comissão</h3>
+      <ul>
+        <li>A comissão é de <strong><%= info.pct %>%</strong> do valor pago pela venda (valor bruto, antes das taxas do meio de pagamento).</li>
+        <li>Só vendas efetivamente pagas e aprovadas geram comissão. Pedidos não pagos, estornados ou fraudulentos não geram (ou têm a comissão cancelada).</li>
+      </ul>
+
+      <h3>3. Validade do link e divisão entre afiliados</h3>
+      <ul>
+        <li>O link vale por <strong><%= info.dias %> dias</strong> no navegador de quem clicou (cookie). A compra feita nesse período, no mesmo navegador, é atribuída.</li>
+        <li>Se a mesma pessoa clicar nos links de mais de um afiliado dentro do período, a comissão daquela venda é dividida entre todos eles, <%= info.modo === 'igual' ? 'em partes iguais' : 'na proporção dos cliques que cada um trouxe' %>.</li>
+        <li>Cliques repetidos da mesma pessoa, no mesmo link, em até 24 horas, contam uma vez. Cliques de robôs e do próprio afiliado não contam.</li>
+        <li>Compras feitas pelo próprio afiliado (mesmo e-mail ou CPF) não geram comissão.</li>
+        <li>Vendas feitas pelo WhatsApp contam quando a pessoa chegou ao WhatsApp por um link de afiliado (o link do site ou o link "para o WhatsApp" do painel) e o código de indicação que aparece na mensagem inicial foi mantido. Quem apagar o código ou chegar ao bot por outro caminho não é atribuído.</li>
+      </ul>
+
+      <h3>4. Pagamento</h3>
+      <ul>
+        <li>A comissão fica disponível <strong><%= info.carencia %> dias</strong> após a venda.</li>
+        <li>O repasse é feito por Pix (ou transferência, se informada conta bancária) quando o saldo disponível atingir <strong>R$ <%= String(info.minSaque).replace('.', ',') %></strong>, em nome do titular do CPF cadastrado.</li>
+        <li>O afiliado é responsável por informar dados corretos e por suas obrigações fiscais sobre o que receber. A Crewolada pode exigir dados adicionais para fins fiscais.</li>
+      </ul>
+
+      <h3>5. Regras de divulgação</h3>
+      <ul>
+        <li>É proibido enviar spam, mensagens em massa para quem não pediu, ou divulgar em locais que proíbam publicidade.</li>
+        <li>É proibido prometer o que a ferramenta não faz, usar informações falsas ou enganosas, ou fingir ser a Crewolada.</li>
+        <li>As músicas da ferramenta têm cunho cristão. Não divulgue de forma que contrarie esse propósito.</li>
+        <li>É proibido usar a marca "Crewolada" em anúncios pagos que concorram com o site oficial (como comprar a palavra "Crewolada" no Google) sem autorização por escrito.</li>
+        <li>Fraude, autoindicação, cliques falsos ou qualquer manipulação resultam no cancelamento das comissões e no bloqueio da conta.</li>
+      </ul>
+
+      <h3>6. Dados pessoais</h3>
+      <p>Usamos seus dados (nome, e-mail, WhatsApp, CPF e dados de repasse) apenas para administrar o programa e pagar as comissões, conforme a LGPD. Para atribuir vendas, gravamos um cookie no navegador do visitante, com um identificador aleatório e o código do afiliado, por <%= info.dias %> dias. Mais detalhes na <a href="/politica-de-privacidade">política de privacidade</a>.</p>
+
+      <h3>7. Geral</h3>
+      <p>O programa não cria vínculo de emprego, sociedade ou representação. A Crewolada pode alterar as regras do programa para vendas futuras, avisando pelo site, e pode encerrar o programa ou bloquear contas que descumpram estes termos. Dúvidas: contato@crewolada.com.</p>
+
+      <p class="hint"><a href="/afiliados" style="color:var(--accent)">&larr; Voltar ao programa</a></p>
+    </main>
+  </div>
+</body>
+</html>

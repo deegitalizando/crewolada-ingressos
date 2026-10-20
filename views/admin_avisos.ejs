@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Avisos de venda - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <meta name="theme-color" content="#000000" />
+  <style>
+    .av { margin: 0 16px; }
+    .av .big { display: flex; align-items: center; gap: 14px; }
+    .av .big .ico { font-size: 38px; }
+    .av .st { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; text-transform: uppercase; background: rgba(255,255,255,.1); }
+    .av .st.on { background: rgba(34,197,94,.2); color: #86efac; } .av .st.off { background: rgba(239,68,68,.2); color: #fecaca; }
+    .av .btns { display: grid; gap: 10px; margin-top: 14px; }
+    .av .btns button { margin: 0; }
+    .av ol, .av ul { color: var(--text-dim); font-size: 14px; line-height: 1.6; padding-left: 20px; }
+    .av ol strong, .av ul strong { color: var(--text); }
+    .av .msg { margin-top: 12px; padding: 10px 12px; border-radius: 6px; font-size: 14px; display: none; }
+    .av .msg.ok { display: block; border: 1px solid var(--ok); background: rgba(34,197,94,.12); color: #86efac; }
+    .av .msg.erro { display: block; border: 1px solid var(--danger); background: rgba(239,68,68,.12); color: #fecaca; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form"><button type="submit" class="link-btn">Sair</button></form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/contatos" class="tab">Convites</a>
+      <a href="/admin/afiliados" class="tab">Afiliados</a>
+      <a href="/admin/avisos" class="tab active">Avisos</a>
+      <a href="/admin/links" class="tab">Links</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+    </nav>
+
+    <main class="card av">
+      <div class="big"><span class="ico">🔔</span><div><h3 style="margin:0">Aviso de venda no celular</h3><p class="hint" style="margin:4px 0 0; text-align:left">A cada ingresso ou música vendida, o celular recebe uma notificação com o valor da venda.</p></div></div>
+      <p style="margin:14px 0 0">Neste aparelho: <span class="st off" id="estado">verificando...</span> <small style="color:var(--text-dim)">· <span id="total"><%= inscritos %></span> aparelho(s) cadastrado(s) no total</small></p>
+      <div class="btns">
+        <button type="button" id="ativar">Ativar avisos neste aparelho</button>
+        <button type="button" id="testar" class="btn-secondary" style="display:none">Enviar notificação de teste</button>
+        <button type="button" id="som" class="btn-secondary">🔊 Ouvir o som da venda</button>
+        <button type="button" id="desativar" class="btn-secondary" style="display:none">Desativar neste aparelho</button>
+      </div>
+      <div class="msg" id="msg"></div>
+    </main>
+
+    <main class="card av" style="margin-top:14px">
+      <h3 style="margin-top:0">Como ativar</h3>
+      <p class="hint" style="margin-top:0; text-align:left"><strong>Android (Chrome):</strong></p>
+      <ol><li>Abra <strong>crewolada.com/admin/avisos</strong> no Chrome e entre no painel.</li><li>Toque em <strong>Ativar avisos neste aparelho</strong> e permita as notificações.</li><li>Toque em <strong>Enviar notificação de teste</strong>.</li></ol>
+      <p class="hint" style="text-align:left"><strong>iPhone (Safari, iOS 16.4 ou mais novo):</strong></p>
+      <ol><li>Abra esta página no <strong>Safari</strong>, toque em <strong>Compartilhar</strong> e depois em <strong>Adicionar à Tela de Início</strong>.</li><li>O ícone que aparece na tela de início é a <strong>logo da festa</strong>. Se você já tinha adicionado antes e o ícone está diferente, apague o ícone antigo e adicione de novo (o iPhone guarda o ícone na hora em que ele é adicionado).</li><li>Abra o app <strong>Crew Admin</strong> pela tela de início (não pelo Safari) e entre no painel.</li><li>Nesta página, toque em <strong>Ativar avisos</strong> e permita as notificações.</li></ol>
+      <p class="hint" style="text-align:left"><strong>Sobre o som:</strong> com o painel aberto na tela, toca o som de caixa registradora. Com o celular bloqueado ou o painel fechado, o aparelho toca o som padrão de notificação: o navegador não deixa um site escolher o som nesse caso. Dá para deixar mais chamativo nas configurações do celular (volume de notificações e, no Android, o som do canal "Crewolada Admin").</p>
+    </main>
+  </div>
+
+  <script>
+    var estado = document.getElementById('estado'), msg = document.getElementById('msg');
+    var bAtivar = document.getElementById('ativar'), bTestar = document.getElementById('testar'), bDes = document.getElementById('desativar');
+    function aviso(t, tipo) { msg.className = 'msg ' + tipo; msg.textContent = t; }
+    function b64(s) { var p = '='.repeat((4 - s.length % 4) % 4), r = (s + p).replace(/-/g, '+').replace(/_/g, '/'), raw = atob(r); var o = new Uint8Array(raw.length); for (var i = 0; i < raw.length; i++) o[i] = raw.charCodeAt(i); return o; }
+    var suporta = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+    function pinta(ativo) {
+      estado.textContent = ativo ? 'ativado' : 'desativado'; estado.className = 'st ' + (ativo ? 'on' : 'off');
+      bAtivar.style.display = ativo ? 'none' : ''; bTestar.style.display = ativo ? '' : 'none'; bDes.style.display = ativo ? '' : 'none';
+    }
+    function post(url, body) { return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }); }
+
+    if (!suporta) {
+      estado.textContent = 'sem suporte'; bAtivar.disabled = true;
+      aviso('Este navegador não aceita notificações. No iPhone, instale o painel na Tela de Início (veja abaixo) e abra por lá.', 'erro');
+    } else {
+      navigator.serviceWorker.register('/admin-sw.js').then(function (reg) { return reg.pushManager.getSubscription(); })
+        .then(function (sub) { pinta(Boolean(sub) && Notification.permission === 'granted'); })
+        .catch(function () { pinta(false); });
+    }
+
+    bAtivar.onclick = function () {
+      bAtivar.disabled = true; msg.className = 'msg';
+      Notification.requestPermission().then(function (perm) {
+        if (perm !== 'granted') throw new Error('Permissão negada. Libere as notificações deste site nas configurações do navegador.');
+        return navigator.serviceWorker.ready;
+      }).then(function (reg) {
+        return fetch('/api/admin/push/chave').then(function (r) { return r.json(); }).then(function (k) {
+          return reg.pushManager.getSubscription().then(function (s) { return s || reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(k.chave) }); });
+        });
+      }).then(function (sub) { return post('/api/admin/push/inscrever', { subscription: sub.toJSON() }); })
+        .then(function (x) { if (!x.ok) throw new Error(x.d.error || 'Não foi possível cadastrar.'); document.getElementById('total').textContent = x.d.inscritos; pinta(true); aviso('Pronto! Avisos ativados neste aparelho. Toque em "Enviar notificação de teste".', 'ok'); })
+        .catch(function (e) { aviso(e.message || 'Não foi possível ativar.', 'erro'); })
+        .finally(function () { bAtivar.disabled = false; });
+    };
+    bTestar.onclick = function () {
+      bTestar.disabled = true;
+      post('/api/admin/push/testar').then(function (x) { aviso(x.d.enviados ? 'Teste enviado para ' + x.d.enviados + ' aparelho(s). A notificação deve chegar em instantes.' : 'Nenhum aparelho cadastrado.', x.d.enviados ? 'ok' : 'erro'); })
+        .finally(function () { bTestar.disabled = false; });
+    };
+    bDes.onclick = function () {
+      navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (sub) {
+        if (!sub) return null; var ep = sub.endpoint; return sub.unsubscribe().then(function () { return post('/api/admin/push/remover', { endpoint: ep }); });
+      }).then(function (x) { if (x && x.d) document.getElementById('total').textContent = x.d.inscritos; pinta(false); aviso('Avisos desativados neste aparelho.', 'ok'); });
+    };
+    document.getElementById('som').onclick = function () { (window.tocarSomVenda ? window.tocarSomVenda() : Promise.reject()).catch(function () { aviso('Não consegui tocar. Verifique o volume e se o celular não está no silencioso.', 'erro'); }); };
+  </script>
+</body>
+</html>

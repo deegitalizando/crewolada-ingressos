@@ -2,6 +2,7 @@ const store = require('./store');
 const { buildTicketRecords, attachPdf } = require('./tickets');
 const { notifyOrderApproved } = require('./n8n');
 const { trackPurchase } = require('./metaConversions');
+const push = require('./push');
 
 // Marks an order paid and issues its tickets, exactly once. Both the
 // synchronous payment response (card) and the async Mercado Pago webhook
@@ -54,7 +55,11 @@ async function approveOrder(orderId, paymentId, eventInfo) {
   // or an admin-triggered resend — both of which already pass origin: 'reenvio'.
   await notifyOrderApproved(approvedOrder, tickets, { channel: 'email' });
   // Courtesy tickets aren't sales — don't report them as conversions.
-  if (!approvedOrder.isCourtesy && Number(approvedOrder.totalAmount) > 0) await trackPurchase(approvedOrder, approvedOrder.id);
+  if (!approvedOrder.isCourtesy && Number(approvedOrder.totalAmount) > 0) {
+    await trackPurchase(approvedOrder, approvedOrder.id);
+    // "Venda aprovada" push on the admin's phone (never throws, never blocks the sale).
+    push.notificar(push.avisoIngresso(approvedOrder, eventInfo && eventInfo.name));
+  }
 
   return { order: approvedOrder, tickets };
 }

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Programa de Afiliados · Crewolada</title>
+  <meta name="description" content="Divulgue a ferramenta Crie Sua Própria Música e ganhe <%= info.pct %>% de cada venda. Cadastro gratuito, repasse por Pix." />
+  <%- include('partials/head') %>
+  <style>
+    .af .wrap { width: min(560px, 100%); margin-inline: auto; padding: 22px 18px 70px; }
+    .af .kick { display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 12px; letter-spacing: 0.34em; text-transform: uppercase; font-weight: 500; }
+    .af .kick span { flex: 1; max-width: 56px; height: 1.5px; background: var(--accent); }
+    .af h1 { margin: 18px 0 8px; text-align: center; font-size: clamp(2rem, 8.5vw, 2.9rem); line-height: 1.04; text-transform: uppercase; letter-spacing: 0.03em; }
+    .af h1 em { font-style: normal; color: var(--accent); }
+    .af .lead { text-align: center; color: #d6d6d6; margin: 0 auto 22px; max-width: 30em; line-height: 1.55; }
+    .af .logo-top { display: block; width: 112px; margin: 0 auto 6px; -webkit-mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); border-radius: 0; box-shadow: none; }
+    .rules { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 22px; }
+    .rule { padding: 14px 12px; border: 1.5px solid var(--card-border); border-radius: 6px; background: #0b0b0b; }
+    .rule b { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; color: var(--accent); line-height: 1; }
+    .rule span { display: block; margin-top: 6px; font-size: 13px; color: #cfcfcf; line-height: 1.4; }
+    .steps { margin: 0 0 22px; padding: 0; list-style: none; display: grid; gap: 10px; counter-reset: s; }
+    .steps li { counter-increment: s; position: relative; padding: 14px 14px 14px 52px; border: 1.5px solid var(--card-border); border-radius: 6px; background: #0b0b0b; font-size: 14.5px; line-height: 1.45; color: #e5e5e5; }
+    .steps li::before { content: counter(s); position: absolute; left: 14px; top: 12px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 50%; background: var(--accent); color: #000; font-weight: 800; }
+    .tabs2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 14px; }
+    .tabs2 button { margin: 0; border-radius: 0; background: #111; color: #bbb; border: 1.5px solid var(--card-border); letter-spacing: 0.08em; padding: 13px 8px; }
+    .tabs2 button.on { background: linear-gradient(180deg, var(--gold-hi), var(--accent)); color: #000; }
+    .af form .row { display: grid; gap: 12px; }
+    .af .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .af label { font-size: 13px; color: #cfcfcf; }
+    .af select { background: #1a1a1a; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: 12px 10px; color: var(--text); font-size: 16px; }
+    .af .check { flex-direction: row; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.45; }
+    .af .check input { width: 20px; height: 20px; flex: none; margin-top: 2px; accent-color: var(--accent); }
+    .af details { border: 1.5px solid var(--card-border); border-radius: 6px; padding: 10px 12px; }
+    .af details summary { cursor: pointer; color: var(--accent); font-weight: 700; font-size: 14px; }
+    .af .hp { position: absolute; left: -9999px; height: 0; overflow: hidden; }
+    .af a { color: var(--accent); }
+    .faq { margin-top: 26px; }
+    .faq h3 { margin: 0 0 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .faq details { margin-bottom: 8px; }
+    .faq p { margin: 8px 0 0; font-size: 14px; color: #cfcfcf; line-height: 1.5; }
+    @media (max-width: 420px) { .af .two { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body class="af">
+  <div class="wrap">
+    <img class="logo logo-top" src="/img/logo.jpg" alt="Crewolada" />
+    <p class="kick"><span></span>Programa de afiliados<span></span></p>
+    <h1>Divulgue e ganhe <em><%= info.pct %>%</em> por venda</h1>
+    <p class="lead">Indique a ferramenta <strong>Crie Sua Própria Música</strong>: a pessoa conta a história dela e recebe uma música original, cantada, com cunho cristão. Cada venda que vier do seu link rende comissão para você.</p>
+
+    <div class="rules">
+      <div class="rule"><b><%= info.pct %>%</b><span>de comissão em cada venda indicada</span></div>
+      <div class="rule"><b><%= info.dias %> dias</b><span>de validade do seu link no navegador do cliente</span></div>
+      <div class="rule"><b>Pix</b><span>repasse na chave que você cadastrar (a partir de R$ <%= String(info.minSaque).replace('.', ',') %>)</span></div>
+      <div class="rule"><b>R$ 0</b><span>para entrar. Cadastro grátis e sem mensalidade</span></div>
+    </div>
+
+    <ol class="steps">
+      <li><strong>Cadastre-se</strong> e receba seu link exclusivo na hora.</li>
+      <li><strong>Divulgue</strong> no WhatsApp, Instagram, igreja, grupos e onde quiser (sem spam, veja os termos).</li>
+      <li><strong>Acompanhe</strong> cliques e vendas no seu painel e receba por Pix.</li>
+    </ol>
+
+    <main class="card" id="cadastro">
+      <div class="tabs2">
+        <button type="button" id="t-cad" class="<%= aba === 'cadastro' ? 'on' : '' %>">Quero ser afiliado</button>
+        <button type="button" id="t-ent" class="<%= aba === 'entrar' ? 'on' : '' %>">Já tenho conta</button>
+      </div>
+      <div id="form-error" class="alert" style="display:none"></div>
+
+      <form id="f-cad" class="form" <%- aba === 'entrar' ? 'style="display:none"' : '' %> novalidate>
+        <div class="hp" aria-hidden="true"><label>Não preencha <input type="text" name="website" tabindex="-1" autocomplete="off" /></label></div>
+        <label>Nome completo <input type="text" name="nome" autocomplete="name" required /></label>
+        <div class="two">
+          <label>E-mail <input type="email" name="email" autocomplete="email" required /></label>
+          <label>WhatsApp (com DDD) <input type="tel" name="whatsapp" autocomplete="tel" placeholder="(21) 99999-9999" required /></label>
+        </div>
+        <label>CPF <input type="text" name="cpf" inputmode="numeric" placeholder="000.000.000-00" maxlength="14" required /></label>
+        <label>Senha (mínimo 8 caracteres) <input type="password" name="senha" autocomplete="new-password" minlength="8" required /></label>
+        <div class="two">
+          <label>Tipo da chave Pix
+            <select name="pixTipo">
+              <option value="cpf">CPF</option><option value="email">E-mail</option><option value="telefone">Telefone</option><option value="aleatoria">Chave aleatória</option><option value="cnpj">CNPJ</option>
+            </select>
+          </label>
+          <label>Chave Pix para receber <input type="text" name="pixChave" required /></label>
+        </div>
+        <details>
+          <summary>Prefere receber por conta bancária? (opcional)</summary>
+          <div class="row" style="margin-top:10px">
+            <label>Banco <input type="text" name="banco" maxlength="60" /></label>
+            <div class="two">
+              <label>Agência <input type="text" name="agencia" maxlength="12" /></label>
+              <label>Conta <input type="text" name="conta" maxlength="20" /></label>
+            </div>
+            <label>Tipo <select name="tipoConta"><option value="corrente">Corrente</option><option value="poupanca">Poupança</option></select></label>
+          </div>
+        </details>
+        <label class="check"><input type="checkbox" name="aceito" value="1" /> <span>Li e aceito os <a href="/afiliados/termos" target="_blank">termos do programa de afiliados</a> e a <a href="/politica-de-privacidade" target="_blank">política de privacidade</a>.</span></label>
+        <button type="submit" id="b-cad">Criar minha conta de afiliado</button>
+      </form>
+
+      <form id="f-ent" class="form" <%- aba === 'entrar' ? '' : 'style="display:none"' %> novalidate>
+        <label>E-mail <input type="email" name="email" autocomplete="email" required /></label>
+        <label>Senha <input type="password" name="senha" autocomplete="current-password" required /></label>
+        <button type="submit" id="b-ent">Entrar no painel</button>
+        <p class="hint">Esqueceu a senha? Fale com a equipe da Crewolada para gerar uma nova.</p>
+      </form>
+    </main>
+
+    <section class="faq">
+      <h3>Dúvidas rápidas</h3>
+      <details><summary>Como a comissão é dividida?</summary><p>Se a pessoa que comprou clicou nos links de mais de um afiliado nos últimos <%= info.dias %> dias, a comissão daquela venda é dividida entre eles, <%= info.modo === 'igual' ? 'em partes iguais' : 'na proporção dos cliques que cada um trouxe' %>. Cliques repetidos da mesma pessoa no mesmo dia contam uma vez só.</p></details>
+      <details><summary>Quando eu recebo?</summary><p>A comissão fica disponível <%= info.carencia %> dias depois da venda. Quando o saldo disponível chegar a R$ <%= String(info.minSaque).replace('.', ',') %>, a equipe faz o Pix para a chave que você cadastrou.</p></details>
+      <details><summary>Posso comprar pelo meu próprio link?</summary><p>Não gera comissão. O programa é para indicar outras pessoas.</p></details>
+    </section>
+  </div>
+
+  <script>
+    var tCad = document.getElementById('t-cad'), tEnt = document.getElementById('t-ent');
+    var fCad = document.getElementById('f-cad'), fEnt = document.getElementById('f-ent');
+    var err = document.getElementById('form-error');
+    function aba(entrar) {
+      fCad.style.display = entrar ? 'none' : ''; fEnt.style.display = entrar ? '' : 'none';
+      tCad.classList.toggle('on', !entrar); tEnt.classList.toggle('on', entrar); err.style.display = 'none';
+    }
+    tCad.onclick = function () { aba(false); }; tEnt.onclick = function () { aba(true); };
+    var cpf = fCad.elements.cpf;
+    cpf.addEventListener('input', function () {
+      var v = cpf.value.replace(/\D/g, '').slice(0, 11);
+      v = v.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      cpf.value = v;
+    });
+    function envia(form, btn, url) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault(); err.style.display = 'none';
+        var body = {}; new FormData(form).forEach(function (v, k) { body[k] = v; });
+        var original = btn.textContent; btn.disabled = true; btn.textContent = 'Enviando...';
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (x) {
+            if (!x.ok) { err.textContent = x.d.error || 'Não foi possível concluir.'; err.style.display = 'block'; err.scrollIntoView({ behavior: 'smooth', block: 'center' }); btn.disabled = false; btn.textContent = original; return; }
+            window.location.href = x.d.redirect;
+          })
+          .catch(function () { err.textContent = 'Erro de conexão. Tente de novo.'; err.style.display = 'block'; btn.disabled = false; btn.textContent = original; });
+      });
+    }
+    envia(fCad, document.getElementById('b-cad'), '/api/afiliados/cadastro');
+    envia(fEnt, document.getElementById('b-ent'), '/api/afiliados/login');
+  </script>
+</body>
+</html>

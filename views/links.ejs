@@ -360,5 +360,19 @@
       if (location.hash === '#ingressos') open();
     })();
   </script>
+<% if (locals.emBreve !== false) { %>
+  <script>
+    // Ingressos ainda "Em breve": quando a venda abrir (horario definido no servidor), a pagina se atualiza sozinha.
+    (function () {
+      function checar() {
+        if (document.hidden) return;
+        fetch('/api/evento-atual', { cache: 'no-store' }).then(function (r) { return r.json(); })
+          .then(function (d) { if (d && d.salesOpen) location.reload(); }).catch(function () {});
+      }
+      setInterval(checar, 20000);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) checar(); });
+    })();
+  </script>
+  <% } %>
 </body>
 </html>

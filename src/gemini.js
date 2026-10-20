@@ -23,4 +23,22 @@ async function draftLyrics({ estilo, andamento, detalhes, referencia }) {
   return String(data.letra).trim();
 }
 
-module.exports = { draftLyrics };
+// Every song must have a Christian angle (praise, family, love, gratitude, overcoming...).
+// A Gemini check (webhook "Receber Validacao Letra" of the same n8n workflow) screens the lyrics
+// before any payment is created. If the check itself is down the lyrics are let through (and
+// logged) so a paying customer is never blocked by our tooling.
+async function validarLetraCrista(letra) {
+  const webhookUrl = process.env.N8N_MUSICA_VALIDAR_WEBHOOK_URL
+    || 'https://n8n-n8n.wmbyj1.easypanel.host/webhook/crewolada-musica-validar';
+  try {
+    const { data } = await axios.post(webhookUrl, { letra }, { timeout: 25000 });
+    return { aprovada: !(data && data.aprovada === false), motivo: String((data && data.motivo) || '') };
+  } catch (err) {
+    console.error('Validacao de letra indisponivel (liberada):', err.message);
+    return { aprovada: true, motivo: 'nao-verificado' };
+  }
+}
+
+const MENSAGEM_CUNHO_CRISTAO = 'As m\u00fasicas da Crewolada t\u00eam sempre cunho crist\u00e3o (louvor, fam\u00edlia, amor, gratid\u00e3o, supera\u00e7\u00e3o...). ';
+
+module.exports = { draftLyrics, validarLetraCrista, MENSAGEM_CUNHO_CRISTAO };

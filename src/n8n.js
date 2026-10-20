@@ -87,6 +87,7 @@ async function notifyMusicaAprovada(pedido) {
       nome: pedido.nome,
       estilo: pedido.estilo,
       andamento: pedido.andamento,
+      vocal: pedido.vocal || '',
       letra: pedido.letra,
       referencia: pedido.referencia,
     },
