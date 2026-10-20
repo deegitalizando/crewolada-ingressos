@@ -2,7 +2,7 @@
    e o painel esta aberto na tela. Nao faz nada fora das paginas do admin. */
 (function () {
   if (!document.querySelector('.tabs-row')) return;
-  var audio = new Audio('/audio/venda.wav');
+  var audio = new Audio('/audio/venda.mp3');
   audio.preload = 'auto';
   var liberado = false;
 

@@ -125,7 +125,7 @@ function avisoMusica(pedido) {
 
 // ---------------------------------------------------------------------------
 function registerPushRoutes(app, { requireAdminAuth, eventInfo }) {
-  // /admin-sw.js, /admin.webmanifest and /audio/venda.wav are plain files in public/.
+  // /admin-sw.js, /admin.webmanifest and /audio/venda.mp3 are plain files in public/.
 
   app.get('/admin/avisos', requireAdminAuth, (req, res) => {
     res.render('admin_avisos', { eventInfo, inscritos: quantos() });
