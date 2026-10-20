@@ -39,7 +39,8 @@ const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNot
 const { isValidCpf } = require('./cpf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
 const {
-  criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, posEntregaMusica, buscarPedidoPorCodigo, registerMusicaPersonalizadaRoutes,
+  criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, posEntregaMusica, buscarPedidoPorCodigo, codigoCurto,
+  registerMusicaPersonalizadaRoutes, PRECO: PRECO_MUSICA,
 } = require('./musicaPersonalizada');
 
 // Builds a wa.me link, pre-filled with the ticket link, that the ADMIN opens
@@ -1316,6 +1317,39 @@ app.post('/api/admin/campanhas/:id/excluir', requireAdminAuth, async (req, res) 
     db.campaigns = (db.campaigns || []).filter((c) => c.id !== req.params.id);
   });
   res.redirect('/admin/mensagens?saved=1');
+});
+
+// ---- painel do "Crie Sua Propria Musica" (pedidos de musica personalizada via IA) ----
+app.get('/admin/criesuamusica', requireAdminAuth, (req, res) => {
+  const db = store.load();
+  const pedidos = Object.values(db.musicaPedidos || {}).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  const porStatus = { aguardando_pagamento: 0, pago: 0, gerando: 0, entregue: 0 };
+  let faturado = 0;
+  let abandonados = 0;
+  for (const p of pedidos) {
+    porStatus[p.status] = (porStatus[p.status] || 0) + 1;
+    if (p.status === 'pago' || p.status === 'gerando' || p.status === 'entregue') faturado += Number(p.valor) || 0;
+    if (p.status === 'aguardando_pagamento' && p.lembreteAbandonoEnviado) abandonados += 1;
+  }
+  const total = pedidos.length;
+  const pagos = (porStatus.pago || 0) + (porStatus.gerando || 0) + (porStatus.entregue || 0);
+  const conversao = total > 0 ? Math.round((pagos / total) * 100) : 0;
+
+  res.render('admin_criesuamusica', {
+    eventInfo,
+    pedidos: pedidos.map((p) => ({
+      ...p,
+      codigo: codigoCurto(p.id),
+      createdAtLabel: formatDatetimeLocalBrasilia(p.createdAt).replace('T', ' '),
+    })),
+    total,
+    porStatus,
+    faturado,
+    abandonados,
+    conversao,
+    preco: PRECO_MUSICA,
+  });
 });
 
 // ---- musicas: sugestoes diarias para a playlist do evento ----

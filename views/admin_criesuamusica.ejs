@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Crie Sua Própria Música - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 0 0 20px; }
+    .kpi { background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px 16px; }
+    .kpi .k-label { font-size: 12px; color: var(--text-dim); }
+    .kpi .k-value { font-size: 26px; font-weight: 800; margin: 4px 0 2px; line-height: 1.15; }
+    .status-tag { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .status-aguardando_pagamento { background: rgba(234,179,8,0.18); color: #eab308; }
+    .status-pago, .status-gerando { background: rgba(57,135,229,0.18); color: #3987e5; }
+    .status-entregue { background: rgba(34,197,94,0.18); color: #22c55e; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/contatos" class="tab">Convites</a>
+      <a href="/admin/links" class="tab">Links</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+      <a href="/admin/criesuamusica" class="tab active">Música IA</a>
+    </nav>
+
+    <main class="card">
+      <h3>Crie Sua Própria Música</h3>
+      <p class="hint" style="margin-top:0">
+        Preço atual: <strong>R$ <%= preco.toFixed(2).replace('.', ',') %></strong> por música
+        (ajustável pela variável de ambiente <code>MUSICA_PRECO</code>).
+      </p>
+
+      <div class="kpis">
+        <div class="kpi">
+          <div class="k-label">Pedidos no total</div>
+          <div class="k-value"><%= total %></div>
+        </div>
+        <div class="kpi">
+          <div class="k-label">Faturado (pago/entregue)</div>
+          <div class="k-value">R$ <%= faturado.toFixed(2).replace('.', ',') %></div>
+        </div>
+        <div class="kpi">
+          <div class="k-label">Taxa de conversão</div>
+          <div class="k-value"><%= conversao %>%</div>
+        </div>
+        <div class="kpi">
+          <div class="k-label">Aguardando pagamento</div>
+          <div class="k-value"><%= porStatus.aguardando_pagamento || 0 %></div>
+        </div>
+        <div class="kpi">
+          <div class="k-label">Carrinho abandonado</div>
+          <div class="k-value"><%= abandonados %></div>
+        </div>
+        <div class="kpi">
+          <div class="k-label">Entregues</div>
+          <div class="k-value"><%= porStatus.entregue || 0 %></div>
+        </div>
+      </div>
+
+      <% if (total === 0) { %>
+        <p class="hint">Nenhum pedido ainda. Divulgue o link <code>/criesuamusica</code> ou o botão em <code>/links</code> para começar a receber pedidos.</p>
+      <% } %>
+    </main>
+
+    <% if (total > 0) { %>
+    <main class="card">
+      <h3>Pedidos</h3>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Código</th><th>Nome</th><th>Canal</th><th>Estilo</th><th>Status</th><th>Valor</th><th>Criado em</th><th></th></tr>
+          </thead>
+          <tbody>
+            <% pedidos.forEach(function(p) { %>
+              <tr>
+                <td><%= p.codigo %></td>
+                <td>
+                  <%= p.nome || '-' %>
+                  <% if (p.email) { %><br /><span class="hint" style="margin:0;text-align:left"><%= p.email %></span><% } %>
+                </td>
+                <td><%= p.canal === 'whatsapp' ? 'WhatsApp' : 'Site' %></td>
+                <td><%= p.estilo || '-' %></td>
+                <td>
+                  <span class="status-tag status-<%= p.status %>">
+                    <% if (p.status === 'aguardando_pagamento') { %>Aguardando pagamento<% } %>
+                    <% if (p.status === 'pago') { %>Pago<% } %>
+                    <% if (p.status === 'gerando') { %>Gerando<% } %>
+                    <% if (p.status === 'entregue') { %>Entregue<% } %>
+                  </span>
+                  <% if (p.status === 'aguardando_pagamento' && p.lembreteAbandonoEnviado) { %>
+                    <br /><span class="hint" style="margin:2px 0 0;text-align:left">lembrete enviado</span>
+                  <% } %>
+                </td>
+                <td>R$ <%= Number(p.valor || 0).toFixed(2).replace('.', ',') %></td>
+                <td><%= p.createdAtLabel %></td>
+                <td>
+                  <% if (p.status === 'entregue' && p.canal === 'site') { %>
+                    <a href="/musica/pedido/<%= p.id %>" target="_blank"><button type="button" class="btn-secondary" style="margin-top:0;width:auto;padding:6px 12px;font-size:12px">Ouvir</button></a>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </main>
+    <% } %>
+  </div>
+</body>
+</html>
