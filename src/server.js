@@ -66,6 +66,17 @@ const PORT = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, '..', 'views'));
+// compras.<dominio> serves only the standalone shopping list (public/compras),
+// never the ticket storefront or admin.
+app.use((req, res, next) => {
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase();
+  if (!host.startsWith('compras.')) return next();
+  if (req.path === '/' || req.path === '/index.html') {
+    return res.sendFile(path.join(__dirname, '..', 'public', 'compras', 'index.html'));
+  }
+  if (req.path.startsWith('/compras/')) return next();
+  return res.redirect('/');
+});
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));

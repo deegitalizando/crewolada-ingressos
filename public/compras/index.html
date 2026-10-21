@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Lista de Compras</title>
+<meta name="description" content="Lista de compras com cálculo automático de quantidades e preços." />
+<meta name="theme-color" content="#0f766e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="Compras" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%92%3C/text%3E%3C/svg%3E" />
+<style>
+  :root {
+    --bg: #f4f6f5;
+    --card: #ffffff;
+    --border: #dde3e1;
+    --text: #17201e;
+    --dim: #5f6b68;
+    --accent: #0f766e;
+    --accent-soft: #e0f2ef;
+    --danger: #c0392b;
+    --done: #9aa5a2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1312;
+      --card: #172020;
+      --border: #26312f;
+      --text: #eef3f1;
+      --dim: #94a3a0;
+      --accent: #2dd4bf;
+      --accent-soft: #123331;
+      --danger: #f87171;
+      --done: #5d6a67;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .page {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 20px 16px calc(150px + env(safe-area-inset-bottom));
+  }
+  header h1 { margin: 0; font-size: 1.6rem; }
+  header p { margin: 4px 0 18px; color: var(--dim); font-size: .95rem; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  form.add { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  form.add .full { grid-column: 1 / -1; }
+  label { display: block; font-size: .8rem; color: var(--dim); margin-bottom: 4px; }
+  input {
+    width: 100%;
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 12px;
+    min-height: 44px;
+  }
+  input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 10px;
+    border: 0;
+    min-height: 44px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; font-weight: 600; padding: 0 16px; }
+  @media (prefers-color-scheme: dark) { .btn-primary { color: #04201d; } }
+  .preview { color: var(--dim); font-size: .9rem; align-self: center; }
+
+  .toolbar { display: flex; justify-content: space-between; align-items: center; margin: 22px 0 10px; gap: 8px; }
+  .toolbar h2 { margin: 0; font-size: 1.1rem; }
+  .btn-ghost { background: transparent; color: var(--dim); border: 1px solid var(--border); padding: 0 12px; font-size: .85rem; }
+
+  ul.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  li.item {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    gap: 6px 10px;
+    align-items: center;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+  li.item input[type=checkbox] { width: 24px; height: 24px; min-height: 0; accent-color: var(--accent); margin: 0; }
+  .name { font-weight: 600; word-break: break-word; }
+  .meta { grid-column: 2 / 4; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .meta .field { display: flex; align-items: center; gap: 4px; color: var(--dim); font-size: .85rem; }
+  .meta input { width: 92px; padding: 6px 8px; min-height: 36px; font-size: .95rem; }
+  .meta input.qty { width: 70px; }
+  .line-total { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .del { background: transparent; color: var(--danger); width: 40px; min-height: 40px; font-size: 1.2rem; margin-left: auto; }
+  li.item.done .name, li.item.done .line-total { color: var(--done); text-decoration: line-through; }
+
+  .empty { text-align: center; color: var(--dim); padding: 28px 12px; border: 1px dashed var(--border); border-radius: 12px; }
+
+  .budget { margin-top: 18px; display: flex; gap: 10px; align-items: end; }
+  .budget > div { flex: 1; }
+
+  .summary {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    box-shadow: 0 -6px 20px rgba(0,0,0,.08);
+  }
+  .summary-inner { max-width: 640px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .stat .k { font-size: .75rem; color: var(--dim); }
+  .stat .v { font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat.total .v { font-size: 1.35rem; color: var(--accent); }
+  .stat.over .v { color: var(--danger); }
+  .stat:last-child { text-align: right; }
+</style>
+</head>
+<body>
+<main class="page">
+  <header>
+    <h1>🛒 Lista de Compras</h1>
+    <p>Adicione os produtos, a quantidade e o preço — o total é calculado na hora. A lista fica salva neste aparelho.</p>
+  </header>
+
+  <form class="add card" id="addForm" autocomplete="off">
+    <div class="full">
+      <label for="fName">Produto</label>
+      <input id="fName" required placeholder="Ex.: Arroz 5kg" maxlength="80" />
+    </div>
+    <div>
+      <label for="fQty">Quantidade</label>
+      <input id="fQty" inputmode="decimal" value="1" placeholder="1" />
+    </div>
+    <div>
+      <label for="fPrice">Preço unitário (R$)</label>
+      <input id="fPrice" inputmode="decimal" placeholder="0,00" />
+    </div>
+    <span class="preview" id="preview">Subtotal: R$ 0,00</span>
+    <button type="submit" class="btn-primary">Adicionar</button>
+  </form>
+
+  <div class="toolbar">
+    <h2 id="listTitle">Itens</h2>
+    <div>
+      <button type="button" class="btn-ghost" id="uncheckAll">Desmarcar</button>
+      <button type="button" class="btn-ghost" id="clearAll">Limpar lista</button>
+    </div>
+  </div>
+  <ul class="items" id="items"></ul>
+
+  <div class="budget card">
+    <div>
+      <label for="budget">Orçamento (opcional, R$)</label>
+      <input id="budget" inputmode="decimal" placeholder="Ex.: 300,00" />
+    </div>
+  </div>
+</main>
+
+<div class="summary">
+  <div class="summary-inner">
+    <div class="stat"><div class="k">No carrinho</div><div class="v" id="sCart">R$ 0,00</div></div>
+    <div class="stat" id="sBudgetBox"><div class="k" id="sBudgetLabel">Itens</div><div class="v" id="sBudget">0</div></div>
+    <div class="stat total"><div class="k">Total da lista</div><div class="v" id="sTotal">R$ 0,00</div></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = 'lista-compras-v1';
+  var brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  // Accepts "12,50", "12.50", "1.234,56" or "R$ 3".
+  function parseNum(v) {
+    var s = String(v == null ? '' : v).replace(/[^\d,.-]/g, '');
+    if (s.indexOf(',') !== -1) s = s.replace(/\./g, '').replace(',', '.');
+    var n = parseFloat(s);
+    return isFinite(n) && n >= 0 ? n : 0;
+  }
+  function fmtNum(n) { return String(Math.round(n * 1000) / 1000).replace('.', ','); }
+  function fmtPrice(n) { return n ? n.toFixed(2).replace('.', ',') : ''; }
+  var round2 = function (n) { return Math.round(n * 100) / 100; };
+
+  var state = { items: [], budget: 0 };
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (saved && Array.isArray(saved.items)) state = saved;
+  } catch (e) {}
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var list = $('items');
+
+  function lineTotal(it) { return round2(it.qty * it.price); }
+
+  function renderSummary() {
+    var total = 0, cart = 0, count = 0;
+    state.items.forEach(function (it) {
+      var t = lineTotal(it);
+      total += t;
+      if (it.done) cart += t;
+      count += 1;
+    });
+    $('sTotal').textContent = brl.format(total);
+    $('sCart').textContent = brl.format(cart);
+    $('listTitle').textContent = 'Itens (' + count + ')';
+    var box = $('sBudgetBox');
+    if (state.budget > 0) {
+      var left = state.budget - total;
+      $('sBudgetLabel').textContent = left >= 0 ? 'Sobra do orçamento' : 'Acima do orçamento';
+      $('sBudget').textContent = brl.format(Math.abs(left));
+      box.classList.toggle('over', left < 0);
+    } else {
+      $('sBudgetLabel').textContent = 'Itens';
+      $('sBudget').textContent = String(count);
+      box.classList.remove('over');
+    }
+  }
+
+  function render() {
+    list.innerHTML = '';
+    if (!state.items.length) {
+      var empty = document.createElement('li');
+      empty.className = 'empty';
+      empty.textContent = 'Sua lista está vazia. Adicione o primeiro produto acima.';
+      list.appendChild(empty);
+    }
+    state.items.forEach(function (it) {
+      var li = document.createElement('li');
+      li.className = 'item' + (it.done ? ' done' : '');
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = !!it.done;
+      cb.setAttribute('aria-label', 'Marcar ' + it.name + ' como no carrinho');
+      cb.addEventListener('change', function () { it.done = cb.checked; li.classList.toggle('done', it.done); save(); renderSummary(); });
+
+      var name = document.createElement('div');
+      name.className = 'name';
+      name.textContent = it.name;
+
+      var tot = document.createElement('div');
+      tot.className = 'line-total';
+      tot.textContent = brl.format(lineTotal(it));
+
+      var meta = document.createElement('div');
+      meta.className = 'meta';
+      function field(labelText, value, cls, onInput) {
+        var wrap = document.createElement('label');
+        wrap.className = 'field';
+        wrap.textContent = labelText;
+        var inp = document.createElement('input');
+        inp.inputMode = 'decimal';
+        inp.className = cls;
+        inp.value = value;
+        inp.addEventListener('input', function () { onInput(parseNum(inp.value)); tot.textContent = brl.format(lineTotal(it)); save(); renderSummary(); });
+        wrap.appendChild(inp);
+        return wrap;
+      }
+      meta.appendChild(field('Qtd', fmtNum(it.qty), 'qty', function (n) { it.qty = n; }));
+      meta.appendChild(field('× R$', fmtPrice(it.price), 'price', function (n) { it.price = n; }));
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'del';
+      del.textContent = '✕';
+      del.setAttribute('aria-label', 'Remover ' + it.name);
+      del.addEventListener('click', function () {
+        state.items = state.items.filter(function (x) { return x !== it; });
+        save(); render();
+      });
+      meta.appendChild(del);
+
+      li.appendChild(cb); li.appendChild(name); li.appendChild(tot); li.appendChild(meta);
+      list.appendChild(li);
+    });
+    renderSummary();
+  }
+
+  function updatePreview() {
+    var t = round2(parseNum($('fQty').value || '1') * parseNum($('fPrice').value));
+    $('preview').textContent = 'Subtotal: ' + brl.format(t);
+  }
+  $('fQty').addEventListener('input', updatePreview);
+  $('fPrice').addEventListener('input', updatePreview);
+
+  $('addForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('fName').value.trim();
+    if (!name) return;
+    var qtyRaw = $('fQty').value.trim();
+    state.items.push({
+      name: name,
+      qty: qtyRaw === '' ? 1 : parseNum(qtyRaw),
+      price: parseNum($('fPrice').value),
+      done: false,
+    });
+    save(); render();
+    $('fName').value = ''; $('fQty').value = '1'; $('fPrice').value = '';
+    updatePreview();
+    $('fName').focus();
+  });
+
+  $('budget').value = fmtPrice(state.budget);
+  $('budget').addEventListener('input', function () { state.budget = parseNum($('budget').value); save(); renderSummary(); });
+
+  $('uncheckAll').addEventListener('click', function () {
+    state.items.forEach(function (it) { it.done = false; });
+    save(); render();
+  });
+  $('clearAll').addEventListener('click', function () {
+    if (!state.items.length || !confirm('Apagar todos os itens da lista?')) return;
+    state.items = [];
+    save(); render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
