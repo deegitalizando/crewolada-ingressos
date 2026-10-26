@@ -86,6 +86,24 @@
     <main class="card">
       <h3>Compradores / leads</h3>
       <p class="hint" style="margin-top:0">O botao WhatsApp abre uma conversa no seu proprio WhatsApp com a mensagem e o link do ingresso ja prontos — e so tocar em enviar. E-mail e enviado direto por aqui.</p>
+      <form action="/admin/leads/exportar.csv" method="GET" class="form" style="margin-bottom:16px; padding:14px; border:1.5px solid var(--card-border); border-radius:6px">
+        <strong>Exportar leads (CSV para Excel ou Google Sheets)</strong>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px">
+          <label>Evento
+            <select name="evento"><option value="todos">Todos os eventos</option>
+              <% (events || []).forEach(function(e) { %><option value="<%= e.id %>" <%= e.id === selectedEventId ? 'selected' : '' %>><%= e.name %> · <%= e.dateLabel %></option><% }) %>
+            </select>
+          </label>
+          <label>Formato
+            <select name="tipo"><option value="contatos">Contatos (1 linha por pessoa)</option><option value="pedidos">Pedidos (1 linha por compra)</option><option value="participantes">Participantes (1 linha por ingresso)</option></select>
+          </label>
+          <label>Quais
+            <select name="quais"><option value="pagos">Compras pagas</option><option value="gratuitos">Gratuitos e cortesias</option><option value="pendentes">Pendentes</option><option value="cancelados">Cancelados</option><option value="todos">Todos</option></select>
+          </label>
+        </div>
+        <button type="submit">Baixar CSV</button>
+        <p class="hint" style="margin:0; text-align:left">Dados pessoais (LGPD): use só para a finalidade informada ao comprador, como avisar sobre eventos, e não compartilhe o arquivo.</p>
+      </form>
       <label style="margin-bottom:14px; display:block">
         Buscar por nome, e-mail ou WhatsApp
         <input type="text" id="leads-search" placeholder="Digite para filtrar..." />
