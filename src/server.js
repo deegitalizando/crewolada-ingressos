@@ -35,6 +35,7 @@ function buildWhatsappTicketLink() {
 }
 const { approveOrder } = require('./fulfillment');
 const { registerCortesiaRoutes } = require('./cortesia');
+const { registerBotRoutes } = require('./bot');
 const { registerContabilidadeRoutes } = require('./contabilidade');
 const { registerRelatorioRoutes } = require('./relatorio');
 const { registerPesquisaRoutes } = require('./pesquisa');
@@ -79,9 +80,19 @@ app.use((req, res, next) => {
   return res.redirect('/');
 });
 app.use(express.static(path.join(__dirname, '..', 'public')));
+// Files uploaded to the AI agent panel arrive as base64 JSON (up to 8 MB raw).
+app.use('/bot/arquivos', express.json({ limit: '12mb' }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+// bot.<dominio> serves only the AI agent panel (/bot) and the admin login it needs.
+app.use((req, res, next) => {
+  const host = String(req.headers['x-forwarded-host'] || req.headers.host || '').toLowerCase();
+  if (!host.startsWith('bot.')) return next();
+  if (req.path === '/admin' && req.method === 'GET' && isAdmin(req)) return res.redirect('/bot');
+  if (req.path.startsWith('/bot') || ['/admin', '/admin/login', '/admin/logout'].includes(req.path)) return next();
+  return res.redirect('/bot');
+});
 // Admin pages get the installable-app tags (manifest, "Crew Admin" icon) in views/partials/head.ejs.
 app.use((req, res, next) => {
   res.locals.adminPage = /^\/(admin|contabilidade|downloads|validador)/.test(req.path);
@@ -1256,6 +1267,16 @@ registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasilia
 registerLinksRoutes(app, {
   requireAdminAuth, eventInfo, salesOpenNow: () => salesOpenNow(),
   availableNow: () => (getProducts(currentEvent).length > 0 ? getAvailable(store.load()) : null),
+});
+registerBotRoutes(app, {
+  requireAdminAuth, eventInfo,
+  deps: {
+    salesOpenNow: () => salesOpenNow(),
+    availableNow: () => (getProducts(currentEvent).length > 0 ? getAvailable(store.load()) : null),
+    communityUrl: app.locals.communityUrl,
+    whatsappTicketUrl: buildWhatsappTicketLink(),
+    whatsappLabel: app.locals.contact.whatsappLabel,
+  },
 });
 registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,

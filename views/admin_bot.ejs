@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Agente de IA - Crewolada</title>
+  <%- include('partials/head') %>
+  <style>
+    .bt-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 18px; margin: 0 16px 16px; }
+    .bt-card h3 { margin: 0 0 4px; font-size: 18px; }
+    .bt-card > p.hint { margin: 0 0 14px; color: var(--text-dim); font-size: 14px; }
+    .bt-card label { display: block; font-size: 13px; font-weight: 700; margin-top: 12px; }
+    .bt-card input[type="text"], .bt-card textarea { width: 100%; margin-top: 6px; box-sizing: border-box; }
+    .bt-card textarea { min-height: 120px; resize: vertical; font-family: inherit; }
+    .bt-switch { display: flex; align-items: center; gap: 10px; font-weight: 700; margin-top: 4px !important; }
+    .bt-switch input { width: 20px; height: 20px; margin: 0; }
+    .bt-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+    .bt-row button { width: auto; margin: 0; padding: 10px 18px; }
+    .bt-item { border-top: 1px solid rgba(255, 255, 255, 0.08); padding: 12px 0; }
+    .bt-item:first-of-type { border-top: 0; }
+    .bt-item h4 { margin: 0; font-size: 15px; }
+    .bt-item .tx { margin: 6px 0 0; color: var(--text-dim); font-size: 14px; white-space: pre-wrap; max-height: 7.5em; overflow: hidden; }
+    .bt-item .bt-row { margin-top: 8px; }
+    .bt-item .bt-row button { padding: 6px 12px; font-size: 13px; }
+    .bt-item details summary { cursor: pointer; color: var(--accent); font-size: 13px; margin-top: 8px; }
+    .bt-meta { color: var(--text-dim); font-size: 12px; margin-top: 2px; }
+    .bt-drop { margin-top: 10px; border: 2px dashed rgba(255, 255, 255, 0.2); border-radius: 14px; padding: 22px; text-align: center; cursor: pointer; color: var(--text-dim); }
+    .bt-drop.over { border-color: var(--accent); color: var(--text); }
+    .bt-drop input { display: none; }
+    .bt-status { margin-top: 10px; font-size: 14px; }
+    .bt-status.err { color: #fca5a5; }
+    .bt-status.ok { color: #86efac; }
+    .bt-ctx { margin-top: 10px; white-space: pre-wrap; font-size: 13px; max-height: 420px; overflow: auto; background: rgba(0, 0, 0, 0.35); border-radius: 10px; padding: 12px; }
+    .bt-meter { height: 6px; border-radius: 3px; background: rgba(255, 255, 255, 0.1); overflow: hidden; margin-top: 8px; }
+    .bt-meter b { display: block; height: 100%; background: var(--accent); }
+    .flash { margin: 0 16px 16px; padding: 12px 16px; border-radius: 12px; background: rgba(34, 197, 94, 0.15); color: #86efac; font-size: 14px; }
+    .flash.err { background: rgba(251, 113, 133, 0.15); color: #fecdd3; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="Crewolada" />
+      <h1>Agente de IA · Instagram</h1>
+      <form action="/admin/logout" method="POST" class="logout-form"><button type="submit" class="link-btn">Sair</button></form>
+    </header>
+
+    <% if (msg === 'salvo') { %><div class="flash">Salvo. O agente já usa a nova versão na próxima mensagem.</div><% } %>
+    <% if (msg === 'excluido') { %><div class="flash">Removido.</div><% } %>
+    <% if (msg === 'item_vazio') { %><div class="flash err">Preencha o título e o texto.</div><% } %>
+
+    <section class="bt-card">
+      <h3>Agente</h3>
+      <p class="hint">Responde o Direct do @festacrewolada sobre eventos, ingressos e como recebê-los. Datas, preços e ingressos restantes vêm do site automaticamente.</p>
+      <form action="/bot/geral" method="POST">
+        <label class="bt-switch"><input type="checkbox" name="agenteAtivo" <%= bot.agenteAtivo ? 'checked' : '' %> /> Agente ligado</label>
+        <label>Instruções extras <span class="bt-meta">(tom de voz, o que evitar, quando chamar a equipe)</span>
+          <textarea name="instrucoes" maxlength="6000" placeholder="Ex.: Sempre convide a pessoa para entrar na comunidade do WhatsApp. Não prometa desconto."><%= bot.instrucoes %></textarea>
+        </label>
+        <div class="bt-row"><button type="submit">Salvar</button></div>
+      </form>
+    </section>
+
+    <section class="bt-card" id="itens">
+      <h3>Informações para o agente</h3>
+      <p class="hint">Perguntas frequentes, regras da festa, dress code, estacionamento, line-up... Tudo o que estiver aqui o agente usa para responder.</p>
+      <% bot.itens.forEach(function(i) { %>
+        <div class="bt-item">
+          <h4><%= i.titulo %></h4>
+          <p class="tx"><%= i.texto %></p>
+          <details>
+            <summary>Editar</summary>
+            <form action="/bot/itens" method="POST">
+              <input type="hidden" name="id" value="<%= i.id %>" />
+              <label>Título<input type="text" name="titulo" maxlength="120" value="<%= i.titulo %>" /></label>
+              <label>Texto<textarea name="texto" maxlength="6000"><%= i.texto %></textarea></label>
+              <div class="bt-row"><button type="submit">Salvar</button></div>
+            </form>
+          </details>
+          <form action="/bot/itens/<%= i.id %>/excluir" method="POST" class="bt-row" onsubmit="return confirm('Remover esta informação?')"><button type="submit" class="secondary">Remover</button></form>
+        </div>
+      <% }) %>
+      <form action="/bot/itens" method="POST">
+        <label>Novo título<input type="text" name="titulo" maxlength="120" placeholder="Ex.: Pode levar criança?" /></label>
+        <label>Texto<textarea name="texto" maxlength="6000" placeholder="Ex.: Pode sim! Crianças até 2 anos não pagam..."></textarea></label>
+        <div class="bt-row"><button type="submit">Adicionar</button></div>
+      </form>
+    </section>
+
+    <section class="bt-card" id="arquivos">
+      <h3>Arquivos para treinar o agente</h3>
+      <p class="hint">Envie PDF, Word (.docx), TXT, MD ou CSV de até <%= maxFileMb %> MB. O texto do arquivo vira conhecimento do agente. PDFs escaneados (só imagem) não têm texto para ler.</p>
+      <% bot.arquivos.forEach(function(a) { %>
+        <div class="bt-item">
+          <h4><%= a.nome %></h4>
+          <p class="bt-meta"><%= Math.round(a.tamanho / 1024) %> KB · <%= a.texto.length.toLocaleString('pt-BR') %> caracteres lidos</p>
+          <details><summary>Ver texto lido</summary><p class="tx" style="max-height:none"><%= a.texto %></p></details>
+          <form action="/bot/arquivos/<%= a.id %>/excluir" method="POST" class="bt-row" onsubmit="return confirm('Remover este arquivo do conhecimento do agente?')"><button type="submit" class="secondary">Remover</button></form>
+        </div>
+      <% }) %>
+      <label class="bt-drop" id="drop">
+        <input type="file" id="file" accept=".pdf,.docx,.txt,.md,.csv" multiple />
+        Toque para escolher ou arraste os arquivos aqui
+      </label>
+      <p class="bt-status" id="up-status" role="status"></p>
+    </section>
+
+    <section class="bt-card">
+      <h3>O que o agente sabe agora</h3>
+      <p class="hint">É exatamente isto que o agente lê antes de responder. Usando <%= ctxLen.toLocaleString('pt-BR') %> de <%= maxContext.toLocaleString('pt-BR') %> caracteres.</p>
+      <div class="bt-meter"><b style="width: <%= Math.min(100, Math.round(ctxLen / maxContext * 100)) %>%"></b></div>
+      <details><summary>Mostrar</summary><div class="bt-ctx"><%= ctx %></div></details>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var input = document.getElementById('file');
+      var drop = document.getElementById('drop');
+      var status = document.getElementById('up-status');
+      var MAX = <%= maxFileMb %> * 1024 * 1024;
+      function say(t, cls) { status.textContent = t; status.className = 'bt-status ' + (cls || ''); }
+      function toBase64(f) {
+        return new Promise(function (ok, fail) {
+          var r = new FileReader();
+          r.onload = function () { ok(String(r.result).split(',')[1] || ''); };
+          r.onerror = function () { fail(new Error('Não foi possível ler o arquivo.')); };
+          r.readAsDataURL(f);
+        });
+      }
+      async function enviar(files) {
+        var enviados = 0;
+        for (var i = 0; i < files.length; i++) {
+          var f = files[i];
+          if (f.size > MAX) { say(f.name + ': maior que ' + <%= maxFileMb %> + ' MB.', 'err'); continue; }
+          say('Lendo ' + f.name + '...');
+          try {
+            var b64 = await toBase64(f);
+            var r = await fetch('/bot/arquivos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.name, base64: b64 }) });
+            var d = await r.json().catch(function () { return {}; });
+            if (!r.ok) throw new Error(d.error || 'Falha ao enviar.');
+            enviados++;
+          } catch (e) { say(f.name + ': ' + e.message, 'err'); return; }
+        }
+        if (enviados) { say(enviados === 1 ? 'Arquivo adicionado.' : enviados + ' arquivos adicionados.', 'ok'); setTimeout(function () { location.replace('/bot?msg=salvo&t=' + Date.now() + '#arquivos'); }, 600); }
+      }
+      input.addEventListener('change', function () { enviar(input.files); });
+      ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });
+      ['dragleave', 'drop'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); }); });
+      drop.addEventListener('drop', function (e) { enviar(e.dataTransfer.files); });
+    })();
+  </script>
+</body>
+</html>
