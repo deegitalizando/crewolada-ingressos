@@ -134,6 +134,18 @@
       box-shadow: 0 18px 34px -12px rgba(255, 61, 46, 0.7), 0 0 0 0 rgba(255, 98, 40, 0.6);
       animation: bob2 var(--bd) ease-in-out var(--bdl) infinite, urgent 2.2s ease-out infinite, nudgeBadge 5s ease-in-out infinite;
     }
+    /* sold out: red band across the flyer + red box in place of the buy button */
+    .stage.soldout .card-video video { filter: grayscale(0.55) brightness(0.7); }
+    .soldout-band {
+      position: absolute; z-index: 5; left: -7%; right: -7%; top: 50%; transform: translateY(-50%) rotate(-11deg); pointer-events: none;
+      background: #D7141A; color: #fff; border-block: 3px solid #fff; padding: 14px 0; text-align: center;
+      font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(22px, 6.6vw, 36px); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1;
+      box-shadow: 0 22px 44px -14px rgba(0, 0, 0, 0.6);
+    }
+    .soldout-box { width: min(560px, 100%); margin-top: 28px; padding: 20px 22px 22px; border-radius: 6px; background: #D7141A; color: #fff; text-align: center; box-shadow: 0 24px 50px -20px rgba(215, 20, 26, 0.7); }
+    .soldout-box h2 { margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(1.6rem, 6vw, 2.2rem); letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.05; }
+    .soldout-box p { margin: 8px 0 0; font-size: 15px; opacity: 0.92; }
+    .soldout-box .btn { margin-top: 16px; background: #fff; color: #D7141A; }
     .badge-limit svg { width: 20px; height: 20px; fill: #FFE866; stroke: none; flex: none; animation: flicker 1.1s ease-in-out infinite alternate; transform-origin: 50% 90%; }
     @keyframes urgent { 0% { box-shadow: 0 18px 34px -12px rgba(255,61,46,.7), 0 0 0 0 rgba(255, 98, 40, 0.6); }
                         70%, 100% { box-shadow: 0 18px 34px -12px rgba(255,61,46,.7), 0 0 0 16px rgba(255, 98, 40, 0); } }
@@ -276,14 +288,15 @@
     </header>
 
     <div class="hero-inner" id="ingressos">
-      <div class="stage" id="stage">
+      <% const soldOut = !lote && !comingSoon; %>
+      <div class="stage<%= soldOut ? ' soldout' : '' %>" id="stage">
         <div class="card-video">
           <video autoplay muted loop playsinline preload="auto" poster="/img/flyer-tardezinha.webp" aria-label="<%= eventInfo.name %> — <%= eventInfo.dateLabel %>, <%= eventInfo.timeLabel %>, <%= eventInfo.venue %>">
             <source src="/video/tardezinha-loop.mp4" type="video/mp4" />
           </video>
         </div>
         <% if (lote && !comingSoon) { %><div class="badge badge-price"><div><b>R$ <%= priceLabel %></b><small>por pessoa</small></div></div><% } %>
-        <div class="badge badge-limit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Lote único e limitado</div>
+        <% if (soldOut) { %><div class="soldout-band" aria-hidden="true">Ingressos esgotados</div><% } else { %><div class="badge badge-limit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>Lote único e limitado</div><% } %>
       </div>
 
       <% if (lote && !comingSoon && productMode) { %>
@@ -332,7 +345,11 @@
       <% } else if (comingSoon) { %>
         <a class="btn hero-cta" href="#comunidade">Avisar quando abrir</a>
       <% } else { %>
-        <a class="btn hero-cta" href="#comunidade">Ingressos esgotados · entrar na comunidade</a>
+        <div class="soldout-box" role="status">
+          <h2>Ingressos esgotados</h2>
+          <p>Todos os ingressos da <%= eventInfo.name %> foram vendidos e as vendas estão encerradas. Obrigado, família! 🖤</p>
+          <a class="btn" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
+        </div>
       <% } %>
     </div>
 
