@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Painel Somos Betel · Crewolada SP</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <%- include('partials/head') %>
+  <style>
+    .bt .sum { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 0 16px 14px; }
+    .bt .sum div { padding: 12px; border: 1.5px solid var(--card-border); border-radius: 6px; background: #0b0b0b; }
+    .bt .sum span { display: block; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+    .bt .sum b { display: block; margin-top: 4px; font-family: 'Bricolage Grotesque', sans-serif; font-size: 28px; }
+    .bt .bar { height: 10px; margin: 0 16px 16px; border-radius: 5px; background: rgba(255,255,255,.12); overflow: hidden; }
+    .bt .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-hi), var(--accent)); }
+    .bt .tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+    .bt .tools label { flex: 1; min-width: 200px; }
+    .bt .tools a.btn { padding: 14px 18px; border-radius: 4px; background: linear-gradient(180deg, var(--gold-hi), var(--accent)); color: #000; font-weight: 800; text-decoration: none; letter-spacing: .06em; text-transform: uppercase; font-size: 13px; }
+    .bt .st { font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; background: rgba(34,197,94,.2); color: #86efac; }
+    .bt .st.x { background: rgba(239,68,68,.2); color: #fecaca; } .bt .st.p { background: rgba(255,255,255,.1); color: #ddd; }
+    .bt .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+    .bt .logout button { width: auto; margin: 0; padding: 8px 14px; font-size: 12px; background: transparent; color: var(--text-dim); border: 1.5px solid var(--card-border); }
+  </style>
+</head>
+<body class="bt">
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="Crewolada" />
+      <h1><%= logado ? 'Igreja Somos Betel' : 'Acesso restrito' %></h1>
+      <% if (logado) { %><form action="/betel/sair" method="POST" class="logout-form logout"><button type="submit">Sair</button></form><% } %>
+    </header>
+
+    <% if (!logado) { %>
+      <main class="card">
+        <h2 style="margin-top:0">Painel das inscrições</h2>
+        <p class="hint" style="margin-top:0; text-align:left">Entre com o usuário e a senha que a equipe da Crewolada informou.</p>
+        <% if (naoConfigurado) { %><div class="alert">O acesso ainda não foi configurado no servidor (variáveis BETEL_LOGIN e BETEL_PASSWORD). Fale com a equipe da Crewolada.</div><% } %>
+        <% if (erro && !naoConfigurado) { %><div class="alert">Usuário ou senha incorretos.</div><% } %>
+        <% if (bloqueado) { %><div class="alert">Muitas tentativas. Aguarde alguns minutos e tente de novo.</div><% } %>
+        <form action="/betel/login" method="POST" class="form">
+          <label>Usuário <input type="text" name="login" autocomplete="username" autocapitalize="none" required /></label>
+          <label>Senha <input type="password" name="password" autocomplete="current-password" required /></label>
+          <button type="submit">Entrar</button>
+        </form>
+      </main>
+    <% } else { %>
+      <main class="card" style="margin-bottom:14px">
+        <h2 style="margin:0 0 4px"><%= ev.name %></h2>
+        <p class="hint" style="margin:0; text-align:left"><%= ev.dateLabel %> · <%= ev.timeLabel %> · <%= ev.venue %></p>
+      </main>
+      <div class="sum">
+        <div><span>Inscrições</span><b><%= resumo.inscricoes %></b></div>
+        <div><span>Ingressos emitidos</span><b><%= resumo.ingressos %></b></div>
+        <div><span>Vagas restantes</span><b><%= resumo.restantes %></b></div>
+        <div><span>Já entraram</span><b><%= resumo.entraram %></b></div>
+      </div>
+      <div class="bar" aria-label="Ocupação"><i style="width: <%= resumo.capacidade ? Math.min(100, Math.round(resumo.ingressos / resumo.capacidade * 100)) : 0 %>%"></i></div>
+
+      <main class="card">
+        <div class="tools">
+          <label>Buscar por nome, e-mail ou WhatsApp <input type="text" id="busca" placeholder="Digite para filtrar..." /></label>
+          <a class="btn" href="/betel/exportar.csv">Baixar lista (CSV)</a>
+          <a class="btn" href="/betel" style="background:transparent; color:var(--text); border:1.5px solid var(--card-border)">Atualizar</a>
+        </div>
+        <% if (linhas.length === 0) { %>
+          <p class="hint">Ainda não há inscrições.</p>
+        <% } else { %>
+        <div class="table-wrap"><table id="tabela">
+          <thead><tr><th>Nome</th><th>E-mail</th><th>WhatsApp</th><th>CPF</th><th>Qtd</th><th>Ingressos</th><th>Entrou</th><th>Situação</th><th>Inscrito em</th></tr></thead>
+          <tbody>
+            <% linhas.forEach(function(l) { %>
+              <tr>
+                <td><strong><%= l.nome %></strong></td><td><%= l.email %></td><td><%= l.whatsapp %></td><td class="mono"><%= l.cpf %></td>
+                <td><%= l.qtd %></td><td class="mono"><%= l.codigos.join(' ') %></td><td><%= l.entraram %>/<%= l.codigos.length %></td>
+                <td><span class="st <%= l.status === 'Confirmada' ? '' : (l.status === 'Cancelada' ? 'x' : 'p') %>"><%= l.status %></span></td><td><%= l.data %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table></div>
+        <% } %>
+        <p class="hint" style="text-align:left">Dados pessoais (LGPD): use apenas para a organização do evento e não compartilhe esta lista. O CPF aparece parcialmente oculto.</p>
+      </main>
+      <script>
+        var b = document.getElementById('busca');
+        if (b) b.addEventListener('input', function () {
+          var q = b.value.toLowerCase();
+          document.querySelectorAll('#tabela tbody tr').forEach(function (tr) { tr.style.display = tr.textContent.toLowerCase().indexOf(q) > -1 ? '' : 'none'; });
+        });
+      </script>
+    <% } %>
+  </div>
+</body>
+</html>

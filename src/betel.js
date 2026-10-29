@@ -1,0 +1,103 @@
+const crypto = require('crypto');
+const store = require('./store');
+const { SP_EVENT, EVENTS } = require('./event');
+const { cell, fmtPhone, selecionar } = require('./leads');
+
+// ---------------------------------------------------------------------------
+// Painel da Igreja Somos Betel (/betel): somente leitura, com login proprio, mostrando apenas as
+// inscricoes do evento de Sao Paulo. Nao da acesso a nenhuma outra parte do painel admin.
+// O usuario e a senha ficam nas variaveis de ambiente BETEL_LOGIN e BETEL_PASSWORD (como o
+// ADMIN_LOGIN / ADMIN_PASSWORD): nada de senha dentro do codigo.
+// ---------------------------------------------------------------------------
+const LOGIN = () => String(process.env.BETEL_LOGIN || '');
+const SENHA = () => String(process.env.BETEL_PASSWORD || '');
+const configurado = () => Boolean(LOGIN() && SENHA());
+const sessions = new Map(); // token -> expiresAt
+const TTL = 12 * 60 * 60 * 1000;
+
+const hash = (v) => crypto.createHash('sha256').update(String(v)).digest();
+const igual = (a, b) => crypto.timingSafeEqual(hash(a), hash(b));
+
+const tentativas = new Map();
+function limitado(ip) {
+  const agora = Date.now();
+  const lista = (tentativas.get(ip) || []).filter((t) => agora - t < 10 * 60 * 1000);
+  lista.push(agora);
+  tentativas.set(ip, lista);
+  return lista.length > 12;
+}
+
+const cpfMascarado = (c) => { const d = String(c || '').replace(/\D/g, ''); return d.length === 11 ? `***.***.${d.slice(6, 9)}-${d.slice(9)}` : ''; };
+
+function dados(db, fmtDate) {
+  const ev = EVENTS.find((e) => e.id === SP_EVENT.id) || SP_EVENT;
+  const pedidos = selecionar(db, { evento: ev.id, quais: 'todos' }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const tickets = Object.values(db.tickets || {});
+  const linhas = pedidos.map((o) => {
+    const ts = tickets.filter((t) => t.orderId === o.id);
+    return {
+      nome: o.buyerName || '', email: o.buyerEmail || '', whatsapp: fmtPhone(o.buyerPhone), cpf: cpfMascarado(o.buyerCpf),
+      qtd: Number(o.quantity) || 0, codigos: ts.map((t) => t.code), entraram: ts.filter((t) => t.status === 'used').length,
+      status: o.status === 'paid' ? 'Confirmada' : o.status === 'cancelled' ? 'Cancelada' : o.status === 'pending' ? 'Pendente' : o.status,
+      ativa: o.status === 'paid', data: fmtDate(o.createdAt),
+    };
+  });
+  const ativas = linhas.filter((l) => l.ativa);
+  const ingressos = ativas.reduce((s, l) => s + l.qtd, 0);
+  const capacidade = ev.capacity || 0;
+  return {
+    ev, linhas,
+    resumo: { inscricoes: ativas.length, ingressos, restantes: Math.max(0, capacidade - ingressos), capacidade, entraram: ativas.reduce((s, l) => s + l.entraram, 0) },
+  };
+}
+
+function registerBetelRoutes(app, { eventInfo, formatDatetimeBrasiliaDisplay }) {
+  const logado = (req) => {
+    const t = req.cookies && req.cookies.betel_session;
+    const exp = t && sessions.get(t);
+    if (!exp || exp < Date.now()) { if (t) sessions.delete(t); return false; }
+    return true;
+  };
+  const exige = (req, res, next) => (logado(req) ? next() : res.redirect('/betel'));
+
+  app.get('/betel', (req, res) => {
+    if (!logado(req)) {
+      return res.render('betel', { eventInfo, logado: false, erro: req.query.erro === '1', bloqueado: req.query.erro === '2', naoConfigurado: !configurado() });
+    }
+    const d = dados(store.load(), formatDatetimeBrasiliaDisplay);
+    return res.render('betel', { eventInfo, logado: true, naoConfigurado: false, ...d });
+  });
+
+  app.post('/betel/login', (req, res) => {
+    const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress || '';
+    if (limitado(ip)) return res.redirect('/betel?erro=2');
+    if (!configurado()) return res.redirect('/betel?erro=1');
+    const okLogin = igual(String(req.body.login || '').trim().toLowerCase(), LOGIN().toLowerCase());
+    const okSenha = igual(String(req.body.password || ''), SENHA());
+    if (!(okLogin && okSenha)) return res.redirect('/betel?erro=1');
+    const token = crypto.randomBytes(24).toString('hex');
+    sessions.set(token, Date.now() + TTL);
+    res.cookie('betel_session', token, { httpOnly: true, sameSite: 'lax', secure: Boolean(req.secure || req.headers['x-forwarded-proto'] === 'https'), maxAge: TTL });
+    return res.redirect('/betel');
+  });
+
+  app.post('/betel/sair', (req, res) => {
+    sessions.delete(req.cookies && req.cookies.betel_session);
+    res.clearCookie('betel_session');
+    res.redirect('/betel');
+  });
+
+  app.get('/betel/exportar.csv', exige, (req, res) => {
+    const { linhas } = dados(store.load(), formatDatetimeBrasiliaDisplay);
+    const rows = [['Nome', 'E-mail', 'WhatsApp', 'CPF', 'Ingressos', 'Códigos', 'Entraram', 'Situação', 'Inscrito em']];
+    linhas.forEach((l) => rows.push([l.nome, l.email, l.whatsapp, l.cpf, l.qtd, l.codigos.join(' '), l.entraram, l.status, l.data]));
+    // WhatsApp (col 2), CPF (3) and date (8) are generated by us from clean data, not free text
+    const csv = '﻿' + rows.map((r, i) => r.map((v, c) => cell(v, i > 0 && (c === 2 || c === 3 || c === 8))).join(';')).join('\r\n');
+    res.set('Content-Type', 'text/csv; charset=utf-8');
+    res.set('Content-Disposition', 'attachment; filename="inscritos-crewolada-sp.csv"');
+    res.set('Cache-Control', 'no-store');
+    res.send(csv);
+  });
+}
+
+module.exports = { registerBetelRoutes };

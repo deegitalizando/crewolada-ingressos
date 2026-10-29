@@ -138,4 +138,4 @@ function registerLeadsRoutes(app, { requireAdminAuth, formatDatetimeBrasiliaDisp
   });
 }
 
-module.exports = { registerLeadsRoutes, montar, selecionar };
+module.exports = { registerLeadsRoutes, montar, selecionar, cell, fmtPhone };

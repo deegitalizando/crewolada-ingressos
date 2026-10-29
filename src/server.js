@@ -15,6 +15,7 @@ const { registerLinksRoutes } = require('./links');
 const { registerAfiliadosRoutes } = require('./afiliados');
 const { registerPushRoutes } = require('./push');
 const { registerLeadsRoutes } = require('./leads');
+const { registerBetelRoutes } = require('./betel');
 const { getProducts, getChildRules, buildPurchase } = require('./produtos');
 
 // Once a lote has this many tickets or fewer left, the sales page starts
@@ -317,6 +318,7 @@ function requireAdminAuth(req, res, next) {
 registerAfiliadosRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerPushRoutes(app, { requireAdminAuth, eventInfo });
 registerLeadsRoutes(app, { requireAdminAuth, formatDatetimeBrasiliaDisplay });
+registerBetelRoutes(app, { eventInfo, formatDatetimeBrasiliaDisplay });
 
 app.get('/', (req, res) => {
   if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
