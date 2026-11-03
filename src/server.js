@@ -630,13 +630,13 @@ app.get('/foto', (req, res) => {
 });
 
 app.get('/meus-ingressos', (req, res) => {
-  res.render('meus_ingressos', { eventInfo, error: null, matches: null, termo: '' });
+  res.render('meus_ingressos', { eventInfo, error: null, groups: null, termo: '' });
 });
 
 app.post('/meus-ingressos', (req, res) => {
   const termo = String(req.body.termo || '').trim();
   if (!termo) {
-    return res.render('meus_ingressos', { eventInfo, error: 'Digite seu CPF, e-mail ou WhatsApp.', matches: null, termo });
+    return res.render('meus_ingressos', { eventInfo, error: 'Digite seu CPF, e-mail ou WhatsApp.', groups: null, termo });
   }
 
   const digits = termo.replace(/\D/g, '');
@@ -660,18 +660,30 @@ app.post('/meus-ingressos', (req, res) => {
   if (orders.length === 0) {
     return res.render('meus_ingressos', {
       eventInfo,
-      error: 'Nao encontramos nenhuma compra aprovada com esses dados. Confira se digitou certo.',
-      matches: null,
+      error: 'Não encontramos nenhum ingresso com esses dados. Confira se digitou igual ao que usou na compra ou na inscrição.',
+      groups: null,
       termo,
     });
   }
 
-  if (orders.length === 1) {
-    return res.redirect(orders[0].status === 'cancelled' ? `/comprovante/${orders[0].id}` : `/pedido/${orders[0].id}/participantes`);
-  }
-
-  const matches = orders.map((o) => ({ ...o, createdAtLabel: formatDatetimeBrasiliaDisplay(o.createdAt) }));
-  res.render('meus_ingressos', { eventInfo, error: null, matches, termo });
+  // Every order of every event (paid ticket sales and free registrations alike),
+  // grouped by event: upcoming events first, then the ones that already happened.
+  const byEvent = new Map();
+  orders.forEach((o) => {
+    const ev = eventInfoFor(o);
+    if (!byEvent.has(ev.id)) byEvent.set(ev.id, { ev, orders: [] });
+    byEvent.get(ev.id).orders.push({
+      ...o,
+      createdAtLabel: formatDatetimeBrasiliaDisplay(o.createdAt),
+      tickets: Object.values(db.tickets).filter((t) => t.orderId === o.id),
+    });
+  });
+  const now = Date.now();
+  const startOf = (g) => (g.ev.startAt ? Date.parse(g.ev.startAt) : Infinity);
+  const groups = [...byEvent.values()]
+    .map((g) => ({ ...g, past: startOf(g) + 6 * 3600000 < now }))
+    .sort((a, b) => (a.past - b.past) || (a.past ? startOf(b) - startOf(a) : startOf(a) - startOf(b)));
+  res.render('meus_ingressos', { eventInfo, error: null, groups, termo });
 });
 
 app.get('/api/pedido/:id/status', (req, res) => {
