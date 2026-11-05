@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const store = require('./store');
 const mp = require('./mercadopago');
 const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
-const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents, getEventById, salesOpensAt, salesHeldBack } = require('./event');
+const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents, getEventById, SP_EVENT, salesOpensAt, salesHeldBack } = require('./event');
 const { registerEventosRoutes } = require('./eventos');
 const { registerContatoRoutes } = require('./contato');
 const { registerLinksRoutes } = require('./links');
@@ -1162,6 +1162,49 @@ app.post('/api/admin/pedidos/:id/cancelar', requireAdminAuth, async (req, res) =
 // Falls back to a CPF match when the phone doesn't match anything — happens
 // when the buyer messages from a different number than the one used at
 // checkout (personal vs. business WhatsApp, new chip, etc).
+// Counts only (no names, CPFs or contacts) of one event's tickets, for the n8n
+// report: how many tickets go beyond one per person and whether the extra ones
+// have their own participant filled in. Defaults to the São Paulo event.
+app.get('/api/n8n/relatorio-ingressos', (req, res) => {
+  const secret = process.env.N8N_CALLBACK_SECRET;
+  if (secret && req.headers['x-callback-secret'] !== secret) return res.status(401).json({ error: 'unauthorized' });
+  const ev = getEventById(String(req.query.evento || SP_EVENT.id));
+  const db = store.load();
+  const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const orders = Object.values(db.orders).filter((o) => inEvent(o, ev.id) && o.status === 'paid' && !o.isCourtesy);
+  const porQuantidade = {};
+  const porCpf = new Map();
+  let ingressos = 0; let pedidosComMaisDeUm = 0; let extras = 0; let extrasSemParticipante = 0; let extrasComParticipante = 0;
+  orders.forEach((o) => {
+    const ts = Object.values(db.tickets).filter((t) => t.orderId === o.id && t.status !== 'cancelled')
+      .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)) || String(a.code).localeCompare(String(b.code)));
+    ingressos += ts.length;
+    porQuantidade[ts.length] = (porQuantidade[ts.length] || 0) + 1;
+    const cpf = String(o.buyerCpf || '').replace(/\D/g, '') || `sem-cpf-${o.id}`;
+    porCpf.set(cpf, (porCpf.get(cpf) || 0) + ts.length);
+    if (ts.length > 1) pedidosComMaisDeUm++;
+    ts.slice(1).forEach((t) => {
+      extras++;
+      const nome = norm(t.participantName);
+      if (nome && nome !== norm(o.buyerName)) extrasComParticipante++; else extrasSemParticipante++;
+    });
+  });
+  const cpfsRepetidos = [...porCpf.values()].filter((n) => n > 1).length;
+  res.json({
+    evento: ev.name,
+    inscricoes: orders.length,
+    ingressos,
+    pessoasPorCpf: porCpf.size,
+    inscricoesPorQuantidade: porQuantidade,
+    inscricoesComMaisDeUmIngresso: pedidosComMaisDeUm,
+    ingressosAlemDoPrimeiro: extras,
+    ingressosAlemDoPrimeiroSemParticipante: extrasSemParticipante,
+    ingressosAlemDoPrimeiroComParticipante: extrasComParticipante,
+    cpfsComMaisDeUmIngresso: cpfsRepetidos,
+    ingressosAlemDeUmPorCpf: ingressos - porCpf.size,
+  });
+});
+
 app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
   const secret = process.env.N8N_CALLBACK_SECRET;
   if (secret && req.headers['x-callback-secret'] !== secret) {
