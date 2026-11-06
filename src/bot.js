@@ -55,12 +55,20 @@ function eventosTexto({ salesOpenNow, availableNow, baseUrl }) {
   const now = Date.now();
   const linhas = [];
   EVENTS
-    .filter((e) => !e.hidden && (!e.startAt || Date.parse(e.startAt) + 5 * 3600000 > now))
+    .filter((e) => !e.hidden && (e.cancelado || !e.startAt || Date.parse(e.startAt) + 5 * 3600000 > now))
     .sort((a, b) => String(a.startAt || '9999').localeCompare(String(b.startAt || '9999')))
     .forEach((e) => {
       const atual = e.id === currentEvent.id;
       const partes = [`EVENTO: ${e.name}`, `Data: ${e.dateLabel}${e.timeLabel ? ` · ${e.timeLabel}` : ''}`];
       if (e.venue) partes.push(`Local: ${e.venue}`);
+      if (e.cancelado) {
+        partes.push(`CANCELADO: ${e.motivoCancelamento || 'a equipe cancelou o evento, mas não registrou o motivo.'}`);
+        partes.push('Não há venda de ingressos para este evento. Quem já comprou deve falar com a equipe pelo WhatsApp para reembolso.');
+        partes.push('Convide a pessoa a ficar na nossa comunidade do WhatsApp (veja OUTROS LINKS) para saber da próxima data em primeira mão.');
+        partes.push('Situação: evento cancelado');
+        linhas.push(partes.join('\n'));
+        return;
+      }
       if (e.tagline) partes.push(`Destaque: ${e.tagline}${e.note ? ` (${e.note})` : ''}`);
       if (e.free) {
         partes.push(`Entrada gratuita com inscrição obrigatória (vagas limitadas${e.capacity ? `: ${e.capacity}` : ''}, até ${e.maxPerCpf || 4} por CPF).`);

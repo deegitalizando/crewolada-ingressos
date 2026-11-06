@@ -81,6 +81,8 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
         slug: e.slug || '',
         hidden: Boolean(e.hidden),
         hasOrders: s.orders + s.courtesy + s.cancelled > 0,
+        cancelado: Boolean(e.cancelado),
+        motivoCancelamento: e.motivoCancelamento || '',
       };
     });
     res.render('admin_eventos', {
@@ -196,6 +198,32 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
       onChange();
       res.redirect(`/admin/eventos?msg=${action === 'publicar' ? 'publicado' : 'oculto'}`);
     });
+  });
+
+  // Cancels an event with a justification the AI agent (Instagram Direct) reads
+  // and explains, word for word, to any lead who asks about it. A cancelled
+  // event keeps showing up to the bot (never silently disappears) so leads
+  // always get the real reason instead of a generic "not scheduled" answer.
+  app.post('/admin/eventos/:id/cancelar', requireAdminAuth, async (req, res) => {
+    if (!EVENTS.some((e) => e.id === req.params.id)) return res.redirect('/admin/eventos?msg=dados');
+    const motivo = String(req.body.motivo || '').trim().slice(0, 500);
+    if (!motivo) return res.redirect('/admin/eventos?msg=motivo-obrigatorio');
+    await store.withDb((db) => {
+      db.events = db.events || {};
+      db.events[req.params.id] = { ...(db.events[req.params.id] || {}), id: req.params.id, cancelado: true, motivoCancelamento: motivo };
+    });
+    onChange();
+    res.redirect('/admin/eventos?msg=cancelado');
+  });
+
+  app.post('/admin/eventos/:id/reabrir', requireAdminAuth, async (req, res) => {
+    if (!EVENTS.some((e) => e.id === req.params.id)) return res.redirect('/admin/eventos?msg=dados');
+    await store.withDb((db) => {
+      db.events = db.events || {};
+      db.events[req.params.id] = { ...(db.events[req.params.id] || {}), id: req.params.id, cancelado: false, motivoCancelamento: '' };
+    });
+    onChange();
+    res.redirect('/admin/eventos?msg=reaberto');
   });
 
   app.post('/admin/eventos/:id/atual', requireAdminAuth, async (req, res) => {
