@@ -355,12 +355,13 @@
           html += '<div class="pbox"><h3>Ingresso ' + (i + 2) + ' · acompanhante</h3>' +
             '<label>Nome completo<input type="text" name="participantes[' + i + '][name]" maxlength="80" autocomplete="off" value="' + esc(v.name) + '" /></label>' +
             '<label>CPF<input type="text" name="participantes[' + i + '][cpf]" data-cpf inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off" value="' + esc(v.cpf) + '" /></label>' +
-            '<label>WhatsApp (opcional)<input type="tel" name="participantes[' + i + '][phone]" inputmode="numeric" placeholder="(11) 99999-9999" value="' + esc(v.phone) + '" /></label>' +
+            '<label>WhatsApp (com DDD)<input type="tel" name="participantes[' + i + '][phone]" inputmode="numeric" placeholder="(11) 99999-9999" value="' + esc(v.phone) + '" /></label>' +
+            '<label>E-mail<input type="email" name="participantes[' + i + '][email]" maxlength="120" autocomplete="off" value="' + esc(v.email) + '" /></label>' +
             '</div>';
         }
         acomp.innerHTML = html;
         acomp.querySelectorAll('[data-cpf]').forEach(maskCpfInput);
-        note.textContent = n > 1 ? 'O ingresso 1 é seu. Cada ingresso é de uma pessoa diferente: informe o nome e o CPF de quem vai usar cada um dos outros.' : '';
+        note.textContent = n > 1 ? 'O ingresso 1 é seu. Cada ingresso é de uma pessoa diferente: informe nome, CPF, WhatsApp e e-mail de quem vai usar cada um dos outros.' : '';
       }
       function setQty(n) {
         n = Math.max(1, Math.min(max, n));
@@ -432,6 +433,8 @@
             if (nm.split(/\s+/).length < 2) msg = 'Ingresso ' + (i + 2) + ': informe o nome completo de quem vai usar.';
             else if (c.length !== 11) msg = 'Ingresso ' + (i + 2) + ': informe o CPF completo de quem vai usar.';
             else if (cpfs.indexOf(c) !== -1) msg = 'Ingresso ' + (i + 2) + ': o CPF repete outro ingresso. Cada pessoa pode ter só 1 ingresso.';
+            else if (box.querySelector('input[name$="[phone]"]').value.replace(/\D/g, '').length < 10) msg = 'Ingresso ' + (i + 2) + ': informe o WhatsApp com DDD de quem vai usar.';
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(box.querySelector('input[name$="[email]"]').value.trim())) msg = 'Ingresso ' + (i + 2) + ': informe um e-mail válido de quem vai usar.';
             cpfs.push(c);
           });
         }

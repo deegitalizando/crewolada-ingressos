@@ -682,6 +682,7 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
     else if (r.cpf && !isValidCpf(r.cpf)) error = `Ingresso ${n}: o CPF de ${who} é inválido.`;
     else if (r.cpf && seenCpf.has(r.cpf)) error = `Ingresso ${n}: o CPF repete outro ingresso. Cada pessoa pode ter só 1 ingresso.`;
     else if (r.cpf && taken.has(r.cpf)) error = `Ingresso ${n}: ${who} já tem ingresso para este evento. Cada pessoa pode ter só 1 ingresso.`;
+    else error = R.contactError(r, n);
     seenName.add(R.normName(r.name));
     if (r.cpf) seenCpf.add(r.cpf);
   });

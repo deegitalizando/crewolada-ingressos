@@ -3,8 +3,8 @@
 //
 // - O ingresso 1 de todo pedido é do comprador (CPF do comprador).
 // - Os ingressos 2, 3... só existem com o participante informado na hora da
-//   compra/inscrição: nome + CPF (adulto). Criança/bebê não têm CPF
-//   obrigatório, só o nome.
+//   compra/inscrição: nome, CPF, WhatsApp e e-mail. Criança/bebê (compra
+//   paga) não têm CPF obrigatório.
 // - Um CPF só pode aparecer uma vez por evento, somando todos os pedidos —
 //   como comprador ou como participante de outra pessoa.
 const { isValidCpf } = require('./cpf');
@@ -68,6 +68,16 @@ function cpfsTakenInEvent(db, eventId, { statuses = ['paid'], excludeOrderId = n
 
 const firstName = (s) => cleanName(s).split(' ')[0] || 'outra pessoa';
 
+// Telefone e e-mail do participante são obrigatórios.
+function contactError(p, n) {
+  const who = firstName(p.name);
+  if (!p.phone) return `Ingresso ${n}: informe o WhatsApp de ${who}.`;
+  if (!/^[1-9][1-9]\d{8,9}$/.test(p.phone)) return `Ingresso ${n}: o WhatsApp de ${who} é inválido (use DDD + número).`;
+  if (!p.email) return `Ingresso ${n}: informe o e-mail de ${who}.`;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) return `Ingresso ${n}: o e-mail de ${who} é inválido.`;
+  return null;
+}
+
 // Valida comprador + participantes de um pedido novo. kinds[i] é a categoria
 // do ingresso i (adulto/crianca/bebe) quando a compra tem categorias.
 // Retorna uma mensagem de erro ou null.
@@ -95,12 +105,12 @@ function validateNewOrder({ buyerName, buyerCpf, participants, kinds = [], taken
       if (taken.has(p.cpf)) return `Ingresso ${n}: ${firstName(p.name)} já tem ingresso para este evento. Cada pessoa pode ter só 1 ingresso.`;
       seenCpf.add(p.cpf);
     }
-    if (p.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email)) return `Ingresso ${n}: o e-mail de ${firstName(p.name)} é inválido.`;
-    if (p.phone && !/^[1-9][1-9]\d{8,9}$/.test(p.phone)) return `Ingresso ${n}: o WhatsApp de ${firstName(p.name)} é inválido (use DDD + número).`;
+    const contato = contactError(p, n);
+    if (contato) return contato;
   }
   return null;
 }
 
 module.exports = {
-  readParticipants, cpfsTakenInEvent, validateNewOrder, digits, cleanName, normName, cleanPhone, firstName,
+  readParticipants, cpfsTakenInEvent, validateNewOrder, contactError, digits, cleanName, normName, cleanPhone, firstName,
 };

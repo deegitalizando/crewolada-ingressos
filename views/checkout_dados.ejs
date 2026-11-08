@@ -49,14 +49,14 @@
         </label>
         <% const extraSlots = (typeof slots !== 'undefined' && slots ? slots : []).slice(1); %>
         <% if (extraSlots.length) { %>
-          <p class="hint" style="margin:6px 0 0; text-align:left">O ingresso 1 é seu. <strong>Cada ingresso é de uma pessoa diferente</strong> (1 por CPF): informe quem vai usar cada um dos outros.</p>
+          <p class="hint" style="margin:6px 0 0; text-align:left">O ingresso 1 é seu. <strong>Cada ingresso é de uma pessoa diferente</strong> (1 por CPF): informe nome, CPF, WhatsApp e e-mail de quem vai usar cada um dos outros.</p>
           <% extraSlots.forEach(function(sl, i) { const adulto = sl.kind === 'adulto'; %>
             <div class="template-box" data-participante>
               <h3 style="margin-top:0">Ingresso <%= i + 2 %><%= sl.label && sl.label !== 'Adulto' ? ' · ' + sl.label : '' %></h3>
               <label>Nome completo<input type="text" data-p="name" required maxlength="80" autocomplete="off" /></label>
               <label>CPF<%= adulto ? '' : ' (opcional)' %><input type="text" data-p="cpf" data-cpf <%= adulto ? 'required' : '' %> data-adulto="<%= adulto ? '1' : '' %>" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" /></label>
-              <label>WhatsApp (opcional)<input type="tel" data-p="phone" placeholder="21 99999-9999" /></label>
-              <label>E-mail (opcional)<input type="email" data-p="email" /></label>
+              <label>WhatsApp (com DDD)<input type="tel" data-p="phone" required placeholder="21 99999-9999" /></label>
+              <label>E-mail<input type="email" data-p="email" required /></label>
             </div>
           <% }) %>
         <% } %>

@@ -15,7 +15,7 @@
       <h2>Quem vai usar cada ingresso?</h2>
       <p class="hint" style="margin-top:0">
         Seu pedido tem <%= tickets.length %> ingresso<%= tickets.length === 1 ? '' : 's' %>. <strong>Cada ingresso é de uma pessoa diferente</strong> (1 por CPF):
-        preencha o nome e o CPF de quem vai usar cada um. E-mail e WhatsApp são opcionais. Você pode voltar aqui e editar até o dia do evento.
+        preencha nome, CPF, WhatsApp e e-mail de quem vai usar cada um. Você pode voltar aqui e editar até o dia do evento.
         Ingresso sem nome pode ser liberado para outra pessoa.
       </p>
 
@@ -50,12 +50,12 @@
                 value="<%= v ? cpfVal : cpfFmt %>" />
             </label>
             <label>
-              E-mail (opcional)
+              E-mail
               <input type="email" name="participantes[<%= t.code %>][email]"
                 value="<%= pick('email', 'participantEmail', 'buyerEmail') %>" />
             </label>
             <label>
-              WhatsApp (opcional)
+              WhatsApp (com DDD)
               <input type="text" name="participantes[<%= t.code %>][phone]"
                 value="<%= pick('phone', 'participantPhone', 'buyerPhone') %>" />
             </label>
