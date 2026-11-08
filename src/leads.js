@@ -70,12 +70,12 @@ function montar(db, { tipo, evento, quais }, fmtDate) {
   const nomeEvento = (o) => getEventById(orderEventId(o)).name;
 
   if (tipo === 'participantes') {
-    const rows = [['Ingresso', 'Evento', 'Pedido', 'Tipo do ingresso', 'Situação', 'Entrou em', 'Participante', 'E-mail do participante', 'WhatsApp do participante', 'Comprador', 'E-mail do comprador', 'WhatsApp do comprador', 'CPF do comprador']];
+    const rows = [['Ingresso', 'Evento', 'Pedido', 'Tipo do ingresso', 'Situação', 'Entrou em', 'Participante', 'CPF do participante', 'E-mail do participante', 'WhatsApp do participante', 'Comprador', 'E-mail do comprador', 'WhatsApp do comprador', 'CPF do comprador']];
     pedidos.forEach((o) => {
       (ticketsDe[o.id] || []).forEach((t) => {
         rows.push([
           t.code, nomeEvento(o), o.id.slice(0, 8), t.kindLabel || o.loteName || '', t.status === 'used' ? 'Usado' : 'Válido', t.usedAt ? fmtDate(t.usedAt) : '',
-          t.participantName || o.buyerName || '', t.participantEmail || o.buyerEmail || '', trusted(fmtPhone(t.participantPhone || o.buyerPhone)),
+          t.participantName || o.buyerName || '', trusted(t.participantCpf ? fmtCpf(t.participantCpf) : ''), t.participantEmail || o.buyerEmail || '', trusted(fmtPhone(t.participantPhone || o.buyerPhone)),
           o.buyerName || '', o.buyerEmail || '', trusted(fmtPhone(o.buyerPhone)), trusted(fmtCpf(o.buyerCpf)),
         ]);
       });

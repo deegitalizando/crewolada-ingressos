@@ -1300,10 +1300,12 @@ app.get('/api/n8n/relatorio-ingressos', (req, res) => {
   const porQuantidade = {};
   const porCpf = new Map();
   let ingressos = 0; let pedidosComMaisDeUm = 0; let extras = 0; let extrasSemParticipante = 0; let extrasComParticipante = 0;
+  let extrasCompletos = 0; let usados = 0;
   orders.forEach((o) => {
     const ts = Object.values(db.tickets).filter((t) => t.orderId === o.id && t.status !== 'cancelled')
       .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)) || String(a.code).localeCompare(String(b.code)));
     ingressos += ts.length;
+    usados += ts.filter((t) => t.status === 'used' || t.usedAt).length;
     porQuantidade[ts.length] = (porQuantidade[ts.length] || 0) + 1;
     const cpf = String(o.buyerCpf || '').replace(/\D/g, '') || `sem-cpf-${o.id}`;
     porCpf.set(cpf, (porCpf.get(cpf) || 0) + ts.length);
@@ -1312,6 +1314,8 @@ app.get('/api/n8n/relatorio-ingressos', (req, res) => {
       extras++;
       const nome = norm(t.participantName);
       if (nome && nome !== norm(o.buyerName)) extrasComParticipante++; else extrasSemParticipante++;
+      // Complete = name + CPF + WhatsApp + e-mail (the one-ticket-per-person rule).
+      if (nome && t.participantCpf && t.participantPhone && t.participantEmail) extrasCompletos++;
     });
   });
   const cpfsRepetidos = [...porCpf.values()].filter((n) => n > 1).length;
@@ -1325,6 +1329,9 @@ app.get('/api/n8n/relatorio-ingressos', (req, res) => {
     ingressosAlemDoPrimeiro: extras,
     ingressosAlemDoPrimeiroSemParticipante: extrasSemParticipante,
     ingressosAlemDoPrimeiroComParticipante: extrasComParticipante,
+    ingressosAlemDoPrimeiroComDadosCompletos: extrasCompletos,
+    ingressosAlemDoPrimeiroSoComNome: extrasComParticipante - extrasCompletos,
+    ingressosUsadosNaEntrada: usados,
     cpfsComMaisDeUmIngresso: cpfsRepetidos,
     ingressosAlemDeUmPorCpf: ingressos - porCpf.size,
   });
