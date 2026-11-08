@@ -35,9 +35,16 @@
                return t[field] || (i === 0 ? order[buyerField] || '' : '');
              };
              var adulto = !t.kind || t.kind === 'adulto';
+             var travado = t.status === 'used' || t.status === 'cancelled' || !!t.usedAt;
+             if (travado) v = null;
              var cpfVal = pick('cpf', 'participantCpf', 'buyerCpf');
              var cpfFmt = String(cpfVal).replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4'); %>
           <div class="template-box">
+            <% if (travado) { %>
+              <h3 style="margin-top:0">Ingresso <%= i + 1 %> &middot; <%= t.code %></h3>
+              <p class="hint" style="margin:0 0 4px"><strong><%= t.participantName || (i === 0 ? order.buyerName : 'Sem nome') %></strong></p>
+              <p class="hint" style="margin:0"><%= t.status === 'cancelled' ? 'Ingresso cancelado.' : 'Este ingresso já foi usado na entrada e não pode mais ser alterado.' %></p>
+            <% } else { %>
             <h3 style="margin-top:0">Ingresso <%= i + 1 %><%= i === 0 ? ' · seu' : '' %><%= t.kindLabel && t.kindLabel !== 'Adulto' ? ' · ' + t.kindLabel : '' %> &middot; <%= t.code %></h3>
             <label>
               Nome completo
@@ -59,6 +66,7 @@
               <input type="text" name="participantes[<%= t.code %>][phone]"
                 value="<%= pick('phone', 'participantPhone', 'buyerPhone') %>" />
             </label>
+            <% } %>
           </div>
         <% }) %>
 

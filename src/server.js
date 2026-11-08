@@ -655,7 +655,18 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
   const tickets = ticketsOfOrder(db, order.id);
   const submitted = req.body.participantes || {};
   const R = participantesRegra;
+  // A ticket already scanned at the entrance (or cancelled) is frozen: whoever
+  // went in with it stays on record, whatever the form sends.
+  const locked = (t) => t.status === 'used' || t.status === 'cancelled' || Boolean(t.usedAt);
   const rows = tickets.map((t, i) => {
+    if (locked(t)) {
+      return {
+        code: t.code,
+        locked: true,
+        name: R.cleanName(t.participantName || (i === 0 ? order.buyerName : '')),
+        cpf: R.digits(t.participantCpf || (i === 0 ? order.buyerCpf : '')),
+      };
+    }
     const p = submitted[t.code] || {};
     const row = {
       code: t.code,
@@ -675,6 +686,11 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
   let error = null;
   rows.forEach((r, i) => {
     if (error || !r.name) return;
+    if (r.locked) {
+      seenName.add(R.normName(r.name));
+      if (r.cpf) seenCpf.add(r.cpf);
+      return;
+    }
     const n = i + 1;
     const who = R.firstName(r.name);
     if (r.name.split(' ').length < 2) error = `Ingresso ${n}: informe o nome completo de quem vai usar.`;
@@ -698,7 +714,7 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
   await store.withDb((d) => {
     rows.forEach((r) => {
       const ticket = d.tickets[r.code];
-      if (!ticket) return;
+      if (!ticket || r.locked || locked(ticket)) return; // re-checked here: it may have been scanned meanwhile
       ticket.participantName = r.name || null;
       ticket.participantCpf = r.name ? r.cpf || null : null;
       ticket.participantEmail = r.name ? r.email || null : null;
@@ -707,7 +723,7 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
   });
 
   // Refresh the stored PDFs too (they're what the e-mail/WhatsApp resends attach).
-  for (const r of rows) {
+  for (const r of rows.filter((x) => !x.locked)) {
     const fresh = store.load();
     const ticket = fresh.tickets[r.code];
     if (!ticket) continue;
