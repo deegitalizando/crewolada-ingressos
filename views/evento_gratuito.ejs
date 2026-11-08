@@ -93,6 +93,12 @@
     }
     .fr input:focus { outline: none; border-color: var(--gold-hi); box-shadow: 0 0 0 3px rgba(229, 167, 27, 0.18); }
     .fr input::placeholder { color: rgba(255, 255, 255, 0.35); }
+    .acomp { display: grid; gap: 14px; }
+    .acomp:empty { display: none; }
+    .acomp .pbox { display: grid; gap: 12px; padding: 14px 16px; border-radius: 4px; border: 1.5px dashed var(--line); }
+    .acomp .pbox h3 { margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; }
+    .acomp-note { margin: 0; font-size: 13px; line-height: 1.5; color: rgba(255, 255, 255, 0.75); }
+    .acomp-note:empty { display: none; }
     .qty { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 4px; border: 1.5px solid var(--line); }
     .qty .lab { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 16px; letter-spacing: 0.04em; text-transform: uppercase; line-height: 1.2; }
     .qty .lab small { display: block; margin-top: 2px; font-family: 'DM Sans', sans-serif; font-weight: 700; color: var(--gold); font-size: 11px; letter-spacing: 0.16em; }
@@ -236,7 +242,7 @@
               </label>
 
               <div class="qty">
-                <span class="lab">Quantos ingressos?<small>Até <%= Math.min(maxPer, left) %> por CPF</small></span>
+                <span class="lab">Quantos ingressos?<small>1 por pessoa · até <%= Math.min(maxPer, left) %> por inscrição</small></span>
                 <div class="stepper">
                   <button type="button" id="minus" aria-label="Menos um ingresso">−</button>
                   <span id="qval"><%= Math.min(Math.max(parseInt(values.quantidade, 10) || 1, 1), Math.min(maxPer, left)) %></span>
@@ -244,6 +250,10 @@
                 </div>
               </div>
               <input type="hidden" name="quantidade" id="qin" value="<%= Math.min(Math.max(parseInt(values.quantidade, 10) || 1, 1), Math.min(maxPer, left)) %>" />
+
+              <p class="acomp-note" id="acomp-note"></p>
+              <div class="acomp" id="acomp"></div>
+              <script type="application/json" id="acomp-values"><%- JSON.stringify(values.participantes || {}).replace(/</g, '\\u003c') %></script>
 
               <label class="check">
                 <input type="checkbox" name="consent" <%= values.consent ? 'checked' : '' %> />
@@ -321,9 +331,41 @@
       var minus = document.getElementById('minus');
       var plus = document.getElementById('plus');
       var sub = document.getElementById('cta-sub');
+      // Each extra ticket needs the name + CPF of who will use it (1 ticket per person).
+      var acomp = document.getElementById('acomp');
+      var note = document.getElementById('acomp-note');
+      var saved = {};
+      try { saved = JSON.parse(document.getElementById('acomp-values').textContent) || {}; } catch (e) { saved = {}; }
+      function esc(v) { return String(v || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+      function maskCpfInput(el) {
+        el.addEventListener('input', function () {
+          var d = el.value.replace(/\D/g, '').slice(0, 11);
+          el.value = d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        });
+      }
+      function renderAcomp(n) {
+        // keep what was typed when the quantity changes
+        acomp.querySelectorAll('input').forEach(function (el) {
+          var m = el.name.match(/^participantes\[(\d+)\]\[(\w+)\]$/);
+          if (m) { saved[m[1]] = saved[m[1]] || {}; saved[m[1]][m[2]] = el.value; }
+        });
+        var html = '';
+        for (var i = 0; i < n - 1; i++) {
+          var v = saved[i] || {};
+          html += '<div class="pbox"><h3>Ingresso ' + (i + 2) + ' · acompanhante</h3>' +
+            '<label>Nome completo<input type="text" name="participantes[' + i + '][name]" maxlength="80" autocomplete="off" value="' + esc(v.name) + '" /></label>' +
+            '<label>CPF<input type="text" name="participantes[' + i + '][cpf]" data-cpf inputmode="numeric" maxlength="14" placeholder="000.000.000-00" autocomplete="off" value="' + esc(v.cpf) + '" /></label>' +
+            '<label>WhatsApp (opcional)<input type="tel" name="participantes[' + i + '][phone]" inputmode="numeric" placeholder="(11) 99999-9999" value="' + esc(v.phone) + '" /></label>' +
+            '</div>';
+        }
+        acomp.innerHTML = html;
+        acomp.querySelectorAll('[data-cpf]').forEach(maskCpfInput);
+        note.textContent = n > 1 ? 'O ingresso 1 é seu. Cada ingresso é de uma pessoa diferente: informe o nome e o CPF de quem vai usar cada um dos outros.' : '';
+      }
       function setQty(n) {
         n = Math.max(1, Math.min(max, n));
         qin.value = n; qval.textContent = n;
+        renderAcomp(n);
         sub.textContent = 'Gratuito · ' + n + (n === 1 ? ' ingresso' : ' ingressos');
         if (n <= 1) minus.setAttribute('disabled', ''); else minus.removeAttribute('disabled');
         if (n >= max) plus.setAttribute('disabled', ''); else plus.removeAttribute('disabled');
@@ -381,6 +423,18 @@
         else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.elements.email.value.trim())) msg = 'Informe um e-mail válido.';
         else if (cpf.value.replace(/\D/g, '').length !== 11) msg = 'Informe o CPF completo.';
         else if (!form.elements.consent.checked) msg = 'Marque a autorização para continuar.';
+        if (!msg) {
+          var cpfs = [cpf.value.replace(/\D/g, '')];
+          acomp.querySelectorAll('.pbox').forEach(function (box, i) {
+            if (msg) return;
+            var nm = box.querySelector('input[name$="[name]"]').value.trim();
+            var c = box.querySelector('input[name$="[cpf]"]').value.replace(/\D/g, '');
+            if (nm.split(/\s+/).length < 2) msg = 'Ingresso ' + (i + 2) + ': informe o nome completo de quem vai usar.';
+            else if (c.length !== 11) msg = 'Ingresso ' + (i + 2) + ': informe o CPF completo de quem vai usar.';
+            else if (cpfs.indexOf(c) !== -1) msg = 'Ingresso ' + (i + 2) + ': o CPF repete outro ingresso. Cada pessoa pode ter só 1 ingresso.';
+            cpfs.push(c);
+          });
+        }
         if (msg) {
           e.preventDefault();
           var box = document.querySelector('.alert-sp') || document.createElement('div');

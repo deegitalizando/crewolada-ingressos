@@ -14,32 +14,50 @@
     <main class="card">
       <h2>Quem vai usar cada ingresso?</h2>
       <p class="hint" style="margin-top:0">
-        Seu pedido tem <%= tickets.length %> ingresso<%= tickets.length === 1 ? '' : 's' %>. Preencha o nome, e-mail e WhatsApp de cada participante
-        para termos o controle de quem vai comparecer. Voce pode voltar aqui e editar essas informacoes ate o dia do evento.
+        Seu pedido tem <%= tickets.length %> ingresso<%= tickets.length === 1 ? '' : 's' %>. <strong>Cada ingresso é de uma pessoa diferente</strong> (1 por CPF):
+        preencha o nome e o CPF de quem vai usar cada um. E-mail e WhatsApp são opcionais. Você pode voltar aqui e editar até o dia do evento.
+        Ingresso sem nome pode ser liberado para outra pessoa.
       </p>
+
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div class="alert" style="background:rgba(239,68,68,0.15);border-color:#ef4444;color:#fca5a5"><%= error %></div>
+      <% } %>
 
       <% if (saved) { %>
         <div class="alert" style="background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac">Salvo com sucesso.</div>
       <% } %>
 
       <form action="/api/pedido/<%= order.id %>/participantes" method="POST" class="form">
-        <% tickets.forEach(function(t, i) { %>
+        <% tickets.forEach(function(t, i) {
+             var v = (typeof values !== 'undefined' && values && values[t.code]) || null;
+             var pick = function (key, field, buyerField) {
+               if (v) return v[key] || '';
+               return t[field] || (i === 0 ? order[buyerField] || '' : '');
+             };
+             var adulto = !t.kind || t.kind === 'adulto';
+             var cpfVal = pick('cpf', 'participantCpf', 'buyerCpf');
+             var cpfFmt = String(cpfVal).replace(/\D/g, '').replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4'); %>
           <div class="template-box">
-            <h3 style="margin-top:0">Ingresso <%= i + 1 %> &middot; <%= t.code %></h3>
+            <h3 style="margin-top:0">Ingresso <%= i + 1 %><%= i === 0 ? ' · seu' : '' %><%= t.kindLabel && t.kindLabel !== 'Adulto' ? ' · ' + t.kindLabel : '' %> &middot; <%= t.code %></h3>
             <label>
               Nome completo
-              <input type="text" name="participantes[<%= t.code %>][name]"
-                value="<%= t.participantName || (i === 0 ? order.buyerName : '') %>" />
+              <input type="text" name="participantes[<%= t.code %>][name]" maxlength="80"
+                value="<%= pick('name', 'participantName', 'buyerName') %>" />
             </label>
             <label>
-              E-mail
+              CPF<%= adulto ? '' : ' (opcional)' %>
+              <input type="text" name="participantes[<%= t.code %>][cpf]" data-cpf inputmode="numeric" maxlength="14" placeholder="000.000.000-00"
+                value="<%= v ? cpfVal : cpfFmt %>" />
+            </label>
+            <label>
+              E-mail (opcional)
               <input type="email" name="participantes[<%= t.code %>][email]"
-                value="<%= t.participantEmail || (i === 0 ? order.buyerEmail : '') %>" />
+                value="<%= pick('email', 'participantEmail', 'buyerEmail') %>" />
             </label>
             <label>
-              WhatsApp
+              WhatsApp (opcional)
               <input type="text" name="participantes[<%= t.code %>][phone]"
-                value="<%= t.participantPhone || (i === 0 ? order.buyerPhone : '') %>" />
+                value="<%= pick('phone', 'participantPhone', 'buyerPhone') %>" />
             </label>
           </div>
         <% }) %>
@@ -54,5 +72,13 @@
 
     <%- include('partials/footer_legal') %>
   </div>
+  <script>
+    document.querySelectorAll('[data-cpf]').forEach(function (el) {
+      el.addEventListener('input', function () {
+        var d = el.value.replace(/\D/g, '').slice(0, 11);
+        el.value = d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      });
+    });
+  </script>
 </body>
 </html>

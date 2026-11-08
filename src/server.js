@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const store = require('./store');
 const mp = require('./mercadopago');
 const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
-const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, eventForOrder, eventStatus, syncEvents, getEventById, SP_EVENT, salesOpensAt, salesHeldBack } = require('./event');
+const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, orderEventId, eventForOrder, eventStatus, syncEvents, getEventById, SP_EVENT, salesOpensAt, salesHeldBack } = require('./event');
 const { registerEventosRoutes } = require('./eventos');
 const { registerContatoRoutes } = require('./contato');
 const { registerLinksRoutes } = require('./links');
@@ -16,7 +16,7 @@ const { registerAfiliadosRoutes } = require('./afiliados');
 const { registerPushRoutes } = require('./push');
 const { registerLeadsRoutes } = require('./leads');
 const { registerBetelRoutes } = require('./betel');
-const { getProducts, getChildRules, buildPurchase } = require('./produtos');
+const { getProducts, getChildRules, buildPurchase, expandKinds } = require('./produtos');
 
 // Once a lote has this many tickets or fewer left, the sales page starts
 // showing "restam X ingressos" as an urgency nudge. Above that, the exact
@@ -42,6 +42,7 @@ const { registerRelatorioRoutes } = require('./relatorio');
 const { registerPesquisaRoutes } = require('./pesquisa');
 const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNotification } = require('./comprovante');
 const { isValidCpf } = require('./cpf');
+const participantesRegra = require('./participantes');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
 const {
   criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, posEntregaMusica, buscarPedidoPorCodigo, codigoCurto,
@@ -425,6 +426,7 @@ app.get('/checkout/dados', (req, res) => {
         items: purchase.items,
         includes: purchase.includes,
       },
+      slots: expandKinds({ items: purchase.items }).map((i) => ({ kind: i.kind, label: i.label })),
       mpPublicKey: process.env.MP_PUBLIC_KEY,
     });
   }
@@ -438,8 +440,32 @@ app.get('/checkout/dados', (req, res) => {
     quantity: qty,
     loteName: lote.name,
     total: Number((lote.price * qty).toFixed(2)),
+    slots: Array.from({ length: qty }, () => ({ kind: 'adulto', label: 'Adulto' })),
     mpPublicKey: process.env.MP_PUBLIC_KEY,
   });
+});
+
+// Checks buyer + participants before the payment form opens, so a repeated
+// CPF is caught while the fields are still editable. /api/pagamentos checks
+// again (this one is only a convenience).
+app.post('/api/participantes/validar', (req, res) => {
+  const { buyerName, buyerCpf } = req.body || {};
+  if (!isValidCpf(buyerCpf)) return res.status(400).json({ error: 'CPF invalido. Confira e tente novamente.' });
+  const db = store.load();
+  let count = Math.max(1, Math.min(parseInt(req.body.quantity, 10) || 1, maxQty));
+  let kinds = [];
+  if (getProducts(currentEvent).length > 0) {
+    const purchase = buildPurchase(currentEvent, req.body, { maxPersons: maxQty });
+    if (purchase.error) return res.status(400).json({ error: purchase.error });
+    count = purchase.persons;
+    kinds = expandKinds({ items: purchase.items }).map((i) => i.kind);
+  }
+  const participants = participantesRegra.readParticipants(req.body, count);
+  const invalid = participantesRegra.validateNewOrder({
+    buyerName, buyerCpf, participants, kinds, taken: participantesRegra.cpfsTakenInEvent(db, currentEvent.id),
+  });
+  if (invalid) return res.status(400).json({ error: invalid });
+  return res.json({ ok: true });
 });
 
 app.post('/api/pagamentos', async (req, res) => {
@@ -466,13 +492,20 @@ app.post('/api/pagamentos', async (req, res) => {
         if (remaining <= 0) return { error: 'Os ingressos se esgotaram.' };
         const purchase = buildPurchase(currentEvent, req.body, { maxPersons: maxQty, remaining });
         if (purchase.error) return { error: purchase.error };
+        const participants = participantesRegra.readParticipants(req.body, purchase.persons);
+        const invalid = participantesRegra.validateNewOrder({
+          buyerName, buyerCpf, participants, kinds: expandKinds({ items: purchase.items }).map((i) => i.kind),
+          taken: participantesRegra.cpfsTakenInEvent(d, currentEvent.id),
+        });
+        if (invalid) return { error: invalid };
         const order = {
           id: crypto.randomUUID(),
           buyerName,
           buyerEmail,
           buyerPhone,
-          buyerCpf: String(buyerCpf).replace(/D/g, ''),
+          buyerCpf: String(buyerCpf).replace(/\D/g, ''),
           quantity: purchase.persons,
+          participants,
           eventId: currentEvent.id,
           productId: purchase.product.id,
           loteName: purchase.product.name,
@@ -530,6 +563,11 @@ app.post('/api/pagamentos', async (req, res) => {
     }
 
     const qty = Math.min(Math.max(parseInt(quantity, 10) || 1, 1), Math.min(lote.remaining, maxQty));
+    const participants = participantesRegra.readParticipants(req.body, qty);
+    const invalid = participantesRegra.validateNewOrder({
+      buyerName, buyerCpf, participants, taken: participantesRegra.cpfsTakenInEvent(db, currentEvent.id),
+    });
+    if (invalid) return res.status(400).json({ error: invalid });
 
     const order = {
       id: crypto.randomUUID(),
@@ -538,6 +576,7 @@ app.post('/api/pagamentos', async (req, res) => {
       buyerPhone,
       buyerCpf: String(buyerCpf).replace(/\D/g, ''),
       quantity: qty,
+      participants,
       eventId: currentEvent.id,
       loteName: lote.name,
       unitPrice: lote.price,
@@ -591,31 +630,77 @@ app.get('/pedido/:id', (req, res) => {
   res.render('order_status', { eventInfo: eventInfoFor(order), order, tickets, whatsappTicketLink: buildWhatsappTicketLink() });
 });
 
+const ticketsOfOrder = (db, orderId) => Object.values(db.tickets)
+  .filter((t) => t.orderId === orderId)
+  .sort((a, b) => (a.drawNumber || 0) - (b.drawNumber || 0));
+
 app.get('/pedido/:id/participantes', (req, res) => {
   const db = store.load();
   const order = db.orders[req.params.id];
   if (!order || order.status !== 'paid') return res.status(404).send('Pedido nao encontrado.');
 
-  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
-  res.render('participantes', { eventInfo: eventInfoFor(order), order, tickets, saved: req.query.saved === '1' });
+  const tickets = ticketsOfOrder(db, order.id);
+  res.render('participantes', { eventInfo: eventInfoFor(order), order, tickets, saved: req.query.saved === '1', error: null, values: null });
 });
 
+// Saves who uses each ticket. One ticket per person per event: every named
+// adult ticket needs a CPF, and a CPF can't repeat inside the order nor be in
+// use by a ticket of another order of the same event.
 app.post('/api/pedido/:id/participantes', async (req, res) => {
   const db = store.load();
   const order = db.orders[req.params.id];
-  if (!order) return res.status(404).send('Pedido nao encontrado.');
+  if (!order || order.status !== 'paid') return res.status(404).send('Pedido nao encontrado.');
 
-  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
+  const tickets = ticketsOfOrder(db, order.id);
   const submitted = req.body.participantes || {};
+  const R = participantesRegra;
+  const rows = tickets.map((t, i) => {
+    const p = submitted[t.code] || {};
+    const row = {
+      code: t.code,
+      name: R.cleanName(p.name),
+      cpf: R.digits(p.cpf),
+      email: String(p.email || '').trim().toLowerCase().slice(0, 120),
+      phone: R.cleanPhone(p.phone),
+      adulto: !t.kind || t.kind === 'adulto',
+    };
+    if (i === 0 && !row.cpf && (!row.name || R.normName(row.name) === R.normName(order.buyerName))) row.cpf = R.digits(order.buyerCpf);
+    return row;
+  });
+
+  const taken = R.cpfsTakenInEvent(db, orderEventId(order), { excludeOrderId: order.id });
+  const seenCpf = new Set();
+  const seenName = new Set();
+  let error = null;
+  rows.forEach((r, i) => {
+    if (error || !r.name) return;
+    const n = i + 1;
+    const who = R.firstName(r.name);
+    if (r.name.split(' ').length < 2) error = `Ingresso ${n}: informe o nome completo de quem vai usar.`;
+    else if (seenName.has(R.normName(r.name))) error = `Ingresso ${n}: o nome repete outro ingresso. Cada ingresso é de uma pessoa diferente.`;
+    else if (r.adulto && !r.cpf) error = `Ingresso ${n}: informe o CPF de ${who}.`;
+    else if (r.cpf && !isValidCpf(r.cpf)) error = `Ingresso ${n}: o CPF de ${who} é inválido.`;
+    else if (r.cpf && seenCpf.has(r.cpf)) error = `Ingresso ${n}: o CPF repete outro ingresso. Cada pessoa pode ter só 1 ingresso.`;
+    else if (r.cpf && taken.has(r.cpf)) error = `Ingresso ${n}: ${who} já tem ingresso para este evento. Cada pessoa pode ter só 1 ingresso.`;
+    seenName.add(R.normName(r.name));
+    if (r.cpf) seenCpf.add(r.cpf);
+  });
+  if (error) {
+    const values = {};
+    rows.forEach((r) => { values[r.code] = submitted[r.code] || {}; });
+    return res.status(400).render('participantes', {
+      eventInfo: eventInfoFor(order), order, tickets, saved: false, error, values,
+    });
+  }
 
   await store.withDb((d) => {
-    tickets.forEach((t) => {
-      const p = submitted[t.code];
-      const ticket = d.tickets[t.code];
-      if (!p || !ticket) return;
-      ticket.participantName = String(p.name || '').trim() || null;
-      ticket.participantEmail = String(p.email || '').trim() || null;
-      ticket.participantPhone = String(p.phone || '').trim() || null;
+    rows.forEach((r) => {
+      const ticket = d.tickets[r.code];
+      if (!ticket) return;
+      ticket.participantName = r.name || null;
+      ticket.participantCpf = r.name ? r.cpf || null : null;
+      ticket.participantEmail = r.name ? r.email || null : null;
+      ticket.participantPhone = r.name ? r.phone || null : null;
     });
   });
 
@@ -1623,6 +1708,9 @@ app.post('/:slug/inscricao', async (req, res, next) => {
   const page = freePageData(ev, store.load());
   if (page.closed) return renderError(400, 'As inscrições deste evento foram encerradas.');
 
+  // 1 ingresso por pessoa: os ingressos 2..n exigem nome + CPF de quem vai usar.
+  const participants = participantesRegra.readParticipants(req.body, qty);
+
   const order = {
     id: crypto.randomUUID(),
     buyerName,
@@ -1641,18 +1729,20 @@ app.post('/:slug/inscricao', async (req, res, next) => {
     paymentMethodId: 'gratuito',
     pixQrCode: null,
     pixQrCodeBase64: null,
+    participants,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
-  // Capacity and the per-CPF limit are checked and the order saved in one atomic step.
+  // Capacity and the one-ticket-per-person rule are checked and the order saved in one atomic step.
   const outcome = await store.withDb((d) => {
     const mine = Object.values(d.orders).filter((o) => inEvent(o, ev.id) && o.buyerCpf === cpf && (o.status === 'paid' || o.status === 'pending'));
     // Same person tapping twice: send them to the order they already have.
     const recent = mine.find((o) => o.buyerEmail === buyerEmail && Date.now() - Date.parse(o.createdAt) < 120000);
     if (recent) return { existing: recent.id };
-    const already = mine.reduce((s, o) => s + o.quantity, 0);
-    if (already + qty > maxPer) return { error: `Este CPF já tem ${already} ingresso(s). O limite é ${maxPer} por pessoa.` };
+    const taken = participantesRegra.cpfsTakenInEvent(d, ev.id, { statuses: ['paid', 'pending'] });
+    const invalid = participantesRegra.validateNewOrder({ buyerName, buyerCpf: cpf, participants, taken });
+    if (invalid) return { error: invalid };
     if (getSoldCount(d, ev.id) + qty > (ev.capacity || 0)) return { error: 'Os ingressos acabaram. Entre na comunidade para saber dos próximos eventos.' };
     d.orders[order.id] = order;
     return { created: true };

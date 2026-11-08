@@ -47,6 +47,19 @@
           CPF
           <input type="text" id="buyerCpf" required placeholder="000.000.000-00" inputmode="numeric" maxlength="14" />
         </label>
+        <% const extraSlots = (typeof slots !== 'undefined' && slots ? slots : []).slice(1); %>
+        <% if (extraSlots.length) { %>
+          <p class="hint" style="margin:6px 0 0; text-align:left">O ingresso 1 é seu. <strong>Cada ingresso é de uma pessoa diferente</strong> (1 por CPF): informe quem vai usar cada um dos outros.</p>
+          <% extraSlots.forEach(function(sl, i) { const adulto = sl.kind === 'adulto'; %>
+            <div class="template-box" data-participante>
+              <h3 style="margin-top:0">Ingresso <%= i + 2 %><%= sl.label && sl.label !== 'Adulto' ? ' · ' + sl.label : '' %></h3>
+              <label>Nome completo<input type="text" data-p="name" required maxlength="80" autocomplete="off" /></label>
+              <label>CPF<%= adulto ? '' : ' (opcional)' %><input type="text" data-p="cpf" data-cpf <%= adulto ? 'required' : '' %> data-adulto="<%= adulto ? '1' : '' %>" placeholder="000.000.000-00" inputmode="numeric" maxlength="14" /></label>
+              <label>WhatsApp (opcional)<input type="tel" data-p="phone" placeholder="21 99999-9999" /></label>
+              <label>E-mail (opcional)<input type="email" data-p="email" /></label>
+            </div>
+          <% }) %>
+        <% } %>
         <button type="submit" id="continuar-btn">Continuar para o pagamento</button>
       </form>
 
@@ -83,14 +96,34 @@
       errorBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    const cpfInput = document.getElementById('buyerCpf');
-    cpfInput.addEventListener('input', () => {
-      let v = cpfInput.value.replace(/\D/g, '').slice(0, 11);
-      v = v.replace(/(\d{3})(\d)/, '$1.$2');
-      v = v.replace(/(\d{3})(\d)/, '$1.$2');
-      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-      cpfInput.value = v;
-    });
+    function maskCpf(input) {
+      input.addEventListener('input', () => {
+        let v = input.value.replace(/\D/g, '').slice(0, 11);
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        input.value = v;
+      });
+    }
+    maskCpf(document.getElementById('buyerCpf'));
+    document.querySelectorAll('[data-cpf]').forEach(maskCpf);
+
+    // Participants of tickets 2..n, in ticket order.
+    function readParticipants() {
+      return [...document.querySelectorAll('[data-participante]')].map((box) => {
+        const get = (k) => box.querySelector('[data-p="' + k + '"]').value.trim();
+        return { name: get('name'), cpf: get('cpf').replace(/\D/g, ''), phone: get('phone'), email: get('email') };
+      });
+    }
+    const purchaseFields = {
+      <% if (typeof purchase !== 'undefined' && purchase) { %>
+      produto: <%- JSON.stringify(purchase.produto) %>,
+      adultos: <%= purchase.adultos %>,
+      criancas: <%= purchase.criancas %>,
+      bebes: <%= purchase.bebes %>,
+      <% } %>
+      quantity: <%= quantity %>,
+    };
 
     const dadosForm = document.getElementById('dados-form');
     const continuarBtn = document.getElementById('continuar-btn');
@@ -111,10 +144,23 @@
         return;
       }
       errorBox.style.display = 'none';
+      continuarBtn.disabled = true;
 
-      [...dadosForm.elements].forEach((el) => (el.disabled = true));
-      brickCreated = true;
-      createBrick({ email: buyerEmail, cpfDigits });
+      // The server checks the one-ticket-per-person rule before the payment opens.
+      fetch('/api/participantes/validar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...purchaseFields, buyerName, buyerCpf: cpfDigits, participantes: readParticipants() }),
+      })
+        .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
+        .then(({ ok, data }) => {
+          continuarBtn.disabled = false;
+          if (!ok) { showError(data.error || 'Confira os dados dos participantes.'); return; }
+          [...dadosForm.elements].forEach((el) => (el.disabled = true));
+          brickCreated = true;
+          createBrick({ email: buyerEmail, cpfDigits });
+        })
+        .catch(() => { continuarBtn.disabled = false; showError('Erro de conexao. Tente novamente.'); });
     });
 
     function createBrick({ email, cpfDigits }) {
@@ -156,13 +202,8 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  <% if (typeof purchase !== 'undefined' && purchase) { %>
-                  produto: <%- JSON.stringify(purchase.produto) %>,
-                  adultos: <%= purchase.adultos %>,
-                  criancas: <%= purchase.criancas %>,
-                  bebes: <%= purchase.bebes %>,
-                  <% } %>
-                  quantity: <%= quantity %>,
+                  ...purchaseFields,
+                  participantes: readParticipants(),
                   buyerName,
                   buyerEmail: email,
                   buyerPhone,

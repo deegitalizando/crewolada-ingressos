@@ -17,6 +17,11 @@ async function buildTicketRecords(order) {
   const kinds = expandKinds(order);
   for (let i = 0; i < order.quantity; i += 1) {
     const item = kinds[i] || null;
+    // Ticket 1 is the buyer's; the others belong to the participants given at
+    // checkout (order.participants, same order as the tickets).
+    const who = i === 0
+      ? { name: order.buyerName, cpf: order.buyerCpf, email: order.buyerEmail, phone: order.buyerPhone }
+      : (Array.isArray(order.participants) && order.participants[i - 1]) || null;
     const code = generateTicketCode();
     const qrCodeDataUrl = await QRCode.toDataURL(code, { margin: 1, width: 320 });
     const qrCodeBase64 = qrCodeDataUrl.replace(/^data:image\/png;base64,/, '');
@@ -38,9 +43,10 @@ async function buildTicketRecords(order) {
       kindLabel: item ? item.label : null,
       price: item ? item.unitPrice : null,
       includes: item && item.kind !== 'bebe' && Array.isArray(order.includes) ? order.includes : [],
-      participantName: null,
-      participantEmail: null,
-      participantPhone: null,
+      participantName: (who && who.name) || null,
+      participantCpf: (who && who.cpf) || null,
+      participantEmail: (who && who.email) || null,
+      participantPhone: (who && who.phone) || null,
       createdAt: new Date().toISOString(),
     });
   }
