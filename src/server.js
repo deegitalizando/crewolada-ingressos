@@ -43,6 +43,7 @@ const { registerPesquisaRoutes } = require('./pesquisa');
 const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNotification } = require('./comprovante');
 const { isValidCpf } = require('./cpf');
 const participantesRegra = require('./participantes');
+const { buildTicketPdf } = require('./pdf');
 const { sendBroadcast, notifyOrderApproved, normalizePhone } = require('./n8n');
 const {
   criarPedidoMusica, aprovarPedidoMusica, marcarMusicaPronta, posEntregaMusica, buscarPedidoPorCodigo, codigoCurto,
@@ -705,6 +706,19 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
     });
   });
 
+  // Refresh the stored PDFs too (they're what the e-mail/WhatsApp resends attach).
+  for (const r of rows) {
+    const fresh = store.load();
+    const ticket = fresh.tickets[r.code];
+    if (!ticket) continue;
+    try {
+      const pdf = await buildTicketPdf({ eventInfo: eventInfoFor(order), order, ticket });
+      await store.withDb((d) => { if (d.tickets[r.code]) d.tickets[r.code].pdfBase64 = pdf.toString('base64'); });
+    } catch (err) {
+      console.error('Erro ao atualizar PDF do ingresso:', err.message);
+    }
+  }
+
   res.redirect(`/pedido/${order.id}/participantes?saved=1`);
 });
 
@@ -793,13 +807,22 @@ app.get('/ingresso/:code', (req, res) => {
   res.render('ticket', { eventInfo: order ? eventInfoFor(order) : eventInfo, ticket, order });
 });
 
-app.get('/ingresso/:code/pdf', (req, res) => {
+app.get('/ingresso/:code/pdf', async (req, res) => {
   const db = store.load();
   const ticket = db.tickets[req.params.code];
   if (!ticket || !ticket.pdfBase64) return res.status(404).send('Ingresso nao encontrado.');
   if (ticket.status === 'cancelled') return res.status(410).send('Ingresso cancelado.');
 
-  const buffer = Buffer.from(ticket.pdfBase64, 'base64');
+  // Built from the current data, so a participant registered after the
+  // purchase shows up on the PDF (the stored copy is the fallback).
+  const order = db.orders[ticket.orderId];
+  let buffer;
+  try {
+    buffer = order ? await buildTicketPdf({ eventInfo: eventInfoFor(order), order, ticket }) : null;
+  } catch (err) {
+    console.error('Erro ao gerar PDF do ingresso:', err.message);
+  }
+  if (!buffer) buffer = Buffer.from(ticket.pdfBase64, 'base64');
   res.set('Content-Type', 'application/pdf');
   res.set('Content-Disposition', `inline; filename="ingresso-${ticket.code}.pdf"`);
   res.send(buffer);

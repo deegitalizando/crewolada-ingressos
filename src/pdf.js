@@ -38,7 +38,8 @@ function buildTicketPdf({ eventInfo, order, ticket }) {
       .fillColor('#ffffff')
       .font('Helvetica-Bold')
       .fontSize(16)
-      .text(order.buyerName, 24, 148, { width: 272, align: 'center' });
+      // Who uses this ticket: the participant registered for it, else the buyer.
+      .text(ticket.participantName || order.buyerName, 24, 148, { width: 272, align: 'center' });
 
     doc
       .fillColor(DIM)
