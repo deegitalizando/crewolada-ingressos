@@ -1423,6 +1423,32 @@ app.post('/api/n8n/liberar-ingressos', async (req, res) => {
   });
 });
 
+// WhatsApp agent: the person asks for their ticket. Finds the tickets this
+// person holds — as buyer (phone, CPF or e-mail of the purchase) or as a
+// registered companion (their own phone/CPF/e-mail) — works out which event
+// the message is about, resends them and hands back the reply to send.
+const normEv = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function eventKeywords(ev) {
+  const words = new Set();
+  const add = (w) => { w = normEv(w).trim(); if (w.length >= 2) words.add(w); };
+  if (ev.slug) add(ev.slug);
+  normEv(ev.name).replace(/crewolada/g, ' ').split(/[^a-z0-9]+/).forEach((w) => { if (w.length >= 3 || w === 'sp' || w === 'rj') add(w); });
+  normEv(ev.venue).split(/[-,/·]+/).map((x) => x.trim()).filter(Boolean).forEach((part) => {
+    add(part);
+    part.split(/\s+/).forEach((w) => { if (w.length >= 5) add(w); });
+  });
+  const v = normEv(`${ev.name} ${ev.venue}`);
+  if (/\bsp\b|sao paulo|osasco/.test(v)) ['sp', 'sao paulo', 'osasco', 'sampa'].forEach(add);
+  if (/\brj\b|rio de janeiro|campo grande|bangu/.test(v)) ['rj', 'rio'].forEach(add);
+  if (ev.dateLabel) { const [d, m] = ev.dateLabel.split('/'); add(`${d}/${m}`); add(`${Number(d)}/${Number(m)}`); }
+  ['crewolada', 'festa', 'evento', 'ingresso', 'igreja'].forEach((w) => words.delete(w));
+  return [...words];
+}
+function eventsMentioned(texto, eventIds) {
+  const t = ` ${normEv(texto).replace(/[^a-z0-9/]+/g, ' ')} `;
+  return eventIds.filter((id) => eventKeywords(getEventById(id)).some((k) => t.includes(` ${k} `) || (k.includes(' ') && t.includes(k))));
+}
+
 app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
   const secret = process.env.N8N_CALLBACK_SECRET;
   if (secret && req.headers['x-callback-secret'] !== secret) {
@@ -1431,33 +1457,86 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
 
   const phone = String(req.body.telefone || '').replace(/\D/g, '');
   const cpf = String(req.body.cpf || '').replace(/\D/g, '');
-  if (!phone) return res.status(400).json({ found: false });
+  const email = String(req.body.email || '').trim().toLowerCase();
+  const texto = String(req.body.mensagem || '');
+  if (!phone && cpf.length !== 11 && !email) return res.status(400).json({ found: false });
 
-  const normalizePhoneSuffix = (p) => String(p || '').replace(/\D/g, '').slice(-10);
-  const targetSuffix = normalizePhoneSuffix(phone);
-
+  const suffix = (p) => String(p || '').replace(/\D/g, '').slice(-10);
   const db = store.load();
-  let matchingOrders = Object.values(db.orders)
-    .filter((o) => o.status === 'paid' && normalizePhoneSuffix(o.buyerPhone) === targetSuffix)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const now = Date.now();
+  const isPast = (id) => { const ev = getEventById(id); return ev.startAt && Date.parse(ev.startAt) + 5 * 3600000 < now; };
 
-  if (matchingOrders.length === 0 && cpf.length === 11) {
-    matchingOrders = Object.values(db.orders)
-      .filter((o) => o.status === 'paid' && String(o.buyerCpf || '').replace(/\D/g, '') === cpf)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  // Same person = same phone, or the CPF/e-mail they typed.
+  const samePerson = (p, c, e) => (phone && suffix(p) === suffix(phone))
+    || (cpf.length === 11 && String(c || '').replace(/\D/g, '') === cpf)
+    || (email && String(e || '').trim().toLowerCase() === email);
+
+  const found = []; // { order, tickets, to }
+  Object.values(db.orders).filter((o) => o.status === 'paid').forEach((o) => {
+    const live = Object.values(db.tickets).filter((t) => t.orderId === o.id && t.status !== 'cancelled')
+      .sort((a, b) => (a.drawNumber || 0) - (b.drawNumber || 0));
+    if (!live.length) return;
+    if (samePerson(o.buyerPhone, o.buyerCpf, o.buyerEmail)) {
+      found.push({ order: o, tickets: live, to: null });
+      return;
+    }
+    const mine = live.filter((t) => t.participantName && samePerson(t.participantPhone, t.participantCpf, t.participantEmail));
+    if (mine.length) {
+      const t = mine[0];
+      found.push({ order: o, tickets: mine, to: { nome: t.participantName, whatsapp: t.participantPhone || phone, email: t.participantEmail || '' } });
+    }
+  });
+
+  // Which event is the message about? Among all events, then among this person's.
+  const allIds = [...new Set(EVENTS.map((e) => e.id))];
+  const pedidos = eventsMentioned(texto, allIds);
+  const deles = [...new Set(found.map((f) => orderEventId(f.order)))];
+  const nomesEv = (ids) => ids.map((id) => getEventById(id).name).join(' e ');
+  const naoAchou = (msgEvento) => res.json({
+    found: false,
+    evento: msgEvento || null,
+    mensagem: `Não encontrei ingresso${msgEvento ? ` da *${msgEvento}*` : ''} com os dados desta conversa 😕 Os dados de quem comprou ou se inscreveu estão corretos? Me manda o *CPF* ou o *e-mail* usado na ${msgEvento && getEventById(pedidos[0]).free ? 'inscrição' : 'compra/inscrição'} (só ele na mensagem) que eu procuro de novo.`,
+  });
+
+  let alvo;
+  if (pedidos.length) {
+    alvo = found.filter((f) => pedidos.includes(orderEventId(f.order)));
+    if (!alvo.length) {
+      const outros = deles.filter((id) => !isPast(id));
+      if (outros.length) {
+        return res.json({
+          found: false,
+          evento: nomesEv(pedidos),
+          mensagem: `Encontrei ingresso seu para a *${nomesEv(outros)}*, mas não para a *${nomesEv(pedidos)}* 🤔 Os dados de quem comprou ou se inscreveu estão corretos? Se a ${nomesEv(pedidos)} foi feita com outro CPF ou e-mail, me manda ele aqui (só ele na mensagem) que eu procuro.`,
+        });
+      }
+      return naoAchou(nomesEv(pedidos));
+    }
+  } else {
+    // No event named: every upcoming event of this person (past ones only if nothing else).
+    alvo = found.filter((f) => !isPast(orderEventId(f.order)));
+    if (!alvo.length) alvo = found;
   }
-
-  if (matchingOrders.length === 0) return res.json({ found: false });
-
-  const order = matchingOrders[0];
-  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
-  if (tickets.length === 0) return res.json({ found: false });
+  if (!alvo.length) return naoAchou(null);
 
   try {
-    await notifyOrderApproved(order, tickets, { origin: 'reenvio' });
-    return res.json({ found: true, buyerName: order.buyerName });
+    let total = 0;
+    for (const f of alvo) {
+      await notifyOrderApproved(f.order, f.tickets, { origin: 'reenvio', to: f.to });
+      total += f.tickets.length;
+    }
+    const nome = (alvo[0].to && alvo[0].to.nome) || alvo[0].order.buyerName;
+    const evs = nomesEv([...new Set(alvo.map((f) => orderEventId(f.order)))]);
+    const companion = alvo.some((f) => f.to);
+    return res.json({
+      found: true,
+      buyerName: nome,
+      evento: evs,
+      ingressos: total,
+      mensagem: `Encontrei, ${String(nome).split(' ')[0]}! 🎉 Estou enviando ${total === 1 ? 'seu ingresso' : `seus ${total} ingressos`} da *${evs}* agora${companion ? ' para este WhatsApp e o seu e-mail cadastrado' : ' para o WhatsApp e o e-mail cadastrados na compra/inscrição'}. Na entrada é só mostrar o QR Code 😉`,
+    });
   } catch (err) {
-    console.error(`Erro ao reenviar ingresso por telefone (pedido ${order.id}):`, err.message);
+    console.error('Erro ao reenviar ingresso pelo WhatsApp:', err.message);
     return res.status(500).json({ found: false, error: 'send_failed' });
   }
 });

@@ -26,14 +26,18 @@ function normalizePhone(rawPhone) {
 // 'email', 'whatsapp' or 'both' (default) — since WhatsApp delivery can be
 // unreliable and the admin may want to retry just that one channel, or
 // send only e-mail when they know WhatsApp is down.
-async function notifyOrderApproved(order, tickets, { origin = 'compra', channel = 'both' } = {}) {
+// `to` overrides who receives it (name/WhatsApp/e-mail): used when a
+// companion asks for their own ticket, so it goes to them, not the buyer.
+async function notifyOrderApproved(order, tickets, { origin = 'compra', channel = 'both', to = null } = {}) {
   const webhookUrl = process.env.N8N_WEBHOOK_URL;
   if (!webhookUrl) {
     console.warn('N8N_WEBHOOK_URL nao configurada, pulando notificacao.');
     return;
   }
 
-  const whatsapp = normalizePhone(order.buyerPhone);
+  const whatsapp = normalizePhone((to && to.whatsapp) || order.buyerPhone);
+  const nome = (to && to.nome) || order.buyerName;
+  const email = (to && to.email) || order.buyerEmail;
   const templates = getTemplates(store.load());
 
   for (const ticket of tickets) {
@@ -41,7 +45,7 @@ async function notifyOrderApproved(order, tickets, { origin = 'compra', channel 
     const mensagemPersonalizada = templates.compra
       ? renderTemplate(templates.compra, {
           ...eventTemplateVars(eventForOrder(order)),
-          nome: order.buyerName,
+          nome,
           nomeLote: order.loteName,
           codigo: ticket.code,
           numeroSorteio,
@@ -49,8 +53,8 @@ async function notifyOrderApproved(order, tickets, { origin = 'compra', channel 
       : '';
 
     const payload = {
-      nome: order.buyerName,
-      email: order.buyerEmail,
+      nome,
+      email,
       nomeLote: order.loteName,
       codigo: ticket.code,
       numeroSorteio,
