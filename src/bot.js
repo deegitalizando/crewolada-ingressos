@@ -51,7 +51,7 @@ async function extractText(nome, buffer) {
 
 // Events the agent may talk about: the one on sale and every upcoming one, with
 // what a visitor needs (when, where, prices, how many tickets are left, where to buy).
-function eventosTexto({ salesOpenNow, availableNow, baseUrl }) {
+function eventosTexto({ salesOpenNow, availableNow, vagasLivres, baseUrl }) {
   const now = Date.now();
   const linhas = [];
   EVENTS
@@ -63,8 +63,10 @@ function eventosTexto({ salesOpenNow, availableNow, baseUrl }) {
       if (e.venue) partes.push(`Local: ${e.venue}`);
       if (e.tagline) partes.push(`Destaque: ${e.tagline}${e.note ? ` (${e.note})` : ''}`);
       if (e.free) {
-        partes.push(`Entrada gratuita com inscrição obrigatória (vagas limitadas${e.capacity ? `: ${e.capacity}` : ''}, 1 ingresso por pessoa).`);
-        partes.push(`Inscrição: ${baseUrl}/${e.slug}`);
+        partes.push(`Entrada gratuita com inscrição obrigatória (vagas limitadas${e.capacity ? `: ${e.capacity}` : ''}, 1 ingresso por pessoa: cada pessoa faz a própria inscrição com nome, CPF, WhatsApp e e-mail).`);
+        const vagas = vagasLivres ? vagasLivres(e.id) : null;
+        if (vagas === 0) partes.push('VAGAS ESGOTADAS no momento: não há inscrições disponíveis. Indique a comunidade do WhatsApp para saber se abrirem novas vagas.');
+        else partes.push(`Inscrição: ${baseUrl}/${e.slug}${vagas !== null ? ` · restam ${vagas} vagas` : ''}`);
       } else if (atual) {
         const produtos = getProducts(e);
         if (produtos.length) {
@@ -88,7 +90,16 @@ function eventosTexto({ salesOpenNow, availableNow, baseUrl }) {
       partes.push(`Situação: ${eventStatus(e) === 'atual' ? 'evento atual' : 'próximo evento'}`);
       linhas.push(partes.join('\n'));
     });
-  return linhas.length ? linhas.join('\n\n') : 'Nenhum evento anunciado no momento.';
+  const proximos = linhas.length ? linhas.join('\n\n') : 'Nenhum evento anunciado no momento.';
+
+  // Past editions: history the agent can talk about (never sold anymore).
+  const passados = EVENTS
+    .filter((e) => !e.hidden && e.startAt && Date.parse(e.startAt) + 5 * 3600000 <= now)
+    .sort((a, b) => String(b.startAt).localeCompare(String(a.startAt)))
+    .map((e) => `- ${e.name}: ${e.dateLabel}${e.timeLabel ? ` · ${e.timeLabel}` : ''}${e.venue ? ` · ${e.venue}` : ''}${e.free ? ' (entrada gratuita)' : ''}`);
+  return proximos + (passados.length
+    ? `\n\n## EVENTOS QUE JÁ ACONTECERAM (só histórico: não há ingressos à venda para eles)\n${passados.join('\n')}`
+    : '');
 }
 
 function contexto(db, deps) {

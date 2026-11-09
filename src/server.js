@@ -1548,6 +1548,11 @@ registerBotRoutes(app, {
   deps: {
     salesOpenNow: () => salesOpenNow(),
     availableNow: () => (getProducts(currentEvent).length > 0 ? getAvailable(store.load()) : null),
+    // Seats left in a capacity-limited event (free sign-ups), null when unlimited.
+    vagasLivres: (id) => {
+      const ev = getEventById(id);
+      return ev.capacity ? Math.max(0, ev.capacity - getSoldCount(store.load(), id)) : null;
+    },
     communityUrl: app.locals.communityUrl,
     whatsappTicketUrl: buildWhatsappTicketLink(),
     whatsappLabel: app.locals.contact.whatsappLabel,
