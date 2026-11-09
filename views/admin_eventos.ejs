@@ -61,13 +61,46 @@
 
     <% if (msg) { %>
       <div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac">
-        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', publicado: 'Página publicada: agora qualquer pessoa pode acessar.', oculto: 'Página oculta: só você (logado) consegue ver.', liberado: 'Vendas liberadas agora: o site já mostra a compra de ingressos.', 'cancelar-dados': 'Para cancelar o evento, escreva o motivo (pelo menos 10 letras) e marque a confirmação.', reativado: 'Evento reativado. As vendas voltam ao normal.', 'nao-pode-reativar': 'Não dá para reativar: já existem e-mails de cancelamento enviados ou em envio.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
+        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', publicado: 'Página publicada: agora qualquer pessoa pode acessar.', oculto: 'Página oculta: só você (logado) consegue ver.', liberado: 'Vendas liberadas agora: o site já mostra a compra de ingressos.', home: 'Página inicial atualizada. Já vale em crewolada.com.', 'home-oculto': 'Publique a página desse evento (botão "Publicar página") antes de colocá-la na página inicial.', 'cancelar-dados': 'Para cancelar o evento, escreva o motivo (pelo menos 10 letras) e marque a confirmação.', reativado: 'Evento reativado. As vendas voltam ao normal.', 'nao-pode-reativar': 'Não dá para reativar: já existem e-mails de cancelamento enviados ou em envio.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
       </div>
     <% } %>
 
     <%
       const money = function (n) { return 'R$ ' + (Math.round(n * 100) / 100).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
     %>
+
+    <section class="ev-group">
+      <h3>Página inicial do site</h3>
+      <article class="ev-card">
+        <p class="ev-meta" style="margin-top:0">Escolha o que aparece quando alguém abre <strong>crewolada.com</strong>. A venda de ingressos do evento atual continua sempre disponível em <a href="/ingressos" target="_blank" style="color:var(--accent)">/ingressos</a>.</p>
+        <form action="/admin/pagina-inicial" method="POST" id="f-home" class="home-opts">
+          <% home.eventos.forEach(function(o) { %>
+            <label class="home-opt">
+              <input type="radio" name="destino" value="<%= o.value %>" data-atual="<%= o.atual ? '1' : '' %>" data-pago="<%= o.tipo === 'Venda de ingressos' ? '1' : '' %>" <%= home.selecionado === o.value ? 'checked' : '' %> />
+              <span><strong><%= o.nome %></strong> &middot; <%= o.dateLabel %><br /><small><%= o.tipo %><%= o.atual ? ' · evento atual' : '' %><%= o.cancelado ? ' · cancelado' : '' %></small></span>
+            </label>
+          <% }) %>
+          <label class="home-opt">
+            <input type="radio" name="destino" value="links" <%= home.selecionado === 'links' ? 'checked' : '' %> />
+            <span><strong>Página de links</strong> (a mesma de <a href="/links" target="_blank" style="color:var(--accent)">/links</a>)<br /><small>Mostra YouTube, playlist e os eventos com ingresso disponível</small></span>
+          </label>
+          <% if (home.aguardando.length) { %><p class="ev-meta" style="margin:8px 0 0">Para colocar <%= home.aguardando.join(', ') %> na página inicial, publique a página dele(s) primeiro.</p><% } %>
+          <div class="ev-actions" style="margin-top:12px"><button type="submit">Salvar página inicial</button></div>
+        </form>
+      </article>
+    </section>
+    <style>
+      .home-opts { display: grid; gap: 8px; }
+      .home-opt { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--card-border); border-radius: 10px; background: #141414; cursor: pointer; }
+      .home-opt input { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+      .home-opt small { color: var(--text-dim); }
+    </style>
+    <script>
+      document.getElementById('f-home').addEventListener('submit', function (e) {
+        var r = this.querySelector('input[name=destino]:checked');
+        if (r && r.dataset.pago === '1' && r.dataset.atual !== '1' && !confirm('Este evento também passa a ser o evento atual: o site vende os ingressos dele. Continuar?')) e.preventDefault();
+      });
+    </script>
 
     <% [{ key: 'atual', title: 'Evento atual (à venda no site)', list: atual },
         { key: 'futuro', title: 'Próximos eventos', list: futuros },

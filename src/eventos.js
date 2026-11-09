@@ -1,4 +1,5 @@
 const store = require('./store');
+const { opcoesHome } = require('./paginaInicial');
 const { getLotes } = require('./lotes');
 const { getProducts, getChildRules } = require('./produtos');
 const {
@@ -89,6 +90,7 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
       futuros: cards.filter((c) => c.status === 'futuro'),
       anteriores: cards.filter((c) => c.status === 'anterior').reverse(),
       cancelados: cards.filter((c) => c.status === 'cancelado'),
+      home: opcoesHome(db),
       msg: req.query.msg || null,
     });
   });

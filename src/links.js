@@ -1,4 +1,5 @@
 const store = require('./store');
+const { resolveHome } = require('./paginaInicial');
 const { EVENTS, currentEvent, eventStatus } = require('./event');
 
 // Public "link in bio" page (/links), the story (/sobre) and short redirects
@@ -43,7 +44,8 @@ function ticketEvents(salesOpen, availableNow) {
       dateLabel: e.dateLabel,
       timeLabel: e.timeLabel || '',
       venue: e.venue || '',
-      href: e.id === currentEvent.id ? '/' : `/${e.slug}`,
+      // The sale page is the home unless the admin put something else there.
+      href: e.id === currentEvent.id ? (resolveHome(store.load()).tipo === 'evento' ? '/' : '/ingressos') : `/${e.slug}`,
       free: Boolean(e.free),
       note: e.tagline || '',
       status: eventStatus(e),
@@ -53,7 +55,7 @@ function ticketEvents(salesOpen, availableNow) {
 }
 
 function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow, availableNow }) {
-  app.get('/links', (req, res) => {
+  const renderLinks = (req, res) => {
     res.render('links', {
       eventInfo,
       // "Em breve" while the ticket sale of the current event has not opened yet.
@@ -61,7 +63,8 @@ function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow, a
       events: ticketEvents(salesOpenNow ? salesOpenNow() : app.locals.salesOpen, availableNow),
       baseUrl: process.env.BASE_URL || '',
     });
-  });
+  };
+  app.get('/links', renderLinks);
 
   app.get('/sobre', (req, res) => {
     res.render('sobre', { eventInfo, baseUrl: process.env.BASE_URL || '' });
@@ -90,6 +93,8 @@ function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow, a
     await store.withDb((db) => { db.links = { ...(db.links || {}), youtube, playlist }; });
     res.redirect('/admin/links?saved=1');
   });
+
+  return { renderLinks };
 }
 
 module.exports = { registerLinksRoutes, ticketEvents };

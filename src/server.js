@@ -15,6 +15,7 @@ const { registerLinksRoutes } = require('./links');
 const { registerAfiliadosRoutes } = require('./afiliados');
 const { registerPushRoutes } = require('./push');
 const { registerLeadsRoutes } = require('./leads');
+const { registerPaginaInicialRoutes, resolveHome } = require('./paginaInicial');
 const { registerCancelamentoRoutes } = require('./eventoCancelamento');
 const { registerBetelRoutes } = require('./betel');
 const { getProducts, getChildRules, buildPurchase, expandKinds } = require('./produtos');
@@ -324,7 +325,8 @@ registerPushRoutes(app, { requireAdminAuth, eventInfo });
 registerLeadsRoutes(app, { requireAdminAuth, formatDatetimeBrasiliaDisplay });
 registerBetelRoutes(app, { eventInfo, formatDatetimeBrasiliaDisplay });
 
-app.get('/', (req, res) => {
+// Sales page of the current event: it is the home page by default and always answers at /ingressos.
+function renderVenda(req, res) {
   if (currentEvent.cancelledAt) return res.render('evento_cancelado', { eventInfo, ev: currentEvent, communityUrl: app.locals.communityUrl });
   if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
   if (!salesOpenNow()) {
@@ -360,6 +362,23 @@ app.get('/', (req, res) => {
     childRules: getChildRules(currentEvent),
     baseUrl: process.env.BASE_URL || '',
   });
+}
+
+let renderLinksPage = null; // set when the links routes are registered
+app.get('/ingressos', renderVenda);
+
+// Home page chosen in the admin (Eventos tab): the sale page (default), /links or a free event's page.
+app.get('/', (req, res) => {
+  const home = resolveHome(store.load());
+  if (home.tipo === 'links' && renderLinksPage) return renderLinksPage(req, res);
+  if (home.tipo === 'gratuito') {
+    const ev = home.ev;
+    if (ev.cancelledAt) return res.render('evento_cancelado', { eventInfo, ev, communityUrl: app.locals.communityUrl });
+    return res.render('evento_gratuito', {
+      eventInfo: { ...eventInfo, ...ev }, ...freePageData(ev, store.load()), error: null, values: {},
+    });
+  }
+  return renderVenda(req, res);
 });
 
 const LEGAL_UPDATED_AT = '09/10/2026';
@@ -418,13 +437,13 @@ app.get('/politica-de-cancelamento', (req, res) => {
 });
 
 app.get('/checkout/dados', (req, res) => {
-  if (!salesOpenNow()) return res.redirect('/');
+  if (!salesOpenNow()) return res.redirect('/ingressos');
   const db = store.load();
 
   if (getProducts(currentEvent).length > 0) {
     const remaining = getAvailable(db);
     const purchase = buildPurchase(currentEvent, req.query, { maxPersons: maxQty, remaining });
-    if (purchase.error) return res.redirect('/');
+    if (purchase.error) return res.redirect('/ingressos');
     return res.render('checkout_dados', {
       eventInfo,
       quantity: purchase.persons,
@@ -444,7 +463,7 @@ app.get('/checkout/dados', (req, res) => {
   }
 
   const lote = getCurrentLote(getLotes(db), getSoldCount(db));
-  if (!lote) return res.redirect('/');
+  if (!lote) return res.redirect('/ingressos');
 
   const qty = Math.min(Math.max(parseInt(req.query.qty, 10) || 1, 1), Math.min(lote.remaining, maxQty));
   res.render('checkout_dados', {
@@ -1647,10 +1666,10 @@ registerComprovanteRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBras
 registerContabilidadeRoutes(app, { isAdmin, requireAdminAuth, eventInfo });
 registerRelatorioRoutes(app, { requireAdminAuth, eventInfo });
 registerContatoRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
-registerLinksRoutes(app, {
+renderLinksPage = registerLinksRoutes(app, {
   requireAdminAuth, eventInfo, salesOpenNow: () => salesOpenNow(),
   availableNow: () => (getProducts(currentEvent).length > 0 ? getAvailable(store.load()) : null),
-});
+}).renderLinks;
 registerBotRoutes(app, {
   requireAdminAuth, eventInfo,
   deps: {
@@ -1666,6 +1685,7 @@ registerBotRoutes(app, {
     whatsappLabel: app.locals.contact.whatsappLabel,
   },
 });
+registerPaginaInicialRoutes(app, { requireAdminAuth, onChange: refreshEvents });
 registerCancelamentoRoutes(app, { requireAdminAuth, eventInfo, onChange: refreshEvents, formatDatetimeBrasiliaDisplay });
 registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,

@@ -37,7 +37,7 @@
       <% } else if (order.status === 'rejected') { %>
         <h2>Pagamento nao aprovado</h2>
         <p class="hint">Nao conseguimos confirmar esse pagamento. Tente novamente com outro cartao ou meio de pagamento.</p>
-        <a href="/"><button type="button">Tentar novamente</button></a>
+        <a href="/ingressos"><button type="button">Tentar novamente</button></a>
       <% } else if (order.status === 'pending' && order.pixQrCodeBase64) { %>
         <h2>Pague com Pix para confirmar</h2>
         <p class="hint" style="margin-top:0">Escaneie o QR Code abaixo ou copie o codigo Pix e cole no app do seu banco.</p>
