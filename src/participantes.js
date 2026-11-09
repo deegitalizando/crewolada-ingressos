@@ -66,6 +66,26 @@ function cpfsTakenInEvent(db, eventId, { statuses = ['paid'], excludeOrderId = n
   return taken;
 }
 
+// E-mails and WhatsApp numbers already holding a ticket in the event (as
+// buyer or as participant), so the same person can't sign up again with a
+// different CPF.
+function contactsTakenInEvent(db, eventId, { statuses = ['paid'], excludeOrderId = null } = {}) {
+  const emails = new Set();
+  const phones = new Set();
+  const addE = (e) => { const v = String(e || '').trim().toLowerCase(); if (v) emails.add(v); };
+  const addP = (p) => { const v = cleanPhone(p); if (v.length >= 10) phones.add(v); };
+  const orders = db.orders || {};
+  Object.values(orders).forEach((o) => {
+    if (o.id === excludeOrderId || !statuses.includes(o.status) || !inEvent(o, eventId)) return;
+    const live = Object.values(db.tickets || {}).filter((t) => t.orderId === o.id && t.status !== 'cancelled');
+    if (o.status === 'paid' && live.length === 0) return;
+    addE(o.buyerEmail); addP(o.buyerPhone);
+    live.forEach((t) => { addE(t.participantEmail); addP(t.participantPhone); });
+    (o.participants || []).forEach((p) => { addE(p.email); addP(p.phone); });
+  });
+  return { emails, phones };
+}
+
 const firstName = (s) => cleanName(s).split(' ')[0] || 'outra pessoa';
 
 // Telefone e e-mail do participante são obrigatórios.
@@ -112,5 +132,5 @@ function validateNewOrder({ buyerName, buyerCpf, participants, kinds = [], taken
 }
 
 module.exports = {
-  readParticipants, cpfsTakenInEvent, validateNewOrder, contactError, digits, cleanName, normName, cleanPhone, firstName,
+  readParticipants, cpfsTakenInEvent, contactsTakenInEvent, validateNewOrder, contactError, digits, cleanName, normName, cleanPhone, firstName,
 };

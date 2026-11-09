@@ -666,6 +666,8 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
         locked: true,
         name: R.cleanName(t.participantName || (i === 0 ? order.buyerName : '')),
         cpf: R.digits(t.participantCpf || (i === 0 ? order.buyerCpf : '')),
+        email: String(t.participantEmail || (i === 0 ? order.buyerEmail : '') || '').trim().toLowerCase(),
+        phone: R.cleanPhone(t.participantPhone || (i === 0 ? order.buyerPhone : '')),
       };
     }
     const p = submitted[t.code] || {};
@@ -678,18 +680,32 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
       adulto: !t.kind || t.kind === 'adulto',
     };
     if (i === 0 && !row.cpf && (!row.name || R.normName(row.name) === R.normName(order.buyerName))) row.cpf = R.digits(order.buyerCpf);
+    // The buyer's own ticket, unchanged: their data was accepted at sign-up and
+    // isn't re-checked against other sign-ups (someone who signed up twice
+    // before the rule must still be able to save their companions).
+    row.buyerRow = i === 0 && R.normName(row.name) === R.normName(order.buyerName) && row.cpf === R.digits(order.buyerCpf);
     return row;
   });
 
   const taken = R.cpfsTakenInEvent(db, orderEventId(order), { excludeOrderId: order.id });
+  const contatos = R.contactsTakenInEvent(db, orderEventId(order), { excludeOrderId: order.id });
   const seenCpf = new Set();
   const seenName = new Set();
+  const seenEmail = new Set();
+  const seenPhone = new Set();
+  const markSeen = (r) => {
+    seenName.add(R.normName(r.name));
+    if (r.cpf) seenCpf.add(r.cpf);
+    if (r.email) seenEmail.add(r.email);
+    if (r.phone) seenPhone.add(r.phone);
+  };
   let error = null;
   rows.forEach((r, i) => {
     if (error || !r.name) return;
-    if (r.locked) {
-      seenName.add(R.normName(r.name));
-      if (r.cpf) seenCpf.add(r.cpf);
+    if (r.locked) { markSeen(r); return; }
+    if (r.buyerRow) {
+      error = R.contactError(r, i + 1);
+      markSeen(r);
       return;
     }
     const n = i + 1;
@@ -700,9 +716,13 @@ app.post('/api/pedido/:id/participantes', async (req, res) => {
     else if (r.cpf && !isValidCpf(r.cpf)) error = `Ingresso ${n}: o CPF de ${who} é inválido.`;
     else if (r.cpf && seenCpf.has(r.cpf)) error = `Ingresso ${n}: o CPF repete outro ingresso. Cada pessoa pode ter só 1 ingresso.`;
     else if (r.cpf && taken.has(r.cpf)) error = `Ingresso ${n}: ${who} já tem ingresso para este evento. Cada pessoa pode ter só 1 ingresso.`;
-    else error = R.contactError(r, n);
-    seenName.add(R.normName(r.name));
-    if (r.cpf) seenCpf.add(r.cpf);
+    else if (R.contactError(r, n)) error = R.contactError(r, n);
+    // Each person's own contact: not reused inside the order nor by another sign-up.
+    else if (seenEmail.has(r.email)) error = `Ingresso ${n}: o e-mail repete outro ingresso. Informe o e-mail do próprio ${who}.`;
+    else if (seenPhone.has(r.phone)) error = `Ingresso ${n}: o WhatsApp repete outro ingresso. Informe o WhatsApp do próprio ${who}.`;
+    else if (contatos.emails.has(r.email)) error = `Ingresso ${n}: o e-mail de ${who} já tem ingresso para este evento. Cada pessoa pode ter só 1 ingresso.`;
+    else if (contatos.phones.has(r.phone)) error = `Ingresso ${n}: o WhatsApp de ${who} já tem ingresso para este evento. Cada pessoa pode ter só 1 ingresso.`;
+    markSeen(r);
   });
   if (error) {
     const values = {};
@@ -1809,8 +1829,8 @@ app.post('/:slug/inscricao', async (req, res, next) => {
   let phone = String(req.body.whatsapp || '').replace(/\D/g, '').replace(/^0+/, '');
   if (phone.length > 11 && phone.startsWith('55')) phone = phone.slice(2);
   const cpf = String(req.body.cpf || '').replace(/\D/g, '');
-  const maxPer = ev.maxPerCpf || 4;
-  const qty = Math.min(Math.max(parseInt(req.body.quantidade, 10) || 1, 1), maxPer);
+  // Free events: 1 ticket per person, each person signs up for themselves.
+  const qty = 1;
 
   if (buyerName.length < 2) return renderError(400, 'Informe seu nome completo.');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) return renderError(400, 'Informe um e-mail válido: é para lá que enviamos o ingresso.');
@@ -1856,6 +1876,10 @@ app.post('/:slug/inscricao', async (req, res, next) => {
     const taken = participantesRegra.cpfsTakenInEvent(d, ev.id, { statuses: ['paid', 'pending'] });
     const invalid = participantesRegra.validateNewOrder({ buyerName, buyerCpf: cpf, participants, taken });
     if (invalid) return { error: invalid };
+    // The same person can't sign up again with someone else's CPF.
+    const contatos = participantesRegra.contactsTakenInEvent(d, ev.id, { statuses: ['paid', 'pending'] });
+    if (contatos.emails.has(buyerEmail)) return { error: 'Este e-mail já tem um ingresso para este evento. Cada pessoa pode ter só 1 ingresso. Para ver o seu, acesse Meus ingressos.' };
+    if (contatos.phones.has(phone)) return { error: 'Este WhatsApp já tem um ingresso para este evento. Cada pessoa pode ter só 1 ingresso. Para ver o seu, acesse Meus ingressos.' };
     if (getSoldCount(d, ev.id) + qty > (ev.capacity || 0)) return { error: 'Os ingressos acabaram. Entre na comunidade para saber dos próximos eventos.' };
     d.orders[order.id] = order;
     return { created: true };

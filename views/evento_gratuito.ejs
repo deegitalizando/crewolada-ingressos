@@ -1,5 +1,5 @@
 <% const slugUp = ev.slug.toUpperCase(); %>
-<% const maxPer = ev.maxPerCpf || 4; %>
+<% const maxPer = 1; /* 1 ingresso por pessoa: cada um se inscreve com os próprios dados */ %>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -241,8 +241,9 @@
                 <input type="text" name="cpf" required inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" maxlength="14" value="<%= values.cpf || '' %>" />
               </label>
 
-              <div class="qty">
-                <span class="lab">Quantos ingressos?<small>1 por pessoa · até <%= Math.min(maxPer, left) %> por inscrição</small></span>
+              <p class="acomp-note" style="display:block">Cada inscrição vale <strong>1 ingresso</strong>, no seu nome. Quem for com você faz a própria inscrição, com os dados dele.</p>
+              <div class="qty" hidden style="display:none">
+                <span class="lab">Quantos ingressos?<small>1 por pessoa</small></span>
                 <div class="stepper">
                   <button type="button" id="minus" aria-label="Menos um ingresso">−</button>
                   <span id="qval"><%= Math.min(Math.max(parseInt(values.quantidade, 10) || 1, 1), Math.min(maxPer, left)) %></span>

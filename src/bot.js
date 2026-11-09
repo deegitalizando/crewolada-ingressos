@@ -63,7 +63,7 @@ function eventosTexto({ salesOpenNow, availableNow, baseUrl }) {
       if (e.venue) partes.push(`Local: ${e.venue}`);
       if (e.tagline) partes.push(`Destaque: ${e.tagline}${e.note ? ` (${e.note})` : ''}`);
       if (e.free) {
-        partes.push(`Entrada gratuita com inscrição obrigatória (vagas limitadas${e.capacity ? `: ${e.capacity}` : ''}, até ${e.maxPerCpf || 4} por CPF).`);
+        partes.push(`Entrada gratuita com inscrição obrigatória (vagas limitadas${e.capacity ? `: ${e.capacity}` : ''}, 1 ingresso por pessoa).`);
         partes.push(`Inscrição: ${baseUrl}/${e.slug}`);
       } else if (atual) {
         const produtos = getProducts(e);

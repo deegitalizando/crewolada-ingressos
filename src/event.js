@@ -52,7 +52,7 @@ const SP_EVENT = {
   venue: 'Igreja Somos Betel - Osasco/SP',
   startAt: '2026-11-19T22:00:00.000Z', // 19/11/2026 19h (Brasilia)
   capacity: 500,
-  maxPerCpf: 4,
+  maxPerCpf: 1,
   // Not public yet: /SP answers 404 (except to the admin) and the event is left out of /links.
   // Published from /admin/eventos ("Publicar página").
   hidden: true,
