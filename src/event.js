@@ -110,6 +110,7 @@ const eventForOrder = (order) => getEventById(orderEventId(order));
 
 // 'atual' = on sale now; 'anterior' = already happened; 'futuro' = still to come.
 function eventStatus(event, now = Date.now()) {
+  if (event.cancelledAt) return 'cancelado';
   if (event.id === currentEvent.id) return 'atual';
   const t = event.startAt ? Date.parse(event.startAt) : NaN;
   if (!Number.isNaN(t) && t < now) return 'anterior';

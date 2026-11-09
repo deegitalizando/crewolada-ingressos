@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Cancelamento - <%= ev.name %> - Painel Admin</title>
+  <%- include('partials/head') %>
+  <style>
+    .cx { margin: 0 16px 14px; }
+    .cx .badge-x { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: rgba(239,68,68,.2); color: #fecaca; }
+    .cx .nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 12px 0; }
+    .cx .nums div { background: #1a1a1a; border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 12px; }
+    .cx .nums span { display: block; font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .05em; }
+    .cx .nums b { display: block; font-size: 22px; margin-top: 2px; }
+    .cx pre { white-space: pre-wrap; background: #0b0b0b; border: 1.5px dashed var(--card-border); border-radius: 6px; padding: 14px; font-family: inherit; font-size: 14px; line-height: 1.55; margin: 8px 0 0; }
+    .cx .prog { height: 10px; border-radius: 5px; background: rgba(255,255,255,.12); overflow: hidden; margin: 10px 0 4px; }
+    .cx .prog i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--gold-hi), var(--accent)); transition: width .4s; }
+    .cx .pill { font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.1); }
+    .cx .pill.ok { background: rgba(34,197,94,.2); color: #86efac; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form"><button type="submit" class="link-btn">Sair</button></form>
+    </header>
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab active">Eventos</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/contatos" class="tab">Convites</a>
+      <a href="/admin/afiliados" class="tab">Afiliados</a>
+      <a href="/admin/avisos" class="tab">Avisos</a>
+      <a href="/admin/links" class="tab">Links</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+    </nav>
+
+    <% if (novo) { %><div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac">Evento cancelado. As vendas e inscrições foram encerradas e os ingressos já não valem na entrada. Agora avise os compradores abaixo.</div><% } %>
+
+    <main class="card cx">
+      <p style="margin:0"><span class="badge-x">Evento cancelado</span></p>
+      <h2 style="margin:8px 0 2px"><%= ev.name %></h2>
+      <p class="hint" style="margin:0; text-align:left"><%= ev.dateLabel %><%= ev.timeLabel ? ' · ' + ev.timeLabel : '' %> · <%= ev.venue || 'Local a definir' %></p>
+      <p style="margin:12px 0 0"><strong>Motivo informado:</strong> <%= ev.cancelReason %></p>
+      <p class="hint" style="margin:4px 0 0; text-align:left">Cancelado em <%= canceladoEm %>.</p>
+    </main>
+
+    <main class="card cx">
+      <h3 style="margin-top:0">1. Reembolsos</h3>
+      <div class="nums">
+        <div><span>Compras pagas a reembolsar</span><b><%= aReembolsar %></b></div>
+        <div><span>Valor total a devolver</span><b><%= money(valorReembolsar) %></b></div>
+      </div>
+      <p class="hint" style="margin:0; text-align:left">O e-mail promete o reembolso integral em até <%= prazo %>. Para devolver o dinheiro, abra as <a href="/admin?evento=<%= ev.id %>" style="color:var(--accent)">vendas deste evento</a> e use <strong>Cancelar ingressos</strong> com reembolso em cada compra (isso devolve o valor total pelo Mercado Pago e avisa o cliente). Compras já canceladas e reembolsadas saem desta contagem.</p>
+    </main>
+
+    <main class="card cx">
+      <h3 style="margin-top:0">2. Avisar os compradores por e-mail</h3>
+      <div class="nums">
+        <div><span>Pessoas a avisar</span><b><%= total %></b></div>
+        <div><span>Já avisadas</span><b><%= enviados %></b></div>
+        <div><span>Faltam</span><b><%= total - enviados %></b></div>
+      </div>
+
+      <% if (exemplo) { %>
+        <p class="hint" style="margin:0; text-align:left">Prévia do e-mail (assunto: <strong><%= exemplo.assunto %></strong>):</p>
+        <pre><%- exemplo.mensagem %></pre>
+      <% } else { %>
+        <p class="hint">Não há compras ou inscrições confirmadas neste evento: ninguém para avisar.</p>
+      <% } %>
+
+      <% if (total > 0) { %>
+        <div id="progresso" style="display:none; margin-top:12px">
+          <div class="prog"><i id="barra"></i></div>
+          <p class="hint" id="prog-texto" style="margin:0; text-align:left"></p>
+        </div>
+        <form action="/admin/eventos/<%= ev.id %>/cancelamento/enviar" method="POST" class="form" style="margin-top:14px" id="f-enviar"
+              onsubmit="return confirm('Enviar o e-mail de cancelamento para <%= total - enviados %> pessoa(s) agora? Isso não pode ser desfeito.')">
+          <label>Mensagem adicional (opcional, entra antes da despedida)
+            <textarea name="extra" rows="3" maxlength="600" placeholder="Ex: o valor será devolvido automaticamente, você não precisa responder."></textarea>
+          </label>
+          <button type="submit" id="b-enviar" <%= total - enviados === 0 ? 'disabled' : '' %>><%= enviados > 0 && total - enviados > 0 ? 'Enviar para quem ainda não recebeu (' + (total - enviados) + ')' : 'Enviar e-mail para ' + total + ' pessoa(s)' %></button>
+          <% if (total - enviados === 0) { %><p class="hint" style="text-align:left; margin:0">Todos já foram avisados.</p><% } %>
+        </form>
+
+        <div class="table-wrap" style="margin-top:16px"><table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Pedidos</th><th>A reembolsar</th><th>E-mail</th></tr></thead>
+          <tbody>
+            <% dest.forEach(function(d) { %>
+              <tr><td><%= d.nome %></td><td><%= d.email %></td><td><%= d.pedidos.length %></td><td><%= d.pago > 0 ? money(d.pago) : 'gratuito' %></td>
+              <td><span class="pill <%= d.enviado ? 'ok' : '' %>"><%= d.enviado ? 'enviado' : 'pendente' %></span></td></tr>
+            <% }) %>
+          </tbody>
+        </table></div>
+      <% } %>
+    </main>
+
+    <p style="margin:0 16px 30px"><a href="/admin/eventos" style="color:var(--accent)">&larr; Voltar para Eventos</a></p>
+  </div>
+
+  <script>
+    (function () {
+      var box = document.getElementById('progresso'); if (!box) return;
+      var barra = document.getElementById('barra'), txt = document.getElementById('prog-texto'), btn = document.getElementById('b-enviar');
+      function ver() {
+        fetch('/api/admin/eventos/<%= ev.id %>/cancelamento/progresso').then(function (r) { return r.json(); }).then(function (j) {
+          if (j.estado === 'parado') return;
+          box.style.display = 'block';
+          var feitos = j.enviados + j.falhas;
+          barra.style.width = (j.total ? Math.round(feitos / j.total * 100) : 100) + '%';
+          if (j.estado === 'enviando') {
+            if (btn) btn.disabled = true;
+            txt.textContent = 'Enviando... ' + feitos + ' de ' + j.total + (j.falhas ? ' (' + j.falhas + ' falha(s))' : '');
+            setTimeout(ver, 1500);
+          } else {
+            txt.textContent = 'Concluído: ' + j.enviados + ' e-mail(s) enviado(s)' + (j.falhas ? ', ' + j.falhas + ' falha(s). ' + (j.erros || []).join(' | ') + ' Use o botão para tentar de novo só para quem faltou.' : '.');
+            if (!window.__recarregou) { window.__recarregou = true; setTimeout(function () { location.reload(); }, 1800); }
+          }
+        }).catch(function () {});
+      }
+      ver();
+    })();
+  </script>
+</body>
+</html>

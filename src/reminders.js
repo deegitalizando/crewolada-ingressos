@@ -50,6 +50,7 @@ function pickVariation(messageTemplate) {
 // gets a business number flagged/banned. 4-9s between sends keeps this
 // broadcast at a human-plausible pace.
 async function sendToAllPaidBuyers(db, messageTemplate, eventId = currentEvent.id) {
+  if (getEventById(eventId).cancelledAt) return; // cancelled events send no reminders
   const buyers = Object.values(db.orders).filter((o) => o.status === 'paid' && inEvent(o, eventId));
   for (let i = 0; i < buyers.length; i++) {
     const order = buyers[i];

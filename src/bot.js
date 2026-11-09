@@ -61,6 +61,11 @@ function eventosTexto({ salesOpenNow, availableNow, vagasLivres, baseUrl }) {
       const atual = e.id === currentEvent.id;
       const partes = [`EVENTO: ${e.name}`, `Data: ${e.dateLabel}${e.timeLabel ? ` · ${e.timeLabel}` : ''}`];
       if (e.venue) partes.push(`Local: ${e.venue}`);
+      if (e.cancelledAt) {
+        partes.push(`EVENTO CANCELADO. Motivo: ${e.cancelReason || 'não informado'}. Quem comprou recebe o reembolso integral em até 7 dias corridos, no mesmo meio de pagamento, e é avisado por e-mail. Não incentive nenhuma compra e não diga que o evento vai acontecer.`);
+        linhas.push(partes.join('\n'));
+        return;
+      }
       if (e.tagline) partes.push(`Destaque: ${e.tagline}${e.note ? ` (${e.note})` : ''}`);
       if (e.free) {
         partes.push(`Entrada gratuita com inscrição obrigatória (vagas limitadas${e.capacity ? `: ${e.capacity}` : ''}, 1 ingresso por pessoa: cada pessoa faz a própria inscrição com nome, CPF, WhatsApp e e-mail).`);
@@ -102,10 +107,19 @@ function eventosTexto({ salesOpenNow, availableNow, vagasLivres, baseUrl }) {
     : '');
 }
 
+function avisosCancelamento() {
+  const now = Date.now();
+  return EVENTS
+    .filter((e) => e.cancelledAt && (!e.startAt || Date.parse(e.startAt) + 5 * 3600000 > now - 30 * 86400000))
+    .map((e) => `- O evento ${e.name} (${e.dateLabel}${e.venue ? ', ' + e.venue : ''}) foi CANCELADO. Motivo: ${(String(e.cancelReason || 'não informado').replace(/[.\s]+$/, '') || 'não informado')}. Quem comprou ou se inscreveu recebe aviso por e-mail; nas compras pagas o valor é reembolsado integralmente em até 7 dias corridos, no mesmo meio de pagamento. Se perguntarem sobre esse evento, informe o cancelamento e o motivo com educação, peça desculpas e nunca incentive compra ou diga que ele vai acontecer. Dúvidas sobre o reembolso: contato@crewolada.com.`);
+}
+
 function contexto(db, deps) {
   const bot = getBot(db);
   const { baseUrl, communityUrl, whatsappTicketUrl, whatsappLabel } = deps;
+  const avisos = avisosCancelamento();
   const partes = [
+    ...(avisos.length ? ['## AVISO IMPORTANTE: EVENTOS CANCELADOS', avisos.join('\n')] : []),
     '## EVENTOS (dados do site, atualizados agora)',
     eventosTexto(deps),
     '## COMO RECEBER O INGRESSO',

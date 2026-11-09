@@ -88,6 +88,7 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
       atual: cards.filter((c) => c.status === 'atual'),
       futuros: cards.filter((c) => c.status === 'futuro'),
       anteriores: cards.filter((c) => c.status === 'anterior').reverse(),
+      cancelados: cards.filter((c) => c.status === 'cancelado'),
       msg: req.query.msg || null,
     });
   });

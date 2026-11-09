@@ -32,7 +32,7 @@ function ticketEvents(salesOpen, availableNow) {
   return EVENTS
     .filter((e) => {
       const upcoming = !e.startAt || Date.parse(e.startAt) + 5 * 3600000 > now;
-      if (!upcoming) return false;
+      if (!upcoming || e.cancelledAt) return false;
       if (e.id === currentEvent.id) return salesOpen;
       return Boolean(e.free && e.slug && !e.hidden);
     })

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title><%= ev.name %> · Evento cancelado</title>
+  <meta name="robots" content="noindex" />
+  <%- include('partials/head') %>
+  <style>
+    .cn { width: min(520px, 100%); margin-inline: auto; padding: 24px 18px 60px; text-align: center; }
+    .cn .logo-big { display: block; width: min(220px, 60vw); height: auto; margin: 0 auto; border-radius: 0; box-shadow: none; -webkit-mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); }
+    .cn h1 { margin: 18px 0 6px; font-size: clamp(1.9rem, 8vw, 2.6rem); text-transform: uppercase; letter-spacing: .03em; line-height: 1.05; }
+    .cn h1 em { font-style: normal; color: #fb7185; }
+    .cn .sub { color: var(--text-dim); margin: 0 0 18px; }
+    .cn .box { text-align: left; padding: 16px; border: 1.5px solid var(--card-border); border-radius: 6px; background: #0b0b0b; margin-top: 12px; line-height: 1.55; }
+    .cn .box b { color: var(--accent); }
+    .cn a.cta { display: block; margin-top: 18px; padding: 16px; border-radius: 4px; background: linear-gradient(180deg, var(--gold-hi), var(--accent)); color: #000; text-decoration: none; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+  </style>
+</head>
+<body>
+  <div class="cn">
+    <img class="logo logo-big" src="/img/logo.jpg" alt="Crewolada" />
+    <h1><em>Evento cancelado</em></h1>
+    <p class="sub"><%= ev.name %> · <%= ev.dateLabel %><%= ev.venue ? ' · ' + ev.venue : '' %></p>
+    <div class="box"><b>Motivo:</b> <%= ev.cancelReason %></div>
+    <div class="box"><b>Quem comprou:</b> o valor pago é <strong>reembolsado integralmente</strong>, no mesmo meio de pagamento, em até <strong>7 dias corridos</strong> a partir do aviso por e-mail. Não é preciso fazer nada. Dúvidas: <a href="mailto:contato@crewolada.com" style="color:var(--accent)">contato@crewolada.com</a>.</div>
+    <% if (locals.communityUrl) { %><a class="cta" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade e saber dos próximos eventos</a><% } %>
+  </div>
+</body>
+</html>

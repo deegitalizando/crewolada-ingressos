@@ -13,6 +13,9 @@
     .badge-st { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; padding: 3px 10px; border-radius: 999px; }
     .badge-st.atual { background: rgba(34, 197, 94, 0.2); color: #86efac; }
     .badge-st.futuro { background: rgba(57, 135, 229, 0.2); color: #9ec5f4; }
+    .badge-st.cancelado { background: rgba(239, 68, 68, 0.2); color: #fecaca; }
+    .ev-card.cancelado { border-color: rgba(239, 68, 68, 0.6); }
+    .ev-cancel summary { color: #fca5a5; }
     .badge-st.anterior { background: rgba(255, 255, 255, 0.1); color: var(--text-dim); }
     .ev-meta { margin: 6px 0 12px; color: var(--text-dim); font-size: 13px; }
     .ev-nums { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 12px; }
@@ -58,7 +61,7 @@
 
     <% if (msg) { %>
       <div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac">
-        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', publicado: 'Página publicada: agora qualquer pessoa pode acessar.', oculto: 'Página oculta: só você (logado) consegue ver.', liberado: 'Vendas liberadas agora: o site já mostra a compra de ingressos.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
+        <%= ({ criado: 'Evento criado. Programe os lotes dele na aba Lotes.', salvo: 'Evento atualizado.', atual: 'Evento definido como atual: é ele que está à venda no site.', excluido: 'Evento excluído.', dados: 'Informe pelo menos o nome e a data/hora do evento.', publicado: 'Página publicada: agora qualquer pessoa pode acessar.', oculto: 'Página oculta: só você (logado) consegue ver.', liberado: 'Vendas liberadas agora: o site já mostra a compra de ingressos.', 'cancelar-dados': 'Para cancelar o evento, escreva o motivo (pelo menos 10 letras) e marque a confirmação.', reativado: 'Evento reativado. As vendas voltam ao normal.', 'nao-pode-reativar': 'Não dá para reativar: já existem e-mails de cancelamento enviados ou em envio.', 'nao-pode-excluir': 'Não é possível excluir: o evento é o atual, é um evento de origem do sistema ou já tem pedidos.' })[msg] || msg %>
       </div>
     <% } %>
 
@@ -68,6 +71,7 @@
 
     <% [{ key: 'atual', title: 'Evento atual (à venda no site)', list: atual },
         { key: 'futuro', title: 'Próximos eventos', list: futuros },
+        { key: 'cancelado', title: 'Eventos cancelados', list: cancelados },
         { key: 'anterior', title: 'Eventos anteriores', list: anteriores }].forEach(function(g) { %>
       <section class="ev-group">
         <h3><%= g.title %></h3>
@@ -78,7 +82,7 @@
           <article class="ev-card <%= c.status %>">
             <div class="ev-top">
               <h4><%= c.name %></h4>
-              <span class="badge-st <%= c.status %>"><%= c.status === 'atual' ? 'Atual' : (c.status === 'futuro' ? 'Futuro' : 'Anterior') %></span>
+              <span class="badge-st <%= c.status %>"><%= c.status === 'atual' ? 'Atual' : (c.status === 'futuro' ? 'Futuro' : (c.status === 'cancelado' ? 'Cancelado' : 'Anterior')) %></span>
             </div>
             <p class="ev-meta">
               <%= c.dateLabel %><%= c.timeLabel ? ' · ' + c.timeLabel : '' %> &middot; <%= c.venue || 'Local a definir' %>
@@ -94,6 +98,16 @@
               <div class="ev-num"><div class="l">Compareceram</div><div class="v"><%= c.stats.attended %></div></div>
               <div class="ev-num"><div class="l">Cortesias</div><div class="v"><%= c.stats.courtesy %></div></div>
             </div>
+            <% if (c.status === 'cancelado') { %>
+              <p class="ev-meta" style="color:#fecaca; font-weight:700">Motivo: <%= c.cancelReason %></p>
+              <p class="ev-meta"><%= c.cancelEmail ? 'E-mail de cancelamento enviado a ' + c.cancelEmail.enviados + ' pessoa(s)' + (c.cancelEmail.falhas ? ' (' + c.cancelEmail.falhas + ' falha(s))' : '') + '.' : 'Os compradores ainda não foram avisados por e-mail.' %></p>
+              <div class="ev-actions">
+                <a href="/admin/eventos/<%= c.id %>/cancelamento"><button type="button">Avisar compradores por e-mail</button></a>
+                <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas e reembolsos</button></a>
+                <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
+                <form action="/admin/eventos/<%= c.id %>/reativar" method="POST" onsubmit="return confirm('Reativar este evento? Só é possível se nenhum e-mail de cancelamento foi enviado.')"><button type="submit" class="btn-secondary">Reativar</button></form>
+              </div>
+            <% } else { %>
             <div class="ev-actions">
               <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas</button></a>
               <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
@@ -132,6 +146,22 @@
                 <div class="full"><button type="submit">Salvar alterações</button></div>
               </form>
             </details>
+            <% if (c.status === 'atual' || c.status === 'futuro') { %>
+            <details class="ev-edit ev-cancel" style="margin-top:8px">
+              <summary>Cancelar este evento</summary>
+              <form action="/admin/eventos/<%= c.id %>/cancelar" method="POST" class="ev-form">
+                <label class="full">Motivo do cancelamento (aparece para o público e no e-mail aos compradores)
+                  <textarea name="motivo" rows="3" maxlength="400" required placeholder="Ex: o local ficou indisponível por motivo de força maior."></textarea>
+                </label>
+                <label class="full" style="flex-direction:row; align-items:flex-start; gap:10px; display:flex">
+                  <input type="checkbox" name="confirmo" style="width:20px; height:20px; flex:none; margin-top:2px" />
+                  <span>Confirmo o cancelamento: as vendas e inscrições serão encerradas na hora e os ingressos deixam de valer na entrada. Depois você escolhe quando avisar os compradores por e-mail.</span>
+                </label>
+                <div class="full"><button type="submit" class="btn-danger">Cancelar evento</button></div>
+              </form>
+            </details>
+            <% } %>
+            <% } %>
           </article>
         <% }) %>
       </section>

@@ -15,6 +15,7 @@ const { registerLinksRoutes } = require('./links');
 const { registerAfiliadosRoutes } = require('./afiliados');
 const { registerPushRoutes } = require('./push');
 const { registerLeadsRoutes } = require('./leads');
+const { registerCancelamentoRoutes } = require('./eventoCancelamento');
 const { registerBetelRoutes } = require('./betel');
 const { getProducts, getChildRules, buildPurchase, expandKinds } = require('./produtos');
 
@@ -114,7 +115,7 @@ app.locals.metaPixelId = process.env.FACEBOOK_PIXEL_ID || '';
 app.locals.salesOpen = process.env.SALES_OPEN !== 'false';
 
 // Sales also stay closed while the current event has a future salesOpenAt ("Em breve").
-const salesOpenNow = () => app.locals.salesOpen && !salesHeldBack(currentEvent);
+const salesOpenNow = () => app.locals.salesOpen && !salesHeldBack(currentEvent) && !currentEvent.cancelledAt;
 function opensLabelBR(ts) {
   const tz = 'America/Sao_Paulo';
   const day = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(d);
@@ -178,7 +179,7 @@ function refreshEvents() {
 }
 refreshEvents();
 
-const statusLabels = { atual: 'atual', anterior: 'anterior', futuro: 'futuro' };
+const statusLabels = { atual: 'atual', anterior: 'anterior', futuro: 'futuro', cancelado: 'cancelado' };
 // Events offered in the dashboard/report switcher: current + any with orders.
 function eventsForSwitcher(db) {
   return EVENTS
@@ -324,6 +325,7 @@ registerLeadsRoutes(app, { requireAdminAuth, formatDatetimeBrasiliaDisplay });
 registerBetelRoutes(app, { eventInfo, formatDatetimeBrasiliaDisplay });
 
 app.get('/', (req, res) => {
+  if (currentEvent.cancelledAt) return res.render('evento_cancelado', { eventInfo, ev: currentEvent, communityUrl: app.locals.communityUrl });
   if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
   if (!salesOpenNow()) {
     const at = salesOpensAt(currentEvent);
@@ -379,8 +381,16 @@ app.get('/api/evento-atual', (req, res) => {
   const products = getProducts(currentEvent);
   const rules = products.length ? getChildRules(currentEvent) : null;
   const heldUntil = salesHeldBack(currentEvent) ? salesOpensAt(currentEvent) : null;
+  const cancelado = Boolean(currentEvent.cancelledAt);
   res.json({
     salesOpen: salesOpenNow(),
+    cancelled: cancelado,
+    cancelReason: cancelado ? currentEvent.cancelReason || '' : null,
+    refundDeadline: cancelado ? '7 dias corridos' : null,
+    // Ready-made sentence for the WhatsApp bot: when present, say it and do not sell or promote the event.
+    botNotice: cancelado
+      ? `O evento ${currentEvent.name} (${currentEvent.dateLabel}) foi CANCELADO. Motivo: ${(String(currentEvent.cancelReason || 'não informado').replace(/[.\s]+$/, '') || 'não informado')}. Quem já comprou recebe o reembolso integral em até 7 dias corridos, no mesmo meio de pagamento, e é avisado por e-mail. Não há venda de ingressos.`
+      : null,
     eventName: currentEvent.name,
     dateLabel: currentEvent.dateLabel,
     timeLabel: currentEvent.timeLabel || '',
@@ -388,8 +398,8 @@ app.get('/api/evento-atual', (req, res) => {
     communityUrl: app.locals.communityUrl,
     // Used by the WhatsApp bot (Davi) to announce the party, tickets left and prices.
     capacity: currentEvent.capacity || null,
-    ticketsLeft: products.length ? getAvailable(db) : null,
-    products: products.map((p) => ({ name: p.name, price: p.price, includes: p.includes || [] })),
+    ticketsLeft: products.length && !cancelado ? getAvailable(db) : null,
+    products: cancelado ? [] : products.map((p) => ({ name: p.name, price: p.price, includes: p.includes || [] })),
     childRules: rules ? { freeUntil: rules.freeUntil, halfUntil: rules.halfUntil } : null,
     salesOpensAtLabel: heldUntil ? opensLabelBR(heldUntil) : null,
   });
@@ -472,7 +482,7 @@ app.post('/api/participantes/validar', (req, res) => {
 
 app.post('/api/pagamentos', async (req, res) => {
   if (!salesOpenNow()) {
-    return res.status(403).json({ error: app.locals.salesOpen ? 'As vendas ainda não começaram. Volte no horário de abertura.' : 'As vendas de ingressos estão encerradas.' });
+    return res.status(403).json({ error: currentEvent.cancelledAt ? 'Este evento foi cancelado.' : (app.locals.salesOpen ? 'As vendas ainda não começaram. Volte no horário de abertura.' : 'As vendas de ingressos estão encerradas.') });
   }
   try {
     const { buyerName, buyerEmail, buyerPhone, buyerCpf, quantity, formData } = req.body;
@@ -1031,6 +1041,11 @@ app.post('/api/validar', requireValidatorAuth, async (req, res) => {
     });
   }
 
+  const pedidoDoIngresso = db.orders[ticket.orderId];
+  if (pedidoDoIngresso && eventForOrder(pedidoDoIngresso).cancelledAt) {
+    return res.json({ result: 'invalido', message: 'EVENTO CANCELADO. Entrada nao liberada.', code: ticket.code });
+  }
+
   if (ticket.status === 'used') {
     return res.json({
       result: 'ja_usado',
@@ -1517,6 +1532,18 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
     alvo = found.filter((f) => !isPast(orderEventId(f.order)));
     if (!alvo.length) alvo = found;
   }
+  // Cancelled events: never resend those tickets; the bot explains the cancellation and the refund.
+  const motivoLimpo = (ev) => String(ev.cancelReason || 'não informado').replace(/[.\s]+$/, '') || 'não informado';
+  const cancelados = [...new Map(alvo.filter((f) => eventForOrder(f.order).cancelledAt).map((f) => [orderEventId(f.order), eventForOrder(f.order)])).values()];
+  alvo = alvo.filter((f) => !eventForOrder(f.order).cancelledAt);
+  const avisoCancelado = cancelados.map((ev) => `O evento *${ev.name}* (${ev.dateLabel}) foi cancelado 😔\nMotivo: ${motivoLimpo(ev)}.\nQuem comprou recebe o valor reembolsado integralmente, no mesmo meio de pagamento, em até 7 dias corridos, e é avisado por e-mail. Você não precisa fazer nada. Dúvidas: contato@crewolada.com. Pedimos desculpas pelo transtorno 🙏`).join('\n\n');
+  if (!alvo.length && cancelados.length) {
+    return res.json({
+      found: false, cancelled: true, eventName: cancelados.map((e) => e.name).join(' e '), cancelReason: cancelados.map(motivoLimpo).join(' / '), refundDeadline: '7 dias corridos',
+      // The n8n "Aviso Nao Encontrado" step sends this text as-is.
+      mensagem: avisoCancelado,
+    });
+  }
   if (!alvo.length) return naoAchou(null);
 
   try {
@@ -1533,7 +1560,9 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
       buyerName: nome,
       evento: evs,
       ingressos: total,
-      mensagem: `Encontrei, ${String(nome).split(' ')[0]}! 🎉 Estou enviando ${total === 1 ? 'seu ingresso' : `seus ${total} ingressos`} da *${evs}* agora${companion ? ' para este WhatsApp e o seu e-mail cadastrado' : ' para o WhatsApp e o e-mail cadastrados na compra/inscrição'}. Na entrada é só mostrar o QR Code 😉`,
+      mensagem: `Encontrei, ${String(nome).split(' ')[0]}! 🎉 Estou enviando ${total === 1 ? 'seu ingresso' : `seus ${total} ingressos`} da *${evs}* agora${companion ? ' para este WhatsApp e o seu e-mail cadastrado' : ' para o WhatsApp e o e-mail cadastrados na compra/inscrição'}. Na entrada é só mostrar o QR Code 😉${avisoCancelado ? `
+
+${avisoCancelado}` : ''}`,
     });
   } catch (err) {
     console.error('Erro ao reenviar ingresso pelo WhatsApp:', err.message);
@@ -1637,6 +1666,7 @@ registerBotRoutes(app, {
     whatsappLabel: app.locals.contact.whatsappLabel,
   },
 });
+registerCancelamentoRoutes(app, { requireAdminAuth, eventInfo, onChange: refreshEvents, formatDatetimeBrasiliaDisplay });
 registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,
 });
@@ -1890,6 +1920,7 @@ function freePageData(ev, db) {
 app.get('/:slug', (req, res, next) => {
   const ev = findFreeEvent(req.params.slug, req);
   if (!ev) return next();
+  if (ev.cancelledAt) return res.status(410).render('evento_cancelado', { eventInfo, ev, communityUrl: app.locals.communityUrl });
   res.render('evento_gratuito', {
     eventInfo: { ...eventInfo, ...ev }, ...freePageData(ev, store.load()), error: null, values: {},
   });
@@ -1898,6 +1929,7 @@ app.get('/:slug', (req, res, next) => {
 app.post('/:slug/inscricao', async (req, res, next) => {
   const ev = findFreeEvent(req.params.slug, req);
   if (!ev) return next();
+  if (ev.cancelledAt) return res.status(410).render('evento_cancelado', { eventInfo, ev, communityUrl: app.locals.communityUrl });
 
   const evInfo = { ...eventInfo, ...ev };
   const renderError = (status, error) => res.status(status).render('evento_gratuito', {
