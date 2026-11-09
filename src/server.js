@@ -221,6 +221,7 @@ function describeRejection(statusDetail) {
 // Only tickets of the given event count toward its lote stock.
 function getSoldCount(db, eventId = currentEvent.id) {
   return Object.values(db.tickets).filter((t) => {
+    if (t.status === 'cancelled') return false; // a cancelled/released ticket frees its seat
     const order = db.orders[t.orderId];
     if (!order) return eventId === LEGACY_EVENT.id;
     if (!inEvent(order, eventId) || order.loteName === 'Lote Teste' || order.isCourtesy) return false;
@@ -627,12 +628,12 @@ app.get('/pedido/:id', (req, res) => {
   const order = db.orders[req.params.id];
   if (!order) return res.status(404).send('Pedido nao encontrado.');
 
-  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id);
+  const tickets = Object.values(db.tickets).filter((t) => t.orderId === order.id && (order.status === 'cancelled' || t.status !== 'cancelled'));
   res.render('order_status', { eventInfo: eventInfoFor(order), order, tickets, whatsappTicketLink: buildWhatsappTicketLink() });
 });
 
 const ticketsOfOrder = (db, orderId) => Object.values(db.tickets)
-  .filter((t) => t.orderId === orderId)
+  .filter((t) => t.orderId === orderId && t.status !== 'cancelled')
   .sort((a, b) => (a.drawNumber || 0) - (b.drawNumber || 0));
 
 app.get('/pedido/:id/participantes', (req, res) => {
@@ -791,7 +792,7 @@ app.post('/meus-ingressos', (req, res) => {
     byEvent.get(ev.id).orders.push({
       ...o,
       createdAtLabel: formatDatetimeBrasiliaDisplay(o.createdAt),
-      tickets: Object.values(db.tickets).filter((t) => t.orderId === o.id),
+      tickets: Object.values(db.tickets).filter((t) => t.orderId === o.id && (o.status === 'cancelled' || t.status !== 'cancelled')),
     });
   });
   const now = Date.now();
@@ -1334,6 +1335,71 @@ app.get('/api/n8n/relatorio-ingressos', (req, res) => {
     ingressosUsadosNaEntrada: usados,
     cpfsComMaisDeUmIngresso: cpfsRepetidos,
     ingressosAlemDeUmPorCpf: ingressos - porCpf.size,
+  });
+});
+
+// Releases the extra tickets nobody registered a participant for (ticket 1 of
+// each order is the buyer's and is never touched). Same rule as the report:
+// an extra ticket with no participant name, or with the buyer's own name.
+// Dry run by default — { confirmar: true } actually cancels them. The order
+// stays on record; its quantity drops and every released ticket is marked
+// cancelled (its QR stops validating and its seat goes back on sale).
+app.post('/api/n8n/liberar-ingressos', async (req, res) => {
+  const secret = process.env.N8N_CALLBACK_SECRET;
+  if (!secret || req.headers['x-callback-secret'] !== secret) return res.status(401).json({ error: 'unauthorized' });
+  const ev = getEventById(String((req.body && req.body.evento) || SP_EVENT.id));
+  const confirmar = req.body && req.body.confirmar === true;
+  const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+  const pick = (d) => {
+    const out = [];
+    Object.values(d.orders).filter((o) => inEvent(o, ev.id) && o.status === 'paid' && !o.isCourtesy).forEach((o) => {
+      const ts = Object.values(d.tickets).filter((t) => t.orderId === o.id && t.status !== 'cancelled')
+        .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)) || String(a.code).localeCompare(String(b.code)));
+      ts.slice(1).forEach((t) => {
+        if (t.status === 'used' || t.usedAt) return;
+        const nome = norm(t.participantName);
+        if (!nome || nome === norm(o.buyerName)) out.push({ orderId: o.id, code: t.code });
+      });
+    });
+    return out;
+  };
+
+  const before = store.load();
+  const soldBefore = getSoldCount(before, ev.id);
+  if (!confirmar) {
+    const alvo = pick(before);
+    return res.json({
+      evento: ev.name, simulacao: true, ingressosALiberar: alvo.length,
+      inscricoesAfetadas: new Set(alvo.map((x) => x.orderId)).size,
+      ocupadosAntes: soldBefore, ocupadosDepois: soldBefore - alvo.length, capacidade: ev.capacity || 0,
+    });
+  }
+
+  const now = new Date().toISOString();
+  const liberados = await store.withDb((d) => {
+    const alvo = pick(d); // decided inside the write lock, on the current data
+    alvo.forEach(({ orderId, code }) => {
+      const t = d.tickets[code];
+      const o = d.orders[orderId];
+      t.status = 'cancelled';
+      t.cancelledAt = now;
+      t.cancelReason = 'liberado: sem dados do participante';
+      o.quantity = Math.max(1, (o.quantity || 1) - 1);
+      o.releasedTickets = (o.releasedTickets || 0) + 1;
+      o.updatedAt = now;
+    });
+    d.releases = d.releases || [];
+    d.releases.push({ at: now, eventId: ev.id, tickets: alvo.map((x) => x.code) });
+    return alvo;
+  });
+  const after = store.load();
+  console.log(`[liberar-ingressos] ${ev.name}: ${liberados.length} ingressos liberados`);
+  return res.json({
+    evento: ev.name, simulacao: false, ingressosLiberados: liberados.length,
+    inscricoesAfetadas: new Set(liberados.map((x) => x.orderId)).size,
+    ocupadosAntes: soldBefore, ocupadosDepois: getSoldCount(after, ev.id), capacidade: ev.capacity || 0,
+    vagasLivres: Math.max(0, (ev.capacity || 0) - getSoldCount(after, ev.id)),
   });
 });
 
