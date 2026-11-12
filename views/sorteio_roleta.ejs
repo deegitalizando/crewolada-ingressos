@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roleta - <%= titulo %></title>
+  <link rel="icon" type="image/png" sizes="192x192" href="/img/icon-192.png" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <style>
+    :root {
+      --gold: #E5A71B; --gold-hi: #F6C441; --gold-dk: #9c6f0b; --ink: #000; --text: #fff; --dim: #a9a9a9; --ok: #22c55e;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: radial-gradient(ellipse at 50% 40%, #1d1504 0%, #000 65%); color: var(--text); font-family: 'DM Sans', system-ui, sans-serif; overflow: hidden; }
+    .stage { position: relative; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100vh; height: 100dvh; align-items: center; justify-items: center; padding: 2vh 16px; gap: 1vh; }
+    header { text-align: center; }
+    header img { height: clamp(36px, 7vh, 72px); display: block; margin: 0 auto 0.6vh; }
+    header h1 { margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(22px, 4.4vh, 46px); text-transform: uppercase; letter-spacing: 0.06em; }
+    header .premio { margin: 0.4vh 0 0; color: var(--gold-hi); font-size: clamp(15px, 2.6vh, 26px); font-weight: 700; }
+    header .count { margin: 0.4vh 0 0; color: var(--dim); font-size: clamp(12px, 1.8vh, 18px); }
+
+    .wheel-area { position: relative; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: 0; overflow: visible; }
+    .wheel-wrap { position: relative; height: calc(100% - 3vh); max-width: 92vw; aspect-ratio: 1; margin-top: 3vh; }
+    canvas#wheel { width: 100%; height: 100%; display: block; filter: drop-shadow(0 0 40px rgba(229, 167, 27, 0.35)); }
+    .pointer {
+      position: absolute; left: 50%; top: -2.2%; transform: translateX(-50%); width: 9%; aspect-ratio: 0.8; z-index: 2;
+      background: linear-gradient(180deg, #fff, var(--gold-hi)); clip-path: polygon(0 0, 100% 0, 50% 100%);
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
+    }
+    .hub {
+      position: absolute; left: 50%; top: 50%; width: 22%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%;
+      background: #000 url('/img/logo.jpg') center / 82% no-repeat; border: 4px solid var(--gold); box-shadow: 0 0 20px rgba(0,0,0,0.8);
+    }
+    .empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; color: var(--dim); font-size: 20px; padding: 20px; }
+
+    .ticker { text-align: center; }
+    .ticker .num { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(40px, 9vh, 96px); line-height: 1; color: var(--gold-hi); font-variant-numeric: tabular-nums; letter-spacing: 0.05em; }
+    .ticker .name { font-size: clamp(16px, 3vh, 30px); color: var(--text); margin-top: 0.4vh; min-height: 1.2em; }
+    .controls { display: flex; gap: 10px; justify-content: center; margin-top: 1.2vh; }
+    button {
+      font-family: 'Bricolage Grotesque', sans-serif; text-transform: uppercase; letter-spacing: 0.12em; font-weight: 800; cursor: pointer;
+      border: 0; border-radius: 6px; padding: 14px 34px; font-size: clamp(16px, 2.4vh, 24px); color: #000;
+      background: linear-gradient(180deg, var(--gold-hi), var(--gold));
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .ghost { background: transparent; color: var(--dim); border: 1px solid #333; padding: 10px 14px; font-size: 12px; letter-spacing: 0.06em; }
+
+    .tools { position: fixed; top: 10px; right: 10px; display: flex; gap: 6px; z-index: 5; opacity: 0.35; transition: opacity 0.2s; }
+    .tools:hover { opacity: 1; }
+    .winners { position: fixed; left: 14px; top: 14px; max-width: 22vw; font-size: 14px; color: var(--dim); z-index: 3; }
+    .winners h4 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--gold); }
+    .winners div { padding: 3px 0; }
+    .winners b { color: var(--text); font-variant-numeric: tabular-nums; }
+    @media (max-width: 800px) { .winners { display: none; } .stage { padding-top: 54px; } }
+
+    /* Winner reveal */
+    .reveal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; z-index: 10; background: rgba(0,0,0,0.78); backdrop-filter: blur(3px); }
+    .reveal.show { display: flex; animation: fade 0.35s ease-out; }
+    .reveal .box { text-align: center; padding: 4vh 6vw; border: 2px solid var(--gold); border-radius: 12px; background: radial-gradient(ellipse at top, #2a1e04, #000 75%); box-shadow: 0 0 80px rgba(229,167,27,0.45); animation: pop 0.6s cubic-bezier(.2,1.6,.4,1); max-width: 92vw; }
+    .reveal .tag { font-family: 'Bricolage Grotesque', sans-serif; font-size: clamp(18px, 3.4vh, 34px); letter-spacing: 0.25em; text-transform: uppercase; color: var(--gold-hi); }
+    .reveal .bignum { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(90px, 26vh, 300px); line-height: 1; color: #fff; text-shadow: 0 0 40px rgba(246,196,65,0.7); font-variant-numeric: tabular-nums; margin: 1vh 0; }
+    .reveal .bigname { font-size: clamp(26px, 6vh, 64px); font-weight: 700; }
+    .reveal .prize { color: var(--dim); font-size: clamp(14px, 2.4vh, 24px); margin-top: 1vh; }
+    .reveal button { margin-top: 3vh; }
+    @keyframes fade { from { opacity: 0; } }
+    @keyframes pop { from { transform: scale(0.4); opacity: 0; } }
+    canvas#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 11; }
+    .err { color: #fca5a5; text-align: center; min-height: 1.2em; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <header>
+      <img src="/img/logo.jpg" alt="" />
+      <h1 id="titulo"><%= titulo %></h1>
+      <% if (premio) { %><p class="premio" id="premio">🎁 <%= premio %></p><% } %>
+      <p class="count" id="count">&nbsp;</p>
+    </header>
+
+    <div class="wheel-area">
+      <div class="wheel-wrap">
+        <div class="pointer"></div>
+        <canvas id="wheel"></canvas>
+        <div class="hub"></div>
+        <div class="empty" id="empty">Nenhum participante disponível para sortear.</div>
+      </div>
+    </div>
+
+    <div class="ticker">
+      <div class="num" id="t-num">---</div>
+      <div class="name" id="t-name"></div>
+      <div class="controls"><button id="spin">Girar</button></div>
+      <div class="err" id="err"></div>
+    </div>
+  </div>
+
+  <aside class="winners" id="winners"></aside>
+
+  <div class="tools">
+    <button class="ghost" id="sound">🔊 Som</button>
+    <button class="ghost" id="full">⛶ Tela cheia</button>
+    <a href="/admin/sorteio"><button class="ghost">Painel</button></a>
+  </div>
+
+  <div class="reveal" id="reveal">
+    <div class="box">
+      <div class="tag" id="r-tag">🎉 Ganhador 🎉</div>
+      <div class="bignum" id="r-num"></div>
+      <div class="bigname" id="r-name"></div>
+      <% if (premio) { %><div class="prize">Prêmio: <%= premio %></div><% } %>
+      <button id="r-close">Continuar</button>
+    </div>
+  </div>
+  <canvas id="confetti"></canvas>
+
+  <script>
+  (function () {
+    var MAX_SLICES = 120;
+    var COLORS = ['#E5A71B', '#141414', '#F6C441', '#262626'];
+    var TEXT_ON = { '#E5A71B': '#000', '#F6C441': '#000', '#141414': '#F6C441', '#262626': '#fff' };
+
+    var canvas = document.getElementById('wheel');
+    var ctx = canvas.getContext('2d');
+    var tNum = document.getElementById('t-num');
+    var tName = document.getElementById('t-name');
+    var spinBtn = document.getElementById('spin');
+    var errEl = document.getElementById('err');
+
+    var state = { elegiveis: [], ganhadores: [], total: 0 };
+    var slices = [];      // [{numero, nome}]
+    var rot = 0;          // current rotation (radians, clockwise)
+    var spinning = false;
+    var lastIdx = -1;
+    var soundOn = true;
+    var idle = true;
+
+    // ---------- drawing ----------
+    function resize() {
+      var r = canvas.getBoundingClientRect();
+      var dpr = window.devicePixelRatio || 1;
+      canvas.width = Math.round(r.width * dpr);
+      canvas.height = Math.round(r.height * dpr);
+      draw();
+    }
+
+    function sliceColor(i, n) {
+      var c = COLORS[i % COLORS.length];
+      // Avoid two equal colours touching where the wheel closes.
+      if (i === n - 1 && n % COLORS.length === 1 && n > 1) c = COLORS[2];
+      return c;
+    }
+
+    function draw() {
+      var W = canvas.width, R = W / 2, n = slices.length;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, W, W);
+      if (!n) return;
+      ctx.translate(R, R);
+      ctx.rotate(rot);
+      var seg = (Math.PI * 2) / n;
+      var r = R * 0.94;
+      for (var i = 0; i < n; i++) {
+        var a0 = -Math.PI / 2 + i * seg, a1 = a0 + seg;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, r, a0, a1);
+        ctx.closePath();
+        ctx.fillStyle = sliceColor(i, n);
+        ctx.fill();
+        if (n <= 180) { ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = Math.max(1, R * 0.003); ctx.stroke(); }
+      }
+      // Labels: number (and name when there is room), written along the radius.
+      if (n <= 72) {
+        var fs = Math.min(R * 0.085, Math.max(R * 0.028, (seg * r * 0.55)));
+        for (var j = 0; j < n; j++) {
+          var mid = -Math.PI / 2 + (j + 0.5) * seg;
+          ctx.save();
+          ctx.rotate(mid);
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = TEXT_ON[sliceColor(j, n)];
+          ctx.font = '800 ' + fs + 'px "Bricolage Grotesque", sans-serif';
+          var label = slices[j].numero;
+          if (n <= 20 && slices[j].nome) label = slices[j].nome.split(' ')[0] + '  ' + slices[j].numero;
+          ctx.fillText(label, r * 0.92, 0, r * 0.62);
+          ctx.restore();
+        }
+      }
+      // Outer gold ring with studs.
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.lineWidth = R * 0.05;
+      ctx.strokeStyle = '#E5A71B';
+      ctx.stroke();
+      var studs = 24;
+      for (var k = 0; k < studs; k++) {
+        var a = (k / studs) * Math.PI * 2;
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r, Math.sin(a) * r, R * 0.012, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff6d6';
+        ctx.fill();
+      }
+    }
+
+    function indexUnderPointer() {
+      var n = slices.length;
+      if (!n) return -1;
+      var seg = (Math.PI * 2) / n;
+      var a = ((-rot) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+      return Math.floor(a / seg) % n;
+    }
+
+    function updateTicker() {
+      var i = indexUnderPointer();
+      if (i === lastIdx) return;
+      lastIdx = i;
+      if (i < 0) { tNum.textContent = '---'; tName.textContent = ''; return; }
+      tNum.textContent = slices[i].numero;
+      tName.textContent = slices[i].nome;
+      if (spinning) tick();
+    }
+
+    // ---------- data ----------
+    function shuffle(a) {
+      for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+      return a;
+    }
+    function buildSlices() {
+      var list = state.elegiveis.slice();
+      if (list.length > MAX_SLICES) list = shuffle(list).slice(0, MAX_SLICES);
+      else shuffle(list);
+      slices = list;
+      lastIdx = -1;
+      document.getElementById('empty').style.display = slices.length ? 'none' : 'flex';
+      spinBtn.disabled = !slices.length;
+      draw();
+      updateTicker();
+    }
+    function renderWinners() {
+      var el = document.getElementById('winners');
+      if (!state.ganhadores.length) { el.innerHTML = ''; return; }
+      el.innerHTML = '<h4>Sorteados</h4>' + state.ganhadores.map(function (g, i) {
+        return '<div>' + (i + 1) + 'º &nbsp;<b>' + esc(g.numero) + '</b> ' + esc(g.nome) + '</div>';
+      }).join('');
+    }
+    function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+    function load(rebuild) {
+      return fetch('/api/admin/sorteio/estado', { credentials: 'same-origin' })
+        .then(function (r) { if (!r.ok) throw new Error('Sessão expirada. Entre no painel de novo.'); return r.json(); })
+        .then(function (d) {
+          var changed = d.elegiveis.length !== state.elegiveis.length;
+          state = d;
+          document.getElementById('count').textContent = d.total + (d.total === 1 ? ' participante' : ' participantes') +
+            (d.elegiveis.length !== d.total ? ' · ' + d.elegiveis.length + ' concorrendo' : '');
+          renderWinners();
+          if (rebuild || changed) buildSlices();
+        })
+        .catch(function (e) { errEl.textContent = e.message; });
+    }
+
+    // ---------- sound ----------
+    var audio;
+    function ac() { if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} } return audio; }
+    var lastTick = 0;
+    function tick() {
+      if (!soundOn || !ac()) return;
+      var now = audio.currentTime;
+      if (now - lastTick < 0.035) return;
+      lastTick = now;
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'square'; o.frequency.value = 1400;
+      g.gain.setValueAtTime(0.08, now); g.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+      o.connect(g); g.connect(audio.destination); o.start(now); o.stop(now + 0.05);
+    }
+    function fanfare() {
+      if (!soundOn || !ac()) return;
+      var notes = [523.25, 659.25, 783.99, 1046.5];
+      notes.forEach(function (f, i) {
+        var t = audio.currentTime + i * 0.13;
+        var o = audio.createOscillator(), g = audio.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + (i === notes.length - 1 ? 1.2 : 0.3));
+        o.connect(g); g.connect(audio.destination); o.start(t); o.stop(t + 1.3);
+      });
+    }
+
+    // ---------- spin ----------
+    function easeOut(t) { return 1 - Math.pow(1 - t, 4); }
+
+    function spin() {
+      if (spinning || !slices.length) return;
+      errEl.textContent = '';
+      ac(); if (audio && audio.state === 'suspended') audio.resume();
+      spinning = true; idle = false;
+      spinBtn.disabled = true;
+      fetch('/api/admin/sorteio/sortear', { method: 'POST', credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Erro ao sortear.'); return d; }); })
+        .then(function (win) {
+          // Make sure the winner is on the wheel (big lists only show a sample).
+          var k = -1;
+          for (var i = 0; i < slices.length; i++) if (slices[i].numero === win.numero) { k = i; break; }
+          if (k < 0) { k = Math.floor(Math.random() * slices.length); slices[k] = { numero: win.numero, nome: win.nome }; draw(); }
+          var n = slices.length, seg = (Math.PI * 2) / n, TAU = Math.PI * 2;
+          var target = (k + 0.5 + (Math.random() - 0.5) * 0.6) * seg;   // angle from the top, inside slice k
+          var finalMod = ((TAU - target) % TAU + TAU) % TAU;
+          var cur = ((rot % TAU) + TAU) % TAU;
+          var delta = finalMod - cur; if (delta < 0) delta += TAU;
+          var turns = 7 + Math.floor(Math.random() * 3);
+          var start = rot, end = rot + turns * TAU + delta;
+          var dur = 9000 + Math.random() * 1500, t0 = performance.now();
+          function frame(now) {
+            var p = Math.min(1, (now - t0) / dur);
+            rot = start + (end - start) * easeOut(p);
+            draw(); updateTicker();
+            if (p < 1) return requestAnimationFrame(frame);
+            spinning = false;
+            setTimeout(function () { showWinner(win); }, 450);
+          }
+          requestAnimationFrame(frame);
+        })
+        .catch(function (e) { spinning = false; idle = true; spinBtn.disabled = false; errEl.textContent = e.message; });
+    }
+
+    function showWinner(win) {
+      document.getElementById('r-tag').textContent = '🎉 ' + (win.ordem > 1 ? win.ordem + 'º ganhador' : 'Ganhador') + ' 🎉';
+      document.getElementById('r-num').textContent = win.numero;
+      document.getElementById('r-name').textContent = win.nome;
+      document.getElementById('reveal').classList.add('show');
+      fanfare();
+      confetti();
+    }
+    document.getElementById('r-close').addEventListener('click', function () {
+      document.getElementById('reveal').classList.remove('show');
+      stopConfetti();
+      idle = true;
+      load(true);
+    });
+
+    // ---------- confetti ----------
+    var cf = document.getElementById('confetti'), cctx = cf.getContext('2d'), parts = [], cfRun = false;
+    function confetti() {
+      cf.width = innerWidth; cf.height = innerHeight; parts = [];
+      var cols = ['#F6C441', '#E5A71B', '#ffffff', '#fff1b8', '#22c55e', '#ef4444'];
+      for (var i = 0; i < 260; i++) {
+        parts.push({ x: innerWidth / 2 + (Math.random() - 0.5) * 200, y: innerHeight * 0.45, vx: (Math.random() - 0.5) * 22, vy: -Math.random() * 22 - 6,
+          s: 6 + Math.random() * 8, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4, c: cols[i % cols.length] });
+      }
+      if (!cfRun) { cfRun = true; requestAnimationFrame(cfStep); }
+    }
+    function stopConfetti() { parts = []; }
+    function cfStep() {
+      cctx.clearRect(0, 0, cf.width, cf.height);
+      parts.forEach(function (p) {
+        p.vy += 0.45; p.vx *= 0.99; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+        cctx.save(); cctx.translate(p.x, p.y); cctx.rotate(p.r); cctx.fillStyle = p.c; cctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); cctx.restore();
+      });
+      parts = parts.filter(function (p) { return p.y < cf.height + 40; });
+      if (parts.length) requestAnimationFrame(cfStep); else { cfRun = false; cctx.clearRect(0, 0, cf.width, cf.height); }
+    }
+
+    // ---------- idle motion + controls ----------
+    var lastT = performance.now();
+    function idleLoop(now) {
+      var dt = now - lastT; lastT = now;
+      if (idle && !spinning && slices.length) { rot += dt * 0.00012; draw(); updateTicker(); }
+      requestAnimationFrame(idleLoop);
+    }
+    requestAnimationFrame(idleLoop);
+
+    spinBtn.addEventListener('click', spin);
+    document.addEventListener('keydown', function (e) {
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        if (document.getElementById('reveal').classList.contains('show')) document.getElementById('r-close').click();
+        else spin();
+      }
+    });
+    document.getElementById('sound').addEventListener('click', function (e) {
+      soundOn = !soundOn; e.target.textContent = soundOn ? '🔊 Som' : '🔇 Mudo';
+    });
+    document.getElementById('full').addEventListener('click', function () {
+      if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(function () {});
+    });
+    window.addEventListener('resize', resize);
+
+    // New sign-ups show up on the wheel while you are live (only between spins).
+    setInterval(function () { if (idle && !spinning) load(false); }, 8000);
+
+    resize();
+    load(true);
+  })();
+  </script>
+</body>
+</html>

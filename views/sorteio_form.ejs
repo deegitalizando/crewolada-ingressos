@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title><%= sorteio.titulo %> - <%= eventInfo.brand || eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <meta property="og:title" content="<%= sorteio.titulo %>" />
+  <meta property="og:description" content="<%= sorteio.premio ? 'Concorra a: ' + sorteio.premio : 'Cadastre-se e receba seu número da sorte.' %>" />
+  <meta property="og:image" content="/img/logo.jpg" />
+  <style>
+    .sorteio h2 { margin: 0 0 6px; }
+    .sorteio .intro { margin: 0 0 18px; color: var(--text-dim); font-size: 15px; line-height: 1.55; }
+    .premio {
+      display: flex; gap: 12px; align-items: center; padding: 14px 16px; margin: 0 0 18px;
+      background: rgba(244, 185, 66, 0.1); border: 1px solid var(--accent); border-radius: 12px;
+    }
+    .premio .i { font-size: 28px; line-height: 1; }
+    .premio small { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
+    .premio strong { display: block; font-size: 17px; color: var(--accent); }
+    .check { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.5; color: var(--text-dim); }
+    .check input { width: auto; padding: 0; margin-top: 3px; flex: none; }
+    .hp { position: absolute; left: -9999px; top: -9999px; height: 0; overflow: hidden; }
+    .regras { margin-top: 6px; font-size: 13px; color: var(--text-dim); line-height: 1.55; white-space: pre-line; }
+    details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.brand || eventInfo.name %>" />
+    </header>
+
+    <main class="card sorteio">
+      <h2><%= sorteio.titulo %></h2>
+
+      <% if (sorteio.premio) { %>
+        <div class="premio"><span class="i">🎁</span><div><small>Prêmio</small><strong><%= sorteio.premio %></strong></div></div>
+      <% } %>
+
+      <% if (!sorteio.aberto) { %>
+        <p class="intro">As inscrições para este sorteio estão <strong>encerradas</strong>. Fique de olho no nosso Instagram para acompanhar o resultado!</p>
+        <% if (errors && errors.length) { %><div class="alert"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div><% } %>
+      <% } else { %>
+        <p class="intro">Preencha seus dados e receba na hora o seu <strong>número da sorte</strong>. O sorteio vai ser feito <strong>ao vivo</strong>!</p>
+
+        <% if (errors && errors.length) { %>
+          <div class="alert"><% errors.forEach(function(e) { %><div><%= e %></div><% }) %></div>
+        <% } %>
+
+        <form action="/sorteio" method="POST" class="form" autocomplete="on">
+          <input type="hidden" name="origem" value="<%= v.origem || '' %>" />
+          <div class="hp" aria-hidden="true"><label>Não preencha este campo <input type="text" name="website" tabindex="-1" autocomplete="off" /></label></div>
+
+          <label>Nome completo
+            <input type="text" name="nome" required maxlength="80" autocomplete="name" value="<%= v.nome || '' %>" />
+          </label>
+          <label>E-mail
+            <input type="email" name="email" required maxlength="120" autocomplete="email" inputmode="email" value="<%= v.email || '' %>" />
+          </label>
+          <label>WhatsApp (com DDD)
+            <input type="tel" name="whatsapp" required maxlength="20" autocomplete="tel-national" inputmode="tel" placeholder="(21) 99999-9999" value="<%= v.whatsapp || '' %>" />
+          </label>
+
+          <label class="check">
+            <input type="checkbox" name="consent" value="1" required <%= v.consent ? 'checked' : '' %> />
+            <span>Concordo com o regulamento e autorizo o uso dos meus dados para contato sobre este sorteio e novidades da <%= eventInfo.brand || eventInfo.name %>. Se eu ganhar, meu primeiro nome e meu número podem aparecer na transmissão.</span>
+          </label>
+
+          <% if (sorteio.regras) { %>
+            <details>
+              <summary>Ver regulamento</summary>
+              <div class="regras"><%= sorteio.regras %></div>
+            </details>
+          <% } %>
+
+          <button type="submit">Quero meu número da sorte</button>
+        </form>
+        <p class="hint">Cada pessoa participa uma vez (um número por WhatsApp/e-mail).</p>
+      <% } %>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="/">Página inicial</a>
+        <a href="/politica-de-privacidade">Política de privacidade</a>
+      </div>
+    </footer>
+  </div>
+  <script>
+    // Simple (21) 99999-9999 mask, the server accepts any formatting anyway.
+    (function () {
+      var el = document.querySelector('input[name="whatsapp"]');
+      if (!el) return;
+      el.addEventListener('input', function () {
+        var d = el.value.replace(/\D/g, '').slice(0, 11);
+        if (d.length > 6) el.value = '(' + d.slice(0, 2) + ') ' + d.slice(2, d.length - 4) + '-' + d.slice(-4);
+        else if (d.length > 2) el.value = '(' + d.slice(0, 2) + ') ' + d.slice(2);
+        else el.value = d;
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -42,6 +42,7 @@ const { registerBotRoutes } = require('./bot');
 const { registerContabilidadeRoutes } = require('./contabilidade');
 const { registerRelatorioRoutes } = require('./relatorio');
 const { registerPesquisaRoutes } = require('./pesquisa');
+const { registerSorteioRoutes } = require('./sorteio');
 const { registerComprovanteRoutes, buildAdminWhatsappReceiptLink, sendReceiptNotification } = require('./comprovante');
 const { isValidCpf } = require('./cpf');
 const participantesRegra = require('./participantes');
@@ -1691,6 +1692,7 @@ registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,
 });
 registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
+registerSorteioRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerMusicaPersonalizadaRoutes(app, { eventInfo });
 
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {

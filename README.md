@@ -90,3 +90,11 @@ com o evento **Pagamentos (legacy)**. Copie a "Chave secreta" gerada e coloque e
 - As sessoes do validador e do painel de vendas ficam em memoria: reiniciar o servidor derruba o login (basta logar de novo).
 - O scanner de QR code roda no navegador (camera do celular) via `html5-qrcode`, com fallback de digitacao manual do codigo.
 - O CPF e validado (digito verificador) antes de seguir para o pagamento e e enviado ao Mercado Pago como identificacao do pagador.
+
+## Sorteio (`/sorteio`)
+
+Link público para divulgar: `https://SEU_BASE_URL/sorteio` (dá pra marcar a origem com `?o=stories`, `?o=grupo`...).
+
+- A pessoa informa nome, e-mail e WhatsApp e recebe na hora um **número da sorte** sequencial (001, 002...). Cada WhatsApp/e-mail participa uma vez; se tentar de novo, vê o mesmo número.
+- **Painel `/admin/sorteio`**: título, prêmio, regulamento, abrir/encerrar inscrições, lista de inscritos (busca, exclusão, CSV), ganhadores (com link pro WhatsApp) e "Arquivar e começar novo sorteio".
+- **Roleta `/admin/sorteio/roleta`**: tela cheia pra transmitir ao vivo. O ganhador é escolhido no servidor (aleatório criptográfico) e a roleta para exatamente nele. Na tela aparece só o número e o primeiro nome + inicial (sem telefone/e-mail). Atalho: barra de espaço gira/continua. Novas inscrições entram na roleta sozinhas entre um giro e outro. Por padrão quem já ganhou não é sorteado de novo (dá pra mudar nas configurações; "Remover" um ganhador o devolve à roleta, útil se ele não aparecer).

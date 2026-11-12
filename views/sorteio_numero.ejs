@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Seu número da sorte - <%= eventInfo.brand || eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .num-card { text-align: center; }
+    .num-card .tag {
+      display: inline-block; background: var(--accent); color: #1a1200; font-size: 12px; font-weight: 800;
+      letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 12px; border-radius: 999px; margin-bottom: 10px;
+    }
+    .num-card .big {
+      font-size: clamp(64px, 24vw, 120px); font-weight: 900; line-height: 1; color: var(--accent);
+      font-variant-numeric: tabular-nums; letter-spacing: 0.04em; margin: 8px 0 6px;
+      text-shadow: 0 0 30px rgba(244, 185, 66, 0.35);
+    }
+    .num-card .who { font-size: 16px; color: var(--text); margin: 0 0 14px; }
+    .num-card .lead { color: var(--text-dim); font-size: 14px; line-height: 1.6; margin: 0 0 6px; }
+    .num-card .premio { color: var(--text); font-weight: 700; }
+    .share button { margin-top: 0; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.brand || eventInfo.name %>" />
+    </header>
+
+    <main class="card num-card">
+      <span class="tag"><%= jaInscrito ? 'Você já está participando' : 'Inscrição confirmada' %></span>
+      <p class="lead" style="margin-top:6px">Seu número da sorte é</p>
+      <div class="big"><%= numero %></div>
+      <p class="who"><%= nome %>, guarde esse número! 🍀</p>
+      <% if (sorteio.premio) { %><p class="lead">Você está concorrendo a: <span class="premio"><%= sorteio.premio %></span></p><% } %>
+      <p class="lead">O sorteio vai ser feito <strong>ao vivo</strong>. Tire um print desta tela e acompanhe a transmissão.</p>
+    </main>
+
+    <section class="card share" style="text-align:center">
+      <p class="hint" style="margin-top:0">Chame seus amigos para participar também:</p>
+      <button type="button" id="share-btn">Compartilhar o link do sorteio</button>
+    </section>
+
+    <footer class="footer">
+      <div class="footer-links">
+        <a href="/">Página inicial</a>
+      </div>
+    </footer>
+  </div>
+  <script>
+    (function () {
+      var btn = document.getElementById('share-btn');
+      var url = location.origin + '/sorteio';
+      var text = <%- JSON.stringify((sorteio.titulo || 'Sorteio') + (sorteio.premio ? ': concorra a ' + sorteio.premio : '') + '! Pegue seu número da sorte: ').replace(/</g, '\\u003c') %>;
+      btn.addEventListener('click', function () {
+        if (navigator.share) {
+          navigator.share({ title: document.title, text: text, url: url }).catch(function () {});
+        } else {
+          window.open('https://wa.me/?text=' + encodeURIComponent(text + url), '_blank');
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Sorteio - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .s-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .s-kpi { background: #1a1a1a; border: 1px solid var(--card-border); border-radius: 12px; padding: 12px 14px; }
+    .s-kpi .l { font-size: 12px; color: var(--text-dim); }
+    .s-kpi .v { font-size: 26px; font-weight: 800; color: var(--text); margin-top: 2px; }
+    .s-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+    .s-actions a, .s-actions form { flex: 1 1 200px; }
+    .s-actions button { margin: 0; }
+    .btn-roleta { background: var(--ok); color: #06210f; font-size: 18px; }
+    .linkbox { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0 14px; }
+    .linkbox code { background: #1a1a1a; padding: 8px 12px; border-radius: 8px; font-size: 14px; color: var(--accent); word-break: break-all; }
+    .linkbox button { width: auto; margin: 0; padding: 8px 14px; font-size: 12px; }
+    .switch { flex-direction: row; align-items: center; gap: 10px; color: var(--text); font-size: 14px; }
+    .switch input { width: auto; padding: 0; }
+    textarea.regras {
+      width: 100%; min-height: 110px; background: #1a1a1a; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 10px;
+      padding: 12px 14px; color: var(--text); font-size: 14px; font-family: inherit;
+    }
+    .win-row { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .win-row .n { font-size: 22px; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; min-width: 70px; }
+    .win-row .info { flex: 1; font-size: 13px; color: var(--text-dim); }
+    .win-row .info strong { color: var(--text); font-size: 15px; }
+    .small-btn { margin: 0; width: auto; padding: 5px 10px; font-size: 12px; }
+    .ok-msg { background: rgba(34, 197, 94, 0.12); border: 1px solid var(--ok); color: #bbf7d0; padding: 10px 14px; border-radius: 10px; font-size: 14px; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/contatos" class="tab">Convites</a>
+      <a href="/admin/afiliados" class="tab">Afiliados</a>
+      <a href="/admin/avisos" class="tab">Avisos</a>
+      <a href="/admin/links" class="tab">Links</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/admin/sorteio" class="tab active">Sorteio</a>
+      <a href="/downloads" class="tab">Músicas</a>
+      <a href="/admin/criesuamusica" class="tab">Música IA</a>
+    </nav>
+
+    <main class="card">
+      <h3 style="margin-top:0"><%= s.titulo %></h3>
+      <% if (flash === 'salvo') { %><div class="ok-msg">Configurações salvas.</div><% } %>
+      <% if (flash === 'novo') { %><div class="ok-msg">Novo sorteio iniciado. O anterior foi arquivado lá embaixo.</div><% } %>
+
+      <p class="hint" style="margin:0; text-align:left">Link para divulgar:</p>
+      <div class="linkbox">
+        <code id="pub-link"><%= baseUrl || '' %>/sorteio</code>
+        <button type="button" class="btn-secondary" id="copy-link">Copiar</button>
+      </div>
+      <p class="hint" style="margin:-6px 0 14px; text-align:left">Para saber de onde veio cada inscrição, acrescente <code>?o=stories</code>, <code>?o=grupo</code>...</p>
+
+      <div class="s-kpis">
+        <div class="s-kpi"><div class="l">Inscritos</div><div class="v"><%= inscritos.length %></div></div>
+        <div class="s-kpi"><div class="l">Podem ser sorteados</div><div class="v"><%= elegiveis %></div></div>
+        <div class="s-kpi"><div class="l">Já sorteados</div><div class="v"><%= ganhadores.length %></div></div>
+        <div class="s-kpi"><div class="l">Inscrições</div><div class="v" style="font-size:18px; color:<%= s.aberto ? 'var(--ok)' : 'var(--danger)' %>"><%= s.aberto ? 'Abertas' : 'Encerradas' %></div></div>
+      </div>
+
+      <div class="s-actions">
+        <a href="/admin/sorteio/roleta" target="_blank"><button type="button" class="btn-roleta">🎡 Abrir roleta (ao vivo)</button></a>
+        <a href="/admin/sorteio/exportar.csv"><button type="button" class="btn-secondary">Baixar inscritos (CSV)</button></a>
+      </div>
+    </main>
+
+    <main class="card">
+      <h3 style="margin-top:0">Ganhadores</h3>
+      <% if (!ganhadores.length) { %>
+        <p class="hint" style="text-align:left">Ninguém sorteado ainda. Abra a roleta para sortear ao vivo.</p>
+      <% } %>
+      <% ganhadores.forEach(function(g) { %>
+        <div class="win-row">
+          <span class="n"><%= g.numeroLabel %></span>
+          <div class="info">
+            <strong><%= g.inscrito ? g.inscrito.nome : g.nomeCurto %></strong> &middot; <%= g.idx + 1 %>º sorteado em <%= g.atLabel %><br />
+            <% if (g.inscrito) { %>
+              <a href="https://wa.me/55<%= g.inscrito.whatsapp %>" target="_blank" rel="noopener" style="color:var(--ok)">WhatsApp <%= g.inscrito.whatsapp %></a> &middot; <%= g.inscrito.email %>
+            <% } else { %>(inscrição excluída)<% } %>
+          </div>
+          <form action="/admin/sorteio/ganhadores/<%= g.idx %>/remover" method="POST" onsubmit="return confirm('Remover este ganhador? Ele volta a poder ser sorteado (use se a pessoa não apareceu/não respondeu e você vai sortear de novo).')">
+            <button type="submit" class="btn-secondary small-btn">Remover</button>
+          </form>
+        </div>
+      <% }) %>
+    </main>
+
+    <main class="card">
+      <h3 style="margin-top:0">Configurações</h3>
+      <form action="/admin/sorteio/config" method="POST" class="form">
+        <label>Título do sorteio
+          <input type="text" name="titulo" maxlength="80" value="<%= s.titulo %>" />
+        </label>
+        <label>Prêmio
+          <input type="text" name="premio" maxlength="120" placeholder="Ex: 2 ingressos para a próxima Crewolada" value="<%= s.premio %>" />
+        </label>
+        <label>Regulamento (opcional, aparece no formulário)
+          <textarea name="regras" class="regras" maxlength="1500"><%= s.regras %></textarea>
+        </label>
+        <label class="switch"><input type="checkbox" name="aberto" value="1" <%= s.aberto ? 'checked' : '' %> /> Inscrições abertas</label>
+        <label class="switch"><input type="checkbox" name="permitirRepetir" value="1" <%= s.permitirRepetir ? 'checked' : '' %> /> Quem já ganhou pode ser sorteado de novo</label>
+        <button type="submit">Salvar</button>
+      </form>
+    </main>
+
+    <main class="card">
+      <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center">
+        <h3 style="margin:0">Inscritos (<%= inscritos.length %>)</h3>
+      </div>
+      <label style="margin:14px 0; display:block">
+        Buscar por número, nome, e-mail ou WhatsApp
+        <input type="text" id="s-search" placeholder="Digite para filtrar..." />
+      </label>
+      <% if (!inscritos.length) { %>
+        <p class="hint">Ainda não há inscritos.</p>
+      <% } else { %>
+      <div class="table-wrap">
+        <table id="s-table">
+          <thead><tr><th>Nº</th><th>Nome</th><th>WhatsApp</th><th>E-mail</th><th>Data</th><th>Origem</th><th></th></tr></thead>
+          <tbody>
+            <% inscritos.forEach(function(i) { %>
+              <tr data-search="<%= [i.numeroLabel, i.nome, i.email, i.whatsapp].join(' ').toLowerCase() %>">
+                <td><strong style="color:var(--accent)"><%= i.numeroLabel %></strong></td>
+                <td><%= i.nome %></td>
+                <td><%= i.whatsapp %></td>
+                <td><%= i.email %></td>
+                <td><%= i.createdAtLabel %></td>
+                <td><%= i.origem %></td>
+                <td>
+                  <form action="/admin/sorteio/inscritos/<%= i.id %>/excluir" method="POST" onsubmit="return confirm('Excluir a inscrição nº <%= i.numeroLabel %>?')">
+                    <button type="submit" class="btn-secondary small-btn">Excluir</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% } %>
+    </main>
+
+    <main class="card">
+      <h3 style="margin-top:0">Começar um novo sorteio</h3>
+      <p class="hint" style="text-align:left; margin-top:0">Arquiva este sorteio (inscritos e ganhadores) e zera a lista; a numeração volta para 001. Baixe o CSV antes se quiser guardar todos os inscritos.</p>
+      <form action="/admin/sorteio/novo" method="POST" onsubmit="return confirm('Arquivar este sorteio e começar outro do zero? A lista de inscritos será apagada.')">
+        <button type="submit" class="btn-danger">Arquivar e começar novo sorteio</button>
+      </form>
+      <% if (arquivados.length) { %>
+        <h3 style="margin:22px 0 6px; font-size:14px">Sorteios anteriores</h3>
+        <% arquivados.forEach(function(a) { %>
+          <div class="win-row" style="align-items:flex-start">
+            <div class="info">
+              <strong><%= a.titulo %></strong><%= a.premio ? ' · ' + a.premio : '' %> &middot; <%= a.total %> inscritos &middot; encerrado em <%= a.encerradoEmLabel %><br />
+              <% a.ganhadores.forEach(function(g) { %>
+                Nº <%= g.numero %> &mdash; <%= g.nome %> <%= g.whatsapp ? '(' + g.whatsapp + ')' : '' %><br />
+              <% }) %>
+              <% if (!a.ganhadores.length) { %>Sem ganhadores registrados.<% } %>
+            </div>
+          </div>
+        <% }) %>
+      <% } %>
+    </main>
+  </div>
+  <script>
+    (function () {
+      var link = document.getElementById('pub-link');
+      if (!/^https?:/.test(link.textContent)) link.textContent = location.origin + '/sorteio';
+      document.getElementById('copy-link').addEventListener('click', function (e) {
+        navigator.clipboard.writeText(link.textContent).then(function () { e.target.textContent = 'Copiado!'; });
+      });
+      var input = document.getElementById('s-search');
+      input.addEventListener('input', function () {
+        var q = input.value.trim().toLowerCase();
+        document.querySelectorAll('#s-table tbody tr').forEach(function (tr) {
+          tr.style.display = !q || tr.getAttribute('data-search').indexOf(q) !== -1 ? '' : 'none';
+        });
+      });
+    })();
+  </script>
+</body>
+</html>
