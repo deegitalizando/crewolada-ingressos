@@ -15,7 +15,7 @@
     .mi-t:first-of-type { border-top: 0; }
     .mi-t b { display: block; font-size: 14px; }
     .mi-t small { display: block; color: var(--text-dim); font-size: 12px; }
-    .mi-t .acts { display: flex; gap: 6px; flex: none; }
+    .mi-t .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; flex: none; max-width: 60%; }
     .mi-t .acts a { font-size: 13px; font-weight: 700; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.2); text-decoration: none; color: inherit; }
     .mi-order .go { margin-top: 10px; }
     .mi-order .go button { margin: 0; }
@@ -31,7 +31,7 @@
 
     <main class="card">
       <h2>Meus ingressos</h2>
-      <p class="hint" style="margin-top:0">Digite o CPF, e-mail ou WhatsApp usado na compra ou na inscrição. Aparecem os ingressos de todos os eventos da Crewolada, e você pode cadastrar quem vai usar cada um. Não vai mais? Use <strong>Trocar</strong> para passar o ingresso para outra pessoa.</p>
+      <p class="hint" style="margin-top:0">Digite o CPF, e-mail ou WhatsApp usado na compra ou na inscrição. Aparecem os ingressos de todos os eventos da Crewolada, e você pode cadastrar quem vai usar cada um. Não vai mais? Use <strong>Trocar participante</strong> para passar o ingresso para outra pessoa.</p>
 
       <% if (error) { %>
         <div class="alert" style="background:rgba(239,68,68,0.15);border-color:#ef4444;color:#fca5a5"><%= error %></div>
@@ -60,7 +60,7 @@
                   <% o.tickets.forEach(function(t, i) { %>
                     <div class="mi-t">
                       <span><b><%= t.participantName || (i === 0 ? o.buyerName : 'Ingresso ' + (i + 1) + ' · sem nome cadastrado') %></b><small><%= t.code %><%= t.usedAt ? ' · já usado na entrada' : '' %></small></span>
-                      <span class="acts"><a href="/ingresso/<%= t.code %>">Ver</a><a href="/ingresso/<%= t.code %>/pdf">PDF</a><% if (!g.past && !t.usedAt && t.status !== 'cancelled' && !g.ev.cancelledAt) { %><a href="/ingresso/<%= t.code %>/trocar">Trocar</a><% } %></span>
+                      <span class="acts"><a href="/ingresso/<%= t.code %>">Ver</a><a href="/ingresso/<%= t.code %>/pdf">PDF</a><% if (!g.past && !t.usedAt && t.status !== 'cancelled' && !g.ev.cancelledAt) { %><a href="/ingresso/<%= t.code %>/trocar">Trocar participante</a><% } %></span>
                     </div>
                   <% }) %>
                   <% if (!g.past) { %>
