@@ -42,6 +42,12 @@
           <input type="text" name="label" placeholder="Ex: Familia Silva, Banda X..." required maxlength="80" />
         </label>
         <label>
+          Evento do convite
+          <select name="evento">
+            <% eventos.forEach(function(e) { %><option value="<%= e.id %>" <%= e.atual ? 'selected' : '' %>><%= e.name %> · <%= e.dateLabel %><%= e.atual ? ' (evento atual)' : '' %></option><% }) %>
+          </select>
+        </label>
+        <label>
           Quantidade de ingressos
           <input type="number" name="quantity" min="1" max="50" value="2" required />
         </label>
@@ -54,7 +60,7 @@
       <div class="table-wrap">
         <table>
           <thead>
-            <tr><th>Convidado</th><th>Qtd</th><th>Status</th><th>Link</th><th></th></tr>
+            <tr><th>Convidado</th><th>Evento</th><th>Qtd</th><th>Status</th><th>Link</th><th></th></tr>
           </thead>
           <tbody>
             <% links.forEach(function(l) { %>
@@ -66,6 +72,7 @@
                     <br /><span class="hint" style="margin:0;text-align:left"><%= l.people.map(function(p) { return p.buyerName; }).join(', ') %></span>
                   <% } %>
                 </td>
+                <td><%= l.eventName %></td>
                 <td><%= l.quantity %></td>
                 <td><%= l.usedAt ? 'Cadastrado em ' + l.usedAtLabel : 'Aguardando cadastro' %></td>
                 <td>
@@ -86,7 +93,7 @@
               </tr>
             <% }) %>
             <% if (links.length === 0) { %>
-              <tr><td colspan="5" style="text-align:center">Nenhum link criado ainda.</td></tr>
+              <tr><td colspan="6" style="text-align:center">Nenhum link criado ainda.</td></tr>
             <% } %>
           </tbody>
         </table>

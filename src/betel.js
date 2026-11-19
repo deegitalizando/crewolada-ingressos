@@ -31,7 +31,7 @@ const cpfMascarado = (c) => { const d = String(c || '').replace(/\D/g, ''); retu
 
 function dados(db, fmtDate) {
   const ev = EVENTS.find((e) => e.id === SP_EVENT.id) || SP_EVENT;
-  const pedidos = selecionar(db, { evento: ev.id, quais: 'todos' }).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const pedidos = selecionar(db, { evento: ev.id, quais: 'todos' }).filter((o) => !o.isCourtesy).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const tickets = Object.values(db.tickets || {});
   const linhas = pedidos.map((o) => {
     const ts = tickets.filter((t) => t.orderId === o.id);

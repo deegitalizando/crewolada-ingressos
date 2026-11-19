@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const store = require('./store');
 const { approveOrder } = require('./fulfillment');
 const { isValidCpf } = require('./cpf');
+const { EVENTS, currentEvent, getEventById } = require('./event');
 
 const COURTESY_LOTE_NAME = 'Cortesia';
 const MAX_PEOPLE_PER_LINK = 50;
@@ -32,6 +33,9 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
   // Cortesia pages never fire the sales pixel — they're not part of the
   // public funnel and shouldn't pollute ad reporting.
   const pageLocals = { eventInfo, metaPixelId: '' };
+  // The invite belongs to the event chosen when the link was created (the current one for old links).
+  const eventOf = (link) => getEventById((link && link.eventId) || currentEvent.id);
+  const localsFor = (link) => ({ ...pageLocals, eventInfo: { ...eventInfo, ...eventOf(link) } });
 
   // ---- guest-facing ----
 
@@ -39,8 +43,8 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
     const db = store.load();
     const link = (db.courtesyLinks || {})[req.params.token];
     if (!link) return res.status(404).render('cortesia_form', { ...pageLocals, state: 'invalid' });
-    if (link.usedAt) return res.render('cortesia_form', { ...pageLocals, state: 'used', link });
-    res.render('cortesia_form', { ...pageLocals, state: 'form', link, people: [], error: null });
+    if (link.usedAt) return res.render('cortesia_form', { ...localsFor(link), state: 'used', link });
+    res.render('cortesia_form', { ...localsFor(link), state: 'form', link, people: [], error: null });
   });
 
   app.post('/c/:token', async (req, res) => {
@@ -48,7 +52,7 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
     const db = store.load();
     const link = (db.courtesyLinks || {})[token];
     if (!link) return res.status(404).render('cortesia_form', { ...pageLocals, state: 'invalid' });
-    if (link.usedAt) return res.render('cortesia_form', { ...pageLocals, state: 'used', link });
+    if (link.usedAt) return res.render('cortesia_form', { ...localsFor(link), state: 'used', link });
 
     const submitted = Array.isArray(req.body.people) ? req.body.people : Object.values(req.body.people || {});
     const rawPeople = Array.from({ length: link.quantity }, (_, i) => submitted[i] || {});
@@ -58,7 +62,7 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
       const result = validatePerson(rawPeople[i]);
       if (result.error) {
         return res.status(400).render('cortesia_form', {
-          ...pageLocals,
+          ...localsFor(link),
           state: 'form',
           link,
           people: rawPeople,
@@ -85,7 +89,7 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
       mpPaymentId: null,
       paymentMethodId: 'cortesia',
       isCourtesy: true,
-      eventId: require('./event').currentEvent.id,
+      eventId: eventOf(link).id,
       courtesyLinkId: token,
       pixQrCode: null,
       pixQrCodeBase64: null,
@@ -106,12 +110,12 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
 
     if (!claimed) {
       const fresh = (store.load().courtesyLinks || {})[token];
-      return res.render('cortesia_form', { ...pageLocals, state: 'used', link: fresh || link });
+      return res.render('cortesia_form', { ...localsFor(fresh || link), state: 'used', link: fresh || link });
     }
 
     try {
       for (const order of orders) {
-        await approveOrder(order.id, `cortesia-${token}`, eventInfo);
+        await approveOrder(order.id, `cortesia-${token}`, localsFor(link).eventInfo);
       }
     } catch (err) {
       console.error(`Erro ao emitir ingressos de cortesia (link ${token}):`, err.message);
@@ -119,7 +123,7 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
 
     const after = store.load();
     const tickets = orders.flatMap((o) => Object.values(after.tickets).filter((t) => t.orderId === o.id));
-    res.render('cortesia_done', { ...pageLocals, people, tickets });
+    res.render('cortesia_done', { ...localsFor(link), people, tickets });
   });
 
   // ---- admin ----
@@ -133,9 +137,14 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
         url: linkUrl(l.token),
         createdAtLabel: formatDatetimeBrasiliaDisplay(l.createdAt),
         usedAtLabel: l.usedAt ? formatDatetimeBrasiliaDisplay(l.usedAt) : '',
+        eventName: eventOf(l).name,
         people: (l.orderIds || []).map((id) => db.orders[id]).filter(Boolean),
       }));
-    res.render('admin_cortesias', { eventInfo, links, error: req.query.erro || null });
+    const now = Date.now();
+    const eventos = EVENTS
+      .filter((e) => e.id === currentEvent.id || (!e.cancelledAt && (!e.startAt || Date.parse(e.startAt) + 5 * 3600000 > now)))
+      .map((e) => ({ id: e.id, name: e.name, dateLabel: e.dateLabel, atual: e.id === currentEvent.id }));
+    res.render('admin_cortesias', { eventInfo, links, eventos, error: req.query.erro || null });
   });
 
   app.post('/admin/cortesias', requireAdminAuth, async (req, res) => {
@@ -144,6 +153,7 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
     if (!label || !Number.isInteger(quantity) || quantity < 1 || quantity > MAX_PEOPLE_PER_LINK) {
       return res.redirect(`/admin/cortesias?erro=${encodeURIComponent(`Informe um nome e uma quantidade de 1 a ${MAX_PEOPLE_PER_LINK}.`)}`);
     }
+    const evento = EVENTS.find((e) => e.id === req.body.evento) || currentEvent;
     const token = crypto.randomBytes(9).toString('base64url');
     await store.withDb((d) => {
       d.courtesyLinks = d.courtesyLinks || {};
@@ -151,6 +161,7 @@ function registerCortesiaRoutes(app, { requireAdminAuth, eventInfo, formatDateti
         token,
         label,
         quantity,
+        eventId: evento.id,
         createdAt: new Date().toISOString(),
         usedAt: null,
         orderIds: [],
