@@ -145,6 +145,7 @@
             <div class="ev-actions">
               <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas</button></a>
               <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
+              <a href="/admin/trocar-participante?evento=<%= c.id %>"><button type="button" class="btn-secondary">Trocar participante</button></a>
               <% if (!c.free) { %><a href="<%= c.hasProducts ? '/admin/ingressos' : '/admin/lotes' %>?evento=<%= c.id %>"><button type="button" class="btn-secondary"><%= c.hasProducts ? 'Ingressos' : 'Lotes' %></button></a><% } %>
               <% if (c.slug) { %>
                 <form action="/admin/eventos/<%= c.id %>/<%= c.hidden ? 'publicar' : 'ocultar' %>" method="POST" onsubmit="return confirm('<%= c.hidden ? 'Publicar a página para o público?' : 'Ocultar a página do público?' %>')">

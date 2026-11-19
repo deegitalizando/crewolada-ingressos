@@ -15,6 +15,7 @@ const { registerLinksRoutes } = require('./links');
 const { registerAfiliadosRoutes } = require('./afiliados');
 const { registerPushRoutes } = require('./push');
 const { registerLeadsRoutes } = require('./leads');
+const { registerTrocarParticipanteRoutes } = require('./trocarParticipante');
 const { registerPaginaInicialRoutes, resolveHome } = require('./paginaInicial');
 const { registerCancelamentoRoutes } = require('./eventoCancelamento');
 const { registerBetelRoutes } = require('./betel');
@@ -1687,6 +1688,7 @@ registerBotRoutes(app, {
   },
 });
 registerPaginaInicialRoutes(app, { requireAdminAuth, onChange: refreshEvents });
+registerTrocarParticipanteRoutes(app, { requireAdminAuth, eventInfo, eventInfoFor, notifyOrderApproved, buildTicketPdf });
 registerCancelamentoRoutes(app, { requireAdminAuth, eventInfo, onChange: refreshEvents, formatDatetimeBrasiliaDisplay });
 registerEventosRoutes(app, {
   requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,

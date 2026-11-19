@@ -31,7 +31,7 @@
 
     <main class="card">
       <h2>Meus ingressos</h2>
-      <p class="hint" style="margin-top:0">Digite o CPF, e-mail ou WhatsApp usado na compra ou na inscrição. Aparecem os ingressos de todos os eventos da Crewolada, e você pode cadastrar quem vai usar cada um.</p>
+      <p class="hint" style="margin-top:0">Digite o CPF, e-mail ou WhatsApp usado na compra ou na inscrição. Aparecem os ingressos de todos os eventos da Crewolada, e você pode cadastrar quem vai usar cada um. Não vai mais? Use <strong>Trocar</strong> para passar o ingresso para outra pessoa.</p>
 
       <% if (error) { %>
         <div class="alert" style="background:rgba(239,68,68,0.15);border-color:#ef4444;color:#fca5a5"><%= error %></div>
@@ -60,7 +60,7 @@
                   <% o.tickets.forEach(function(t, i) { %>
                     <div class="mi-t">
                       <span><b><%= t.participantName || (i === 0 ? o.buyerName : 'Ingresso ' + (i + 1) + ' · sem nome cadastrado') %></b><small><%= t.code %><%= t.usedAt ? ' · já usado na entrada' : '' %></small></span>
-                      <span class="acts"><a href="/ingresso/<%= t.code %>">Ver</a><a href="/ingresso/<%= t.code %>/pdf">PDF</a></span>
+                      <span class="acts"><a href="/ingresso/<%= t.code %>">Ver</a><a href="/ingresso/<%= t.code %>/pdf">PDF</a><% if (!g.past && !t.usedAt && t.status !== 'cancelled' && !g.ev.cancelledAt) { %><a href="/ingresso/<%= t.code %>/trocar">Trocar</a><% } %></span>
                     </div>
                   <% }) %>
                   <% if (!g.past) { %>

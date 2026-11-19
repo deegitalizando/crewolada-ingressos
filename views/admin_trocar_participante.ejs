@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Trocar participante - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .tp { margin: 0 16px 14px; }
+    .tp .row { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 640px) { .tp .row { grid-template-columns: 1fr 1fr; } }
+    .tp .res { border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; margin-top: 10px; background: #141414; }
+    .tp .res h4 { margin: 0 0 4px; font-size: 16px; }
+    .tp .res .m { color: var(--text-dim); font-size: 13px; margin: 0 0 8px; }
+    .tp .tag { display: inline-block; font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.1); margin-right: 6px; }
+    .tp details summary { cursor: pointer; color: var(--accent); font-weight: 700; }
+    .tp .ck { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+    .tp .ck input { width: 20px; height: 20px; flex: none; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form"><button type="submit" class="link-btn">Sair</button></form>
+    </header>
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab active">Eventos</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/contatos" class="tab">Convites</a>
+      <a href="/admin/afiliados" class="tab">Afiliados</a>
+      <a href="/admin/avisos" class="tab">Avisos</a>
+      <a href="/admin/links" class="tab">Links</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/downloads" class="tab">Músicas</a>
+    </nav>
+
+    <% if (ok) { %><div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac"><%= ok %></div><% } %>
+    <% if (erro) { %><div class="alert" style="margin:0 16px 12px"><%= erro %></div><% } %>
+
+    <main class="card tp">
+      <h2 style="margin-top:0">Trocar participante</h2>
+      <p class="hint" style="text-align:left; margin-top:0">Use quando uma pessoa inscrita desiste e indica outra. O ingresso antigo é cancelado e nasce um novo (outro QR Code, mesmo número do sorteio), então o PDF que a pessoa anterior guardou deixa de valer na entrada. Ingresso já usado na portaria não pode ser trocado. As regras do cadastro continuam valendo: CPF válido e ainda sem ingresso neste evento.</p>
+      <form method="GET" action="/admin/trocar-participante" class="form">
+        <div class="row">
+          <label>Evento
+            <select name="evento">
+              <% eventos.forEach(function(e) { %><option value="<%= e.id %>" <%= e.id === eventoId ? 'selected' : '' %>><%= e.name %> · <%= e.dateLabel %></option><% }) %>
+            </select>
+          </label>
+          <label>Buscar participante (e-mail, nome, CPF ou WhatsApp)
+            <input type="text" name="busca" value="<%= busca %>" placeholder="ex.: nome@email.com" required />
+          </label>
+        </div>
+        <button type="submit">Buscar</button>
+      </form>
+
+      <% if (resultados !== null) { %>
+        <% if (resultados.length === 0) { %><p class="hint" style="text-align:left">Nenhum ingresso ativo encontrado com esse dado neste evento.</p><% } %>
+        <% resultados.forEach(function(r) { %>
+          <div class="res">
+            <h4><%= r.nome || '(sem nome)' %></h4>
+            <p class="m">
+              <% if (r.titular) { %><span class="tag">Comprador / inscrito</span><% } else { %><span class="tag">Acompanhante</span><% } %>
+              <% if (r.pedidoComMais) { %><span class="tag">Pedido com mais ingressos</span><% } %>
+              <%= r.email %> · <%= r.phone %> · CPF <%= r.cpf %>
+            </p>
+            <% if (r.trancado) { %>
+              <p class="m" style="color:#fca5a5">Este ingresso já foi usado na entrada e não pode ser trocado.</p>
+            <% } else { %>
+              <details>
+                <summary>Trocar por outra pessoa</summary>
+                <form method="POST" action="/admin/trocar-participante" class="form" style="margin-top:10px"
+                      onsubmit="return confirm('Trocar este participante pela pessoa nova? O ingresso antigo será cancelado.')">
+                  <input type="hidden" name="evento" value="<%= eventoId %>" />
+                  <input type="hidden" name="busca" value="<%= busca %>" />
+                  <input type="hidden" name="code" value="<%= r.code %>" />
+                  <div class="row">
+                    <label>Nome completo<input type="text" name="nome" required maxlength="80" /></label>
+                    <label>CPF<input type="text" name="cpf" required inputmode="numeric" maxlength="14" /></label>
+                    <label>WhatsApp (com DDD)<input type="text" name="whatsapp" required inputmode="tel" maxlength="20" /></label>
+                    <label>E-mail<input type="email" name="email" required maxlength="120" /></label>
+                  </div>
+                  <label class="ck"><input type="checkbox" name="reenviar" checked /> <span>Enviar o ingresso novo para a pessoa nova (e-mail e WhatsApp)</span></label>
+                  <% if (r.titular && r.pedidoComMais) { %><p class="hint" style="text-align:left">Este é o ingresso de quem fez o pedido: o pedido inteiro passa a ser da pessoa nova, e os outros ingressos dele continuam com os acompanhantes.</p><% } %>
+                  <button type="submit">Trocar participante</button>
+                </form>
+              </details>
+            <% } %>
+          </div>
+        <% }) %>
+      <% } %>
+    </main>
+    <p style="margin:0 16px 30px"><a href="/admin/eventos" style="color:var(--accent)">&larr; Voltar para Eventos</a></p>
+  </div>
+</body>
+</html>

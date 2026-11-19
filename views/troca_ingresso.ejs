@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Trocar participante - Crewolada</title>
+  <meta name="robots" content="noindex" />
+  <%- include('partials/head') %>
+  <style>
+    .tr h3 { margin: 18px 0 6px; font-size: 16px; }
+    .tr .box { padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); margin: 10px 0; font-size: 14px; line-height: 1.5; }
+    .tr .ok { background: rgba(34, 197, 94, 0.15); border: 1px solid #22c55e; color: #86efac; }
+    .tr .aviso { background: rgba(255, 210, 30, 0.12); border: 1px solid rgba(255, 210, 30, 0.4); }
+    .tr .two { display: grid; grid-template-columns: 1fr; gap: 10px; }
+    @media (min-width: 560px) { .tr .two { grid-template-columns: 1fr 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="Crewolada" />
+      <h1 class="sr-only">Crewolada</h1>
+    </header>
+
+    <main class="card tr">
+      <h2>Trocar quem vai usar o ingresso</h2>
+      <% if (ev) { %><p class="hint" style="margin-top:0"><%= ev.name %> · <%= ev.dateLabel %></p><% } %>
+
+      <% if (bloqueado) { %>
+        <div class="alert" style="background:rgba(239,68,68,0.15);border-color:#ef4444;color:#fca5a5"><%= bloqueado %></div>
+        <p class="hint"><a href="/meus-ingressos">Voltar para Meus ingressos</a></p>
+
+      <% } else if (done) { %>
+        <div class="box ok">
+          <strong>Troca feita!</strong> O ingresso agora é de <strong><%= done.nome %></strong>.
+          <%= done.reenvio === 'sim' ? 'Enviamos o ingresso novo para o e-mail e o WhatsApp dela.' : 'Não conseguimos enviar o ingresso novo agora: abra o link abaixo e use o PDF.' %>
+        </div>
+        <div class="box">O QR Code antigo deixou de valer na entrada. Só o ingresso novo abre a porta, e <%= done.nome.split(' ')[0] %> deve levar ele (impresso ou no celular).</div>
+        <p><a href="/ingresso/<%= done.codigo %>"><button type="button">Ver o ingresso novo</button></a></p>
+        <p class="hint"><a href="/meus-ingressos">Voltar para Meus ingressos</a></p>
+
+      <% } else { %>
+        <p class="hint" style="margin-top:0">Use quando você não vai mais e quer passar o ingresso para outra pessoa. O ingresso antigo é cancelado e a pessoa nova recebe um ingresso próprio, por e-mail e WhatsApp.</p>
+        <% if (erro) { %><div class="alert" style="background:rgba(239,68,68,0.15);border-color:#ef4444;color:#fca5a5"><%= erro %></div><% } %>
+
+        <form action="/ingresso/<%= code %>/trocar" method="POST" class="form" autocomplete="off"
+              onsubmit="return confirm('Passar o ingresso para a pessoa nova? O ingresso antigo será cancelado e não dá para desfazer.')">
+          <h3>1. Confirme que o pedido é seu</h3>
+          <div class="box aviso">Informe o CPF e o e-mail <strong>ou</strong> o WhatsApp usados na compra ou na inscrição.</div>
+          <label>Seu CPF<input type="text" name="confirma_cpf" inputmode="numeric" maxlength="14" required /></label>
+          <div class="two">
+            <label>Seu e-mail do pedido<input type="email" name="confirma_email" maxlength="120" value="<%= values.confirma_email || '' %>" /></label>
+            <label>ou seu WhatsApp do pedido<input type="text" name="confirma_whatsapp" inputmode="tel" maxlength="20" value="<%= values.confirma_whatsapp || '' %>" /></label>
+          </div>
+
+          <h3>2. Quem vai usar o ingresso agora</h3>
+          <label>Nome completo<input type="text" name="nome" required maxlength="80" value="<%= values.nome || '' %>" /></label>
+          <div class="two">
+            <label>CPF<input type="text" name="cpf" inputmode="numeric" maxlength="14" required value="<%= values.cpf || '' %>" /></label>
+            <label>WhatsApp (com DDD)<input type="text" name="whatsapp" inputmode="tel" maxlength="20" required value="<%= values.whatsapp || '' %>" /></label>
+          </div>
+          <label>E-mail<input type="email" name="email" maxlength="120" required value="<%= values.email || '' %>" /></label>
+          <p class="hint" style="text-align:left">Cada pessoa pode ter só 1 ingresso por evento: o CPF, o e-mail e o WhatsApp da pessoa nova não podem estar em outro ingresso.</p>
+          <button type="submit">Passar o ingresso para essa pessoa</button>
+        </form>
+        <p class="hint"><a href="/meus-ingressos">Cancelar e voltar</a></p>
+      <% } %>
+    </main>
+
+    <%- include('partials/footer_legal') %>
+  </div>
+</body>
+</html>
