@@ -100,9 +100,13 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
   });
   const usedPaid = paidTickets.filter((t) => t.status === 'used');
   const usedCourtesy = courtesyTickets.filter((t) => t.status === 'used');
-  const validTickets = paidTickets.length + courtesyTickets.length;
-  const attended = usedPaid.length + usedCourtesy.length;
+  // Courtesies are counted apart: sold / valid / attended / no-show below are paid (or registered) tickets only.
+  const validTickets = paidTickets.length;
+  const attended = usedPaid.length;
   const noShow = validTickets - attended;
+  const courtesyNoShow = courtesyTickets.length - usedCourtesy.length;
+  const doorTotal = usedPaid.length + usedCourtesy.length; // everybody who went in, for the door chart
+  const payerLabel = ev.free ? 'Inscritos' : 'Pagantes';
 
   // ---- money -------------------------------------------------------
   const gross = paidOrders.reduce((s, o) => s + o.totalAmount, 0);
@@ -255,17 +259,19 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
 
   // ---- arrival (check-in) ----------------------------------------------
   const slotMap = {};
+  const slotCourtesy = {};
   [...usedPaid, ...usedCourtesy].forEach((t) => {
     const b = brt(t.usedAt);
     if (!b) return;
     slotMap[b.slot] = (slotMap[b.slot] || 0) + 1;
+    if (orderById[t.orderId] && orderById[t.orderId].isCourtesy) slotCourtesy[b.slot] = (slotCourtesy[b.slot] || 0) + 1;
   });
   const slotKeys = Object.keys(slotMap).sort();
   const arrival = [];
   if (slotKeys.length) {
     for (let ts = Date.parse(`${slotKeys[0]}:00:00Z`); ts <= Date.parse(`${slotKeys[slotKeys.length - 1]}:00:00Z`); ts += 3600000) {
       const key = new Date(ts).toISOString().slice(0, 13);
-      arrival.push({ label: `${key.slice(11, 13)}h`, day: key.slice(0, 10), value: slotMap[key] || 0 });
+      arrival.push({ label: `${key.slice(11, 13)}h`, day: key.slice(0, 10), value: slotMap[key] || 0, courtesy: slotCourtesy[key] || 0 });
     }
   }
 
@@ -296,9 +302,10 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
     { label: 'Ingressos vendidos', value: fmtInt(ticketsSold), sub: `${fmtInt(paidOrders.length)} pedidos · ${fmtInt(buyers)} compradores` },
     { label: 'Receita bruta', value: fmtBrl(gross), sub: `Ticket médio ${fmtBrl(avgTicket)}` },
     { label: unsyncedCount ? 'Receita líquida (estimada)' : 'Receita líquida', value: fmtBrl(net), sub: `Taxas Mercado Pago: ${fmtBrl(fees)}` },
-    { label: 'Compareceram', value: fmtInt(attended), sub: `de ${fmtInt(validTickets)} ingressos válidos · ${fmtPct(pct(attended, validTickets))}` },
-    { label: 'Não compareceram', value: fmtInt(noShow), sub: fmtPct(pct(noShow, validTickets)) + ' dos ingressos válidos' },
-    { label: 'Cortesias', value: fmtInt(courtesyTickets.length), sub: `${fmtInt(usedCourtesy.length)} compareceram (${fmtPct(courtesyAttendance)})` },
+    { label: 'Compareceram', value: fmtInt(attended), sub: `de ${fmtInt(validTickets)} ingressos válidos, sem cortesias · ${fmtPct(pct(attended, validTickets))}` },
+    { label: 'Não compareceram', value: fmtInt(noShow), sub: fmtPct(pct(noShow, validTickets)) + ' dos ingressos válidos, sem cortesias' },
+    { label: 'Cortesias (à parte)', value: fmtInt(courtesyTickets.length), sub: `${fmtInt(usedCourtesy.length)} compareceram (${fmtPct(courtesyAttendance)}) · ${fmtInt(courtesyNoShow)} não compareceram` },
+    { label: 'Público total na portaria', value: fmtInt(doorTotal), sub: `${fmtInt(usedPaid.length)} ${payerLabel.toLowerCase()} + ${fmtInt(usedCourtesy.length)} cortesias` },
     { label: 'Cancelamentos', value: fmtInt(cancelledOrders.length), sub: `${fmtBrl(refunded)} reembolsados` },
     { label: 'Conversão de pedidos', value: fmtPct(conversion), sub: `${fmtInt(pendingOrders.length)} pendentes · ${fmtInt(rejectedOrders.length)} recusados` },
   ];
@@ -312,14 +319,14 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
     findings.push({
       title: 'Vendas e público',
       text: `Foram vendidos ${fmtInt(ticketsSold)} ingressos (${fmtBrl(gross)} brutos) para ${fmtInt(buyers)} compradores` +
-        (attended ? `, e ${fmtInt(attended)} pessoas compareceram (${fmtPct(pct(attended, validTickets))} dos ingressos válidos).` : '. A conferência na portaria ainda não tem registros.'),
+        (attended ? `, e ${fmtInt(attended)} pessoas compareceram (${fmtPct(pct(attended, validTickets))} dos ingressos válidos).` : '. A conferência na portaria ainda não tem registros.') +
+        (courtesyTickets.length ? ` As ${fmtInt(courtesyTickets.length)} cortesias emitidas são contadas à parte.` : ''),
     });
   }
   if (validTickets && attended) {
     findings.push({
       title: 'Taxa de comparecimento',
-      text: `Pagantes: ${fmtPct(paidAttendance)} compareceram. ` +
-        (courtesyTickets.length ? `Cortesias: ${fmtPct(courtesyAttendance)}. ` : '') +
+      text: `${payerLabel}: ${fmtPct(paidAttendance)} compareceram (cortesias à parte). ` +
         `Ficaram de fora ${fmtInt(noShow)} ingressos válidos que não foram usados.`,
     });
     todo.push({
@@ -328,11 +335,11 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
         'Use esse número com cautela (é um evento só) e respeite a capacidade legal do local.',
     });
   }
-  if (courtesyTickets.length && validTickets) {
+  if (courtesyTickets.length) {
     findings.push({
-      title: 'Cortesias',
-      text: `${fmtPct(pct(courtesyTickets.length, validTickets))} dos ingressos válidos foram cortesia, e ${fmtPct(courtesyAttendance)} delas foram usadas` +
-        (paidAttendance ? (courtesyAttendance >= paidAttendance ? ', um aproveitamento igual ou maior que o dos pagantes.' : `, abaixo dos ${fmtPct(paidAttendance)} dos pagantes.`) : '.'),
+      title: 'Cortesias (contadas à parte)',
+      text: `Foram emitidas ${fmtInt(courtesyTickets.length)} cortesias, que não entram nos números de ingressos e de comparecimento acima: ${fmtInt(usedCourtesy.length)} compareceram (${fmtPct(courtesyAttendance)}) e ${fmtInt(courtesyNoShow)} não compareceram` +
+        (validTickets && paidAttendance ? (courtesyAttendance >= paidAttendance ? `, um aproveitamento igual ou maior que o dos ${payerLabel.toLowerCase()}.` : `, abaixo dos ${fmtPct(paidAttendance)} dos ${payerLabel.toLowerCase()}.`) : '.'),
     });
     if (courtesyTickets.length >= 10 && courtesyAttendance < paidAttendance - 10) {
       todo.push({
@@ -439,10 +446,10 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
       text: `${fmtInt(cancelledOrders.length)} pedidos cancelados (${fmtPct(pct(cancelledOrders.length, cancelledOrders.length + paidOrders.length))} das vendas), com ${fmtBrl(refunded)} reembolsados.`,
     });
   }
-  if (peakArrival && attended) {
+  if (peakArrival && doorTotal) {
     findings.push({
       title: 'Chegada na portaria',
-      text: `O pico de chegada foi às ${peakArrival.label} (${fmtInt(peakArrival.value)} entradas, ${fmtPct(pct(peakArrival.value, attended))} do público).`,
+      text: `O pico de chegada foi às ${peakArrival.label} (${fmtInt(peakArrival.value)} entradas, ${fmtPct(pct(peakArrival.value, doorTotal))} do público total, com cortesias).`,
     });
     todo.push({
       title: 'Dimensione a portaria para o pico',
@@ -499,7 +506,8 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
     },
     chegada: {
       id: 'chegada', title: 'Chegada na portaria', subtitle: 'Entradas validadas por hora',
-      type: 'columns', emphasis: true, unit: 'entradas', categories: arrival.map((a) => a.label), series: [{ name: 'Entradas', values: arrival.map((a) => a.value) }],
+      type: 'columns', stacked: true, unit: 'entradas', categories: arrival.map((a) => a.label),
+      series: [{ name: payerLabel, values: arrival.map((a) => a.value - a.courtesy) }].concat(usedCourtesy.length ? [{ name: 'Cortesias', values: arrival.map((a) => a.courtesy) }] : []),
     },
     comparecimentoLote: {
       id: 'comparecimentoLote', title: 'Comparecimento por lote', subtitle: '% dos ingressos válidos que foram usados',
@@ -518,8 +526,8 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
       { name: 'Cartão', tickets: pay['Cartão'].tickets, orders: pay['Cartão'].orders, gross: round2(pay['Cartão'].gross) },
     ],
     attendance: [
-      { name: 'Pagantes', valid: paidTickets.length, used: usedPaid.length },
-      { name: 'Cortesias', valid: courtesyTickets.length, used: usedCourtesy.length },
+      { name: payerLabel, valid: paidTickets.length, used: usedPaid.length },
+      { name: 'Cortesias (à parte)', valid: courtesyTickets.length, used: usedCourtesy.length },
     ],
     lotes: loteRows.map((l) => ({
       ...l,
@@ -532,7 +540,7 @@ function buildReport(rawDb, eventInfo, eventId = currentEvent.id) {
     recommendations: todo,
     totals: {
       ticketsSold, gross: round2(gross), net: round2(net), fees: round2(fees), refunded: round2(refunded),
-      validTickets, attended, noShow, courtesy: courtesyTickets.length, unsyncedCount,
+      validTickets, attended, noShow, courtesy: courtesyTickets.length, courtesyAttended: usedCourtesy.length, courtesyNoShow, doorTotal, unsyncedCount,
       orders: { paid: paidOrders.length, cancelled: cancelledOrders.length, pending: pendingOrders.length, rejected: rejectedOrders.length },
     },
     hasData: ticketsSold + courtesyTickets.length > 0,

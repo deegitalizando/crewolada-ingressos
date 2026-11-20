@@ -581,7 +581,8 @@ th {
 .legal-footer-small { font-size: 11px; opacity: 0.8; }
 
 @media print {
-  body * { visibility: hidden; }
+  /* Only the ticket and the receipt pages print "just the document"; any other page (e.g. the report) prints in full. */
+  body.print-doc * { visibility: hidden; }
   .ticket-card, .ticket-card *, .receipt, .receipt * { visibility: visible; }
   .receipt {
     position: absolute;
