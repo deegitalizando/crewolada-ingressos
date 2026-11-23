@@ -49,7 +49,7 @@
 
     <section class="bt-card">
       <h3>Agente</h3>
-      <p class="hint">Responde o Direct do @festacrewolada sobre eventos, ingressos e como recebê-los. Datas, preços e ingressos restantes vêm do site automaticamente.</p>
+      <p class="hint">Responde o Direct do @festacrewolada sobre eventos, ingressos e como recebê-los. Datas, preços e ingressos restantes vêm do site automaticamente. Respostas automáticas por palavra-chave (comentários, stories e Direct) ficam no <a href="/manychat" style="color:var(--accent)">ManyChat</a>.</p>
       <form action="/bot/geral" method="POST">
         <label class="bt-switch"><input type="checkbox" name="agenteAtivo" <%= bot.agenteAtivo ? 'checked' : '' %> /> Agente ligado</label>
         <label>Instruções extras <span class="bt-meta">(tom de voz, o que evitar, quando chamar a equipe)</span>
