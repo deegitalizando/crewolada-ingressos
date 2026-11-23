@@ -65,6 +65,19 @@ Use `{{nome}}` em qualquer uma dessas mensagens para personalizar com o nome do 
 
 `/vendas` e `/vendas/mensagens` continuam funcionando como redirecionamento para `/admin` e `/admin/mensagens`, por compatibilidade com links antigos.
 
+### Automações (`/admin/automacoes`)
+Ferramenta de automação de Instagram e WhatsApp, com sub-abas:
+
+- **Respostas automáticas**: regras por palavra-chave (ou "qualquer mensagem", como resposta padrão) para **comentário no Instagram** (resposta pública no comentário + mensagem no Direct de quem comentou, em todos os posts ou só em um), **Direct do Instagram** e **mensagem no WhatsApp** (texto + imagem/vídeo/PDF opcional). Ordem de prioridade editável, limite de 1 resposta por pessoa a cada X minutos, variações de texto com `|||` e variáveis `{{nome}}`, `{{primeiroNome}}`, `{{usuario}}`, `{{evento}}`, `{{data}}`, `{{local}}`. Tem um simulador para testar as regras sem enviar nada.
+- **Disparos WhatsApp**: mensagem em massa para compradores pagos (de um evento ou de todos), para quem já falou com o WhatsApp ou para uma lista colada. Fila com intervalo aleatório entre envios, janela de horário, limite diário, pausar/retomar/cancelar e reenviar falhas. Quem responde **SAIR** é descadastrado e nunca mais recebe (VOLTAR reativa).
+- **Posts Instagram**: agenda foto no feed, reels ou story a partir de um link público da mídia.
+- **Contatos**: quem comentou/mandou mensagem (CSV) e a lista de descadastrados.
+- **Histórico**: tudo que foi respondido/enviado, com os erros das APIs.
+- **Conexões**: credenciais (Instagram Graph API e Evolution API), botões de teste e as URLs de webhook para cadastrar:
+  - Meta (Webhooks do app, campos `comments` e `messages`): `https://SEU_BASE_URL/api/webhooks/instagram` + o token de verificação mostrado no painel. Com a chave secreta do app salva, a assinatura `X-Hub-Signature-256` é validada.
+  - Evolution API (evento `MESSAGES_UPSERT`, "Webhook by events" desligado): `https://SEU_BASE_URL/api/webhooks/whatsapp?token=...` (o token é gerado pelo painel).
+  - Se esses webhooks hoje apontam para o n8n (agentes de IA), preencha "Repassar para" com a URL do n8n: o app repassa o corpo original (com a assinatura) sempre ou só quando nenhuma regra respondeu.
+
 ## Integracao com n8n (ja configurada)
 
 O workflow **"WORKFLOW CREWOLADA"** no n8n tem 4 gatilhos (webhooks):

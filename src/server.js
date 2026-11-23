@@ -40,6 +40,7 @@ function buildWhatsappTicketLink() {
 const { approveOrder } = require('./fulfillment');
 const { registerCortesiaRoutes } = require('./cortesia');
 const { registerBotRoutes } = require('./bot');
+const { registerAutomacoesRoutes, startAutomacoesScheduler } = require('./automacoes');
 const { registerContabilidadeRoutes } = require('./contabilidade');
 const { registerRelatorioRoutes } = require('./relatorio');
 const { registerPesquisaRoutes } = require('./pesquisa');
@@ -89,6 +90,12 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Files uploaded to the AI agent panel arrive as base64 JSON (up to 8 MB raw).
 app.use('/bot/arquivos', express.json({ limit: '12mb' }));
+// Instagram/WhatsApp webhooks keep the raw body: the Meta signature is checked over
+// it and it is forwarded byte-for-byte to n8n (src/automacoes.js).
+app.use(['/api/webhooks/instagram', '/api/webhooks/whatsapp'], express.json({
+  limit: '5mb',
+  verify: (req, res, buf) => { req.rawBody = Buffer.from(buf); },
+}));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -1698,6 +1705,7 @@ registerEventosRoutes(app, {
 registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerSorteioRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerMusicaPersonalizadaRoutes(app, { eventInfo });
+registerAutomacoesRoutes(app, { requireAdminAuth, eventInfo, parseDatetimeLocalAsBrasilia, formatDatetimeBrasiliaDisplay });
 
 // Lotes now live in the Ingressos tab (old links keep working).
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
@@ -2013,4 +2021,5 @@ app.listen(PORT, () => {
   startReminderScheduler();
   startMusicaFollowUpScheduler();
   musicas.startMusicScheduler();
+  startAutomacoesScheduler();
 });

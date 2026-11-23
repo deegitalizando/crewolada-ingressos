@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Automações - Painel Admin - <%= eventInfo.name %></title>
+  <%- include('partials/head') %>
+  <style>
+    .sub-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 12px; }
+    .sub-tabs a { font-size: 13px; font-weight: 700; color: var(--text-dim); text-decoration: none; padding: 6px 12px; border-radius: 4px; }
+    .sub-tabs a.on { color: var(--accent); background: rgba(244,185,66,0.12); }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .kpi { background: #1a1a1a; border: 1px solid var(--card-border); border-radius: 6px; padding: 12px 14px; }
+    .kpi .l { font-size: 12px; color: var(--text-dim); }
+    .kpi .v { font-size: 26px; font-weight: 800; color: var(--text); margin-top: 2px; }
+    .kpi .v.bad { color: var(--danger); }
+    .conn { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .conn-box { background: #1a1a1a; border: 1px solid var(--card-border); border-radius: 6px; padding: 14px; font-size: 14px; }
+    .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; background: #666; }
+    .dot.on { background: var(--ok); } .dot.off { background: var(--danger); }
+    .ok-msg { background: rgba(34,197,94,0.12); border: 1px solid var(--ok); color: #bbf7d0; padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 14px; }
+    .err-msg { background: rgba(239,68,68,0.12); border: 1px solid var(--danger); color: #fecaca; padding: 10px 14px; border-radius: 6px; font-size: 14px; margin-bottom: 14px; }
+    textarea.t, select.t { width: 100%; background: #1a1a1a; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 12px 14px; color: var(--text); font-size: 14px; font-family: inherit; }
+    textarea.t { min-height: 90px; }
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+    .switch { flex-direction: row; align-items: center; gap: 10px; color: var(--text); font-size: 14px; }
+    .switch input { width: auto; padding: 0; }
+    .rule { background: #1a1a1a; border: 1px solid rgba(255,255,255,0.08); border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; }
+    .rule.off { opacity: 0.55; }
+    .rule-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; align-items: center; }
+    .rule-head strong { font-size: 15px; }
+    .chips { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0; }
+    .chip { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.08); color: var(--text); }
+    .chip.ig { background: rgba(225,48,108,0.2); color: #f9a8d4; }
+    .chip.wa { background: rgba(34,197,94,0.18); color: #86efac; }
+    .reply { font-size: 13px; color: var(--text-dim); white-space: pre-wrap; margin-top: 4px; }
+    .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .acts form { margin: 0; }
+    .small-btn { margin: 0; width: auto; padding: 5px 10px; font-size: 12px; border-radius: 4px; }
+    .linkbox { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 4px 0 10px; }
+    .linkbox code { background: #111; padding: 8px 12px; border-radius: 6px; font-size: 13px; color: var(--accent); word-break: break-all; flex: 1 1 260px; }
+    .bar { height: 8px; background: rgba(255,255,255,0.08); border-radius: 4px; overflow: hidden; margin: 6px 0; }
+    .bar > span { display: block; height: 100%; background: var(--accent); }
+    .st { font-size: 11px; font-weight: 800; text-transform: uppercase; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.08); }
+    .st.ok { background: rgba(34,197,94,0.18); color: #86efac; } .st.err { background: rgba(239,68,68,0.18); color: #fca5a5; } .st.run { background: rgba(244,185,66,0.18); color: var(--accent); }
+    .log td { white-space: normal; vertical-align: top; font-size: 12px; }
+    .log .msg { max-width: 320px; color: var(--text-dim); }
+    details summary { cursor: pointer; color: var(--accent); font-size: 14px; font-weight: 700; margin: 8px 0; }
+    .hint code { color: var(--accent); }
+    .posts-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 6px; margin-top: 8px; }
+    .posts-pick button { padding: 0; margin: 0; background: #111; border: 1px solid rgba(255,255,255,0.12); border-radius: 4px; overflow: hidden; text-transform: none; font-weight: 400; font-size: 10px; color: var(--text-dim); }
+    .posts-pick img { width: 100%; aspect-ratio: 1; object-fit: cover; display: block; }
+    h3 { margin-top: 26px; }
+  </style>
+</head>
+<body>
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="<%= eventInfo.name %>" />
+      <h1>Painel Admin</h1>
+      <form action="/admin/logout" method="POST" class="logout-form">
+        <button type="submit" class="link-btn">Sair</button>
+      </form>
+    </header>
+
+    <nav class="tabs-row">
+      <a href="/admin" class="tab">Vendas</a>
+      <a href="/admin/eventos" class="tab">Eventos</a>
+      <a href="/admin/ingressos" class="tab">Ingressos</a>
+      <a href="/admin/cortesias" class="tab">Cortesias</a>
+      <a href="/admin/contatos" class="tab">Convites</a>
+      <a href="/admin/afiliados" class="tab">Afiliados</a>
+      <a href="/admin/avisos" class="tab">Avisos</a>
+      <a href="/admin/links" class="tab">Links</a>
+      <a href="/admin/mensagens" class="tab">E-mail e WhatsApp</a>
+      <a href="/contabilidade" class="tab">Contabilidade</a>
+      <a href="/admin/relatorio" class="tab">Relatório</a>
+      <a href="/admin/pesquisa" class="tab">Pesquisa</a>
+      <a href="/admin/sorteio" class="tab">Sorteio</a>
+      <a href="/downloads" class="tab">Músicas</a>
+      <a href="/admin/criesuamusica" class="tab">Música IA</a>
+      <a href="/admin/automacoes" class="tab active">Automações</a>
+    </nav>
+
+    <main class="card">
+      <h2 style="margin-top:0">Automações Instagram e WhatsApp</h2>
+      <nav class="sub-tabs">
+        <% [['inicio','Visão geral'],['regras','Respostas automáticas'],['disparos','Disparos WhatsApp'],['publicacoes','Posts Instagram'],['contatos','Contatos'],['historico','Histórico'],['config','Conexões']].forEach(([k, l]) => { %>
+          <a href="/admin/automacoes?aba=<%= k %>" class="<%= aba === k ? 'on' : '' %>"><%= l %></a>
+        <% }) %>
+      </nav>
+
+      <% if (msg) { %><div class="ok-msg"><%= msg %></div><% } %>
+      <% if (erro) { %><div class="err-msg"><%= erro %></div><% } %>
+
+      <% const igOk = igCfg.ativo && igCfg.igUserId && igCfg.accessToken; const waOk = waCfg.ativo && waCfg.evolutionUrl && waCfg.apiKey && waCfg.instancia; %>
+
+      <% if (aba === 'inicio') { %>
+        <div class="conn">
+          <div class="conn-box">
+            <div><span class="dot <%= igOk ? 'on' : 'off' %>"></span><strong>Instagram</strong> — <%= igOk ? 'ativo' : (igCfg.ativo ? 'faltam credenciais' : 'desligado') %></div>
+            <p class="hint" style="margin:6px 0 0">Responde comentários e Directs por palavra-chave e publica posts agendados.</p>
+          </div>
+          <div class="conn-box">
+            <div><span class="dot <%= waOk ? 'on' : 'off' %>"></span><strong>WhatsApp</strong> — <%= waOk ? 'ativo' : (waCfg.ativo ? 'faltam credenciais' : 'desligado') %></div>
+            <p class="hint" style="margin:6px 0 0">Responde mensagens por palavra-chave e faz disparos com fila e intervalo.</p>
+          </div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="l">Regras ativas</div><div class="v"><%= kpis.regrasAtivas %></div></div>
+          <div class="kpi"><div class="l">Respostas (24h)</div><div class="v"><%= kpis.respostas24 %></div></div>
+          <div class="kpi"><div class="l">Erros (24h)</div><div class="v <%= kpis.erros24 ? 'bad' : '' %>"><%= kpis.erros24 %></div></div>
+          <div class="kpi"><div class="l">Disparos em andamento</div><div class="v"><%= kpis.disparosAtivos %></div></div>
+          <div class="kpi"><div class="l">WhatsApps enviados hoje</div><div class="v"><%= kpis.enviadosHoje %> <span style="font-size:13px;color:var(--text-dim)">/ <%= waCfg.limiteDiario %></span></div></div>
+          <div class="kpi"><div class="l">Posts agendados</div><div class="v"><%= kpis.postsAgendados %></div></div>
+          <div class="kpi"><div class="l">Contatos WhatsApp</div><div class="v"><%= kpis.contatosWa %></div></div>
+          <div class="kpi"><div class="l">Contatos Instagram</div><div class="v"><%= kpis.contatosIg %></div></div>
+        </div>
+        <% if (!igOk || !waOk) { %>
+          <p class="hint">Comece pela aba <a href="/admin/automacoes?aba=config" style="color:var(--accent)">Conexões</a>: cadastre as credenciais, copie as URLs de webhook e ligue cada canal.</p>
+        <% } %>
+        <h3>Últimas atividades</h3>
+        <% if (!st.log.length) { %><p class="hint">Nenhuma atividade ainda.</p><% } %>
+        <div class="table-wrap"><table class="log"><tbody>
+          <% st.log.slice(0, 10).forEach((l) => { %>
+            <tr><td><%= fmt(l.ts) %></td><td><span class="chip <%= l.canal === 'instagram' ? 'ig' : 'wa' %>"><%= l.canal %></span></td><td><%= l.tipo.replace(/_/g, ' ') %><%= l.regra ? ' · ' + l.regra : '' %></td><td><%= l.nome || l.contato %></td><td><span class="st <%= l.ok ? 'ok' : 'err' %>"><%= l.ok ? 'ok' : 'erro' %></span></td></tr>
+          <% }) %>
+        </tbody></table></div>
+      <% } %>
+
+      <% if (aba === 'regras') { %>
+        <p class="hint" style="margin-top:0">Cada mensagem ou comentário recebido é comparado com as regras ativas, de cima para baixo; a primeira que bater responde. Regras "Qualquer mensagem" só respondem quando nenhuma outra bateu. Na resposta use <code>{{nome}}</code>, <code>{{primeiroNome}}</code>, <code>{{usuario}}</code> (Instagram), <code>{{evento}}</code>, <code>{{data}}</code>, <code>{{local}}</code>, e separe variações do texto com <code>|||</code>.</p>
+
+        <% if (!st.regras.length) { %><p class="hint">Nenhuma regra criada ainda.</p><% } %>
+        <% st.regras.forEach((r, i) => { %>
+          <div class="rule <%= r.ativo ? '' : 'off' %>">
+            <div class="rule-head">
+              <strong><%= i + 1 %>. <%= r.nome %></strong>
+              <span class="st <%= r.ativo ? 'ok' : '' %>"><%= r.ativo ? 'ativa' : 'pausada' %></span>
+            </div>
+            <div class="chips">
+              <span class="chip <%= r.canal === 'instagram' ? 'ig' : 'wa' %>"><%= (GATILHOS[r.gatilho] || {}).label %></span>
+              <span class="chip"><%= MODOS[r.modo] %></span>
+              <% (r.palavras || []).forEach((p) => { %><span class="chip">“<%= p %>”</span><% }) %>
+              <% if (r.midiaId) { %><span class="chip">só no post <%= r.midiaId %></span><% } %>
+              <% if (r.cooldownMin) { %><span class="chip">1x a cada <%= r.cooldownMin %> min por pessoa</span><% } %>
+              <span class="chip"><%= r.disparos || 0 %> disparos<%= r.ultimoDisparo ? ' · último ' + fmt(r.ultimoDisparo) : '' %></span>
+            </div>
+            <% if (r.respostaPublica) { %><div class="reply"><strong>Resposta no comentário:</strong> <%= r.respostaPublica %></div><% } %>
+            <% if (r.respostaPrivada) { %><div class="reply"><strong><%= r.canal === 'instagram' ? 'Direct:' : 'Resposta:' %></strong> <%= r.respostaPrivada %></div><% } %>
+            <% if (r.midiaUrl) { %><div class="reply"><strong>Mídia:</strong> <%= r.midiaUrl %></div><% } %>
+            <div class="acts">
+              <a href="/admin/automacoes?aba=regras&editar=<%= r.id %>#form-regra"><button type="button" class="small-btn btn-secondary">Editar</button></a>
+              <% [['alternar', r.ativo ? 'Pausar' : 'Ativar'], ['subir', '↑'], ['descer', '↓'], ['duplicar', 'Duplicar']].forEach(([a, l]) => { %>
+                <form method="POST" action="/admin/automacoes/regras/<%= r.id %>/<%= a %>"><button class="small-btn btn-secondary"><%= l %></button></form>
+              <% }) %>
+              <form method="POST" action="/admin/automacoes/regras/<%= r.id %>/excluir" onsubmit="return confirm('Excluir esta regra?')"><button class="small-btn btn-danger">Excluir</button></form>
+            </div>
+          </div>
+        <% }) %>
+
+        <h3 id="form-regra"><%= editar ? 'Editar regra' : 'Nova regra' %></h3>
+        <% const e = editar || { gatilho: 'ig_comentario', modo: 'contem', ativo: true, cooldownMin: 60, palavras: [] }; %>
+        <form method="POST" action="/admin/automacoes/regras" class="form" id="regra-form">
+          <input type="hidden" name="id" value="<%= editar ? editar.id : '' %>" />
+          <div class="grid2">
+            <label>Nome da regra<input name="nome" value="<%= e.nome || '' %>" placeholder="Ex: Comentou INGRESSO" required /></label>
+            <label>Quando
+              <select name="gatilho" class="t" id="gatilho">
+                <% Object.entries(GATILHOS).forEach(([k, g]) => { %><option value="<%= k %>" <%= e.gatilho === k ? 'selected' : '' %>><%= g.label %></option><% }) %>
+              </select>
+            </label>
+            <label>Tipo de gatilho
+              <select name="modo" class="t" id="modo">
+                <% Object.entries(MODOS).forEach(([k, l]) => { %><option value="<%= k %>" <%= e.modo === k ? 'selected' : '' %>><%= l %></option><% }) %>
+              </select>
+            </label>
+            <label>Responder a mesma pessoa no máximo 1x a cada (min)<input type="number" name="cooldownMin" min="0" value="<%= e.cooldownMin || 0 %>" /></label>
+          </div>
+          <label data-show="kw">Palavras-chave (separe por vírgula; maiúsculas e acentos não importam)<input name="palavras" value="<%= (e.palavras || []).join(', ') %>" placeholder="ingresso, quero, link" /></label>
+          <label data-show="ig_comentario">Só no post (ID da mídia — vazio = todos os posts)
+            <input name="midiaId" id="midiaId" value="<%= e.midiaId || '' %>" placeholder="Ex: 17912345678901234" />
+            <button type="button" class="small-btn btn-secondary" id="load-posts" style="margin-top:6px">Escolher entre os posts recentes</button>
+            <div class="posts-pick" id="posts-pick"></div>
+          </label>
+          <label data-show="ig_comentario">Resposta pública no comentário (opcional)<textarea class="t" name="respostaPublica" placeholder="Te mandei no Direct, {{usuario}}! 📩 ||| Olha o Direct, {{usuario}} 🔥"><%= e.respostaPublica || '' %></textarea></label>
+          <label><span id="lbl-privada">Mensagem no Direct</span><textarea class="t" name="respostaPrivada" placeholder="Oi! Aqui está o link dos ingressos da {{evento}}: https://crewolada.com 🎟️"><%= e.respostaPrivada || '' %></textarea></label>
+          <label data-show="wa_mensagem">Mídia junto da resposta (link público de imagem, vídeo ou PDF — opcional)<input name="midiaUrl" value="<%= e.midiaUrl || '' %>" placeholder="https://crewolada.com/img/flyer.jpg" /></label>
+          <label class="switch"><input type="checkbox" name="ativo" <%= e.ativo ? 'checked' : '' %> /> Regra ativa</label>
+          <div class="btn-row">
+            <button type="submit"><%= editar ? 'Salvar regra' : 'Criar regra' %></button>
+            <% if (editar) { %><a href="/admin/automacoes?aba=regras" style="flex:1"><button type="button" class="btn-secondary">Cancelar</button></a><% } %>
+          </div>
+        </form>
+
+        <h3>Testar regras</h3>
+        <p class="hint" style="margin-top:0">Simula uma mensagem recebida (nada é enviado).</p>
+        <form method="GET" action="/admin/automacoes" class="form">
+          <input type="hidden" name="aba" value="regras" />
+          <div class="grid2">
+            <label>Canal
+              <select name="simGatilho" class="t">
+                <% Object.entries(GATILHOS).forEach(([k, g]) => { %><option value="<%= k %>" <%= simulacao && simulacao.gatilho === k ? 'selected' : '' %>><%= g.label %></option><% }) %>
+              </select>
+            </label>
+            <label>Mensagem recebida<input name="sim" value="<%= simulacao ? simulacao.texto : '' %>" placeholder="Quero o link do ingresso" required /></label>
+          </div>
+          <button type="submit" class="btn-secondary">Simular</button>
+        </form>
+        <% if (simulacao) { %>
+          <div class="rule" style="margin-top:12px">
+            <% if (simulacao.regra) { %>
+              <strong>Responde a regra “<%= simulacao.regra.nome %>”</strong>
+              <% if (simulacao.publica) { %><div class="reply"><strong>Comentário:</strong> <%= simulacao.publica %></div><% } %>
+              <div class="reply"><%= simulacao.resposta %></div>
+            <% } else { %>
+              <strong>Nenhuma regra ativa responde a essa mensagem.</strong>
+            <% } %>
+          </div>
+        <% } %>
+      <% } %>
+
+      <% if (aba === 'disparos') { %>
+        <p class="hint" style="margin-top:0">Mensagens em massa pelo WhatsApp conectado na Evolution API. Os envios saem um por vez, com intervalo aleatório, só dentro da janela de horário (<%= waCfg.janelaInicio %>h às <%= waCfg.janelaFim %>h) e até <%= waCfg.limiteDiario %> por dia — isso reduz muito o risco de bloqueio do número. Quem respondeu SAIR nunca recebe.</p>
+        <% if (!waOk) { %><div class="err-msg">O WhatsApp ainda não está ativo em <a href="/admin/automacoes?aba=config" style="color:inherit">Conexões</a>. Você pode agendar, mas nada sai até ligar.</div><% } %>
+
+        <% st.disparos.forEach((d) => { const feitos = (d.fila || []).filter((f) => f.status !== 'pendente').length; %>
+          <div class="rule">
+            <div class="rule-head">
+              <strong><%= d.nome %></strong>
+              <span class="st <%= d.status === 'concluido' ? 'ok' : d.status === 'cancelado' ? 'err' : d.status === 'enviando' ? 'run' : '' %>"><%= d.status %></span>
+            </div>
+            <div class="bar"><span style="width:<%= d.total ? Math.round(feitos / d.total * 100) : 0 %>%"></span></div>
+            <div class="chips">
+              <span class="chip"><%= d.enviados || 0 %> enviados</span>
+              <span class="chip"><%= d.falhas || 0 %> falhas</span>
+              <span class="chip"><%= d.total %> contatos</span>
+              <span class="chip">início <%= fmt(d.agendadoPara) %></span>
+              <span class="chip">intervalo <%= d.intervaloMin %>–<%= d.intervaloMax %>s</span>
+            </div>
+            <div class="reply"><%= d.mensagem %></div>
+            <div class="acts">
+              <% if (['agendado', 'enviando'].includes(d.status)) { %><form method="POST" action="/admin/automacoes/disparos/<%= d.id %>/pausar"><button class="small-btn btn-secondary">Pausar</button></form><% } %>
+              <% if (d.status === 'pausado') { %><form method="POST" action="/admin/automacoes/disparos/<%= d.id %>/retomar"><button class="small-btn">Retomar</button></form><% } %>
+              <% if (d.falhas) { %><form method="POST" action="/admin/automacoes/disparos/<%= d.id %>/reenviar_falhas"><button class="small-btn btn-secondary">Reenviar falhas</button></form><% } %>
+              <% if (!['concluido', 'cancelado'].includes(d.status)) { %><form method="POST" action="/admin/automacoes/disparos/<%= d.id %>/cancelar" onsubmit="return confirm('Cancelar este disparo?')"><button class="small-btn btn-danger">Cancelar</button></form><% } %>
+              <% if (d.status !== 'enviando') { %><form method="POST" action="/admin/automacoes/disparos/<%= d.id %>/excluir" onsubmit="return confirm('Excluir este disparo do painel?')"><button class="small-btn btn-secondary">Excluir</button></form><% } %>
+            </div>
+            <% const falhas = (d.fila || []).filter((f) => f.status === 'falha'); if (falhas.length) { %>
+              <details><summary>Ver falhas</summary><div class="reply"><% falhas.slice(0, 50).forEach((f) => { %>+<%= f.numero %> <%= f.nome %> — <%= f.erro %>
+<% }) %></div></details>
+            <% } %>
+          </div>
+        <% }) %>
+
+        <h3>Novo disparo</h3>
+        <form method="POST" action="/admin/automacoes/disparos" class="form" id="disparo-form">
+          <div class="grid2">
+            <label>Nome (só para você)<input name="nome" placeholder="Ex: Virada de lote" /></label>
+            <label>Quem recebe
+              <select name="origem" class="t" id="origem">
+                <option value="compradores">Compradores (pedidos pagos)</option>
+                <option value="contatos">Quem já falou com o WhatsApp</option>
+                <option value="todos">Compradores + quem já falou</option>
+                <option value="lista">Lista colada abaixo</option>
+              </select>
+            </label>
+            <label data-origem="compradores todos">Evento
+              <select name="evento" class="t">
+                <option value="todos">Todos os eventos</option>
+                <% eventos.forEach((ev) => { %><option value="<%= ev.id %>" <%= ev.id === currentEventId ? 'selected' : '' %>><%= ev.name %> (<%= ev.dateLabel %>)</option><% }) %>
+              </select>
+            </label>
+            <label>Início (horário de Brasília — vazio = agora)<input type="datetime-local" name="agendadoPara" /></label>
+            <label>Intervalo mínimo entre envios (s)<input type="number" name="intervaloMin" min="10" value="25" /></label>
+            <label>Intervalo máximo (s)<input type="number" name="intervaloMax" min="10" value="60" /></label>
+          </div>
+          <label data-origem="lista">Contatos (um por linha: número e, se quiser, o nome)<textarea class="t" name="lista" placeholder="21999998888 Maria Silva&#10;(21) 98888-7777 João"></textarea></label>
+          <label>Mensagem (use {{nome}} / {{primeiroNome}}; variações separadas por |||)<textarea class="t" name="mensagem" required style="min-height:120px" placeholder="Oi {{primeiroNome}}! O 2º lote da {{evento}} vira amanhã. Garanta o seu: https://crewolada.com ||| Fala {{primeiroNome}}! Últimas horas do lote atual da {{evento}} 🔥 https://crewolada.com"></textarea></label>
+          <label>Mídia (link público de imagem, vídeo ou PDF — opcional)<input name="midiaUrl" placeholder="https://crewolada.com/img/flyer.jpg" /></label>
+          <label class="switch"><input type="checkbox" name="rodapeSair" checked /> Incluir “Para não receber mais, responda SAIR.”</label>
+          <div class="hint" id="previa">—</div>
+          <button type="submit">Agendar disparo</button>
+        </form>
+      <% } %>
+
+      <% if (aba === 'publicacoes') { %>
+        <p class="hint" style="margin-top:0">Agende fotos, reels e stories no Instagram da Crewolada. A mídia precisa estar num link público <strong>https</strong> (ex: uma imagem em crewolada.com/img/...). Foto: JPEG; Reels: MP4 (H.264) de 3 s a 15 min. A verificação roda a cada poucos segundos.</p>
+        <% if (!igOk) { %><div class="err-msg">O Instagram ainda não está ativo em <a href="/admin/automacoes?aba=config" style="color:inherit">Conexões</a>.</div><% } %>
+        <% st.posts.forEach((p) => { %>
+          <div class="rule">
+            <div class="rule-head">
+              <strong><%= { imagem: 'Foto', reels: 'Reels', story: 'Story' }[p.tipo] %> · <%= fmt(p.publicadoEm || p.agendadoPara) %></strong>
+              <span class="st <%= p.status === 'publicado' ? 'ok' : p.status === 'erro' ? 'err' : 'run' %>"><%= p.status %></span>
+            </div>
+            <div class="reply"><a href="<%= p.mediaUrl %>" target="_blank" rel="noopener" style="color:var(--accent)">ver mídia</a><%= p.legenda ? ' · ' + p.legenda : '' %></div>
+            <% if (p.erro) { %><div class="reply" style="color:#fca5a5"><%= p.erro %></div><% } %>
+            <div class="acts">
+              <% if (p.status === 'erro') { %><form method="POST" action="/admin/automacoes/posts/<%= p.id %>/tentar"><button class="small-btn">Tentar de novo</button></form><% } %>
+              <% if (p.status !== 'processando') { %><form method="POST" action="/admin/automacoes/posts/<%= p.id %>/excluir" onsubmit="return confirm('Remover do painel? (não apaga do Instagram)')"><button class="small-btn btn-secondary">Remover</button></form><% } %>
+            </div>
+          </div>
+        <% }) %>
+        <h3>Agendar publicação</h3>
+        <form method="POST" action="/admin/automacoes/posts" class="form">
+          <div class="grid2">
+            <label>Tipo
+              <select name="tipo" class="t"><option value="imagem">Foto no feed</option><option value="reels">Reels (vídeo)</option><option value="story">Story (foto ou vídeo)</option></select>
+            </label>
+            <label>Quando (horário de Brasília — vazio = agora)<input type="datetime-local" name="agendadoPara" /></label>
+          </div>
+          <label>Link público da mídia (https)<input name="mediaUrl" required placeholder="https://crewolada.com/img/flyer.jpg" /></label>
+          <label>Legenda (não vale para story)<textarea class="t" name="legenda" maxlength="2200" placeholder="🔥 Virou o lote! Garanta o seu no link da bio. #crewolada"></textarea></label>
+          <button type="submit">Agendar</button>
+        </form>
+      <% } %>
+
+      <% if (aba === 'contatos') { %>
+        <p class="hint" style="margin-top:0">Pessoas que mandaram mensagem ou comentaram desde que as automações foram ligadas. Os contatos de WhatsApp podem receber disparos (opção “Quem já falou com o WhatsApp”).</p>
+        <a href="/admin/automacoes/contatos.csv"><button type="button" class="btn-secondary" style="width:auto">Baixar CSV</button></a>
+        <div class="table-wrap" style="margin-top:12px"><table>
+          <thead><tr><th>Canal</th><th>Contato</th><th>Nome</th><th>Último contato</th><th>Msgs</th></tr></thead>
+          <tbody>
+            <% contatosLista.forEach((c) => { %>
+              <tr><td><span class="chip <%= c.canal === 'instagram' ? 'ig' : 'wa' %>"><%= c.canal %></span></td><td><%= c.canal === 'whatsapp' ? '+' + c.id : c.id %><%= st.optout.includes(c.id) ? ' (SAIR)' : '' %></td><td><%= c.nome || (c.usuario ? '@' + c.usuario : '') %></td><td><%= fmt(c.ultimoContato) %></td><td><%= c.mensagens || 0 %></td></tr>
+            <% }) %>
+            <% if (!contatosLista.length) { %><tr><td colspan="5" class="hint">Nenhum contato ainda.</td></tr><% } %>
+          </tbody>
+        </table></div>
+
+        <h3>Descadastrados do WhatsApp (<%= st.optout.length %>)</h3>
+        <p class="hint" style="margin-top:0">Respondendo <%= waCfg.optoutPalavras.map((p) => p.toUpperCase()).join(', ') %> a pessoa entra aqui e não recebe mais disparos; mandando VOLTAR, sai da lista.</p>
+        <form method="POST" action="/admin/automacoes/optout" class="form" style="flex-direction:row;gap:8px;align-items:flex-end">
+          <label style="flex:1">Número<input name="numero" placeholder="21999998888" required /></label>
+          <button class="small-btn" style="padding:12px 16px">Descadastrar</button>
+        </form>
+        <div class="chips" style="margin-top:10px">
+          <% st.optout.forEach((n) => { %>
+            <form method="POST" action="/admin/automacoes/optout" style="margin:0"><input type="hidden" name="numero" value="<%= n %>" /><input type="hidden" name="acao" value="remover" /><button class="chip" style="margin:0;width:auto;padding:4px 8px;border:none;cursor:pointer" title="Remover da lista">+<%= n %> ✕</button></form>
+          <% }) %>
+        </div>
+      <% } %>
+
+      <% if (aba === 'historico') { %>
+        <div class="table-wrap"><table class="log">
+          <thead><tr><th>Quando</th><th>Canal</th><th>Ação</th><th>Contato</th><th>Recebido / enviado</th><th></th></tr></thead>
+          <tbody>
+            <% st.log.forEach((l) => { %>
+              <tr>
+                <td><%= fmt(l.ts) %></td>
+                <td><span class="chip <%= l.canal === 'instagram' ? 'ig' : 'wa' %>"><%= l.canal %></span></td>
+                <td><%= l.tipo.replace(/_/g, ' ') %><%= l.regra ? ' · ' + l.regra : '' %></td>
+                <td><%= l.nome ? l.nome + ' ' : '' %><%= l.contato %></td>
+                <td class="msg"><% if (l.texto) { %>“<%= l.texto %>”<br /><% } %><% if (l.resposta) { %>→ <%= l.resposta %><% } %><% if (l.erro) { %><br /><span style="color:#fca5a5"><%= l.erro %></span><% } %><% if (l.detalhe) { %><br /><%= l.detalhe %><% } %></td>
+                <td><span class="st <%= l.ok ? 'ok' : 'err' %>"><%= l.ok ? 'ok' : 'erro' %></span></td>
+              </tr>
+            <% }) %>
+            <% if (!st.log.length) { %><tr><td colspan="6" class="hint">Nada por aqui ainda.</td></tr><% } %>
+          </tbody>
+        </table></div>
+        <% if (st.log.length) { %>
+          <form method="POST" action="/admin/automacoes/historico/limpar" onsubmit="return confirm('Apagar todo o histórico?')"><button class="btn-secondary" style="width:auto">Limpar histórico</button></form>
+        <% } %>
+      <% } %>
+
+      <% if (aba === 'config') { %>
+        <h3 style="margin-top:0">Instagram</h3>
+        <details>
+          <summary>Como conectar</summary>
+          <ol class="hint">
+            <li>No <a href="https://developers.facebook.com/apps" target="_blank" rel="noopener" style="color:var(--accent)">Meta for Developers</a>, crie um app do tipo Empresa e adicione o produto <strong>Instagram</strong> (API com login do Instagram).</li>
+            <li>Conecte a conta profissional @crewolada e gere o <strong>token de acesso</strong>. Permissões: <code>instagram_business_basic</code>, <code>instagram_business_manage_messages</code>, <code>instagram_business_manage_comments</code>, <code>instagram_business_content_publish</code>.</li>
+            <li>Em Webhooks, cadastre a URL de retorno e o token de verificação abaixo e assine os campos <code>comments</code> e <code>messages</code>.</li>
+            <li>Cole aqui o ID da conta do Instagram, o token e a <strong>chave secreta do app</strong> (Configurações do app &gt; Básico), ligue e clique em Testar.</li>
+            <li>Se o webhook da Meta hoje aponta para o n8n (agente de IA), coloque a URL do n8n em “Repassar para” — assim os dois continuam funcionando.</li>
+          </ol>
+        </details>
+        <div class="linkbox"><code><%= webhooks.instagram %></code><button type="button" class="small-btn btn-secondary" data-copy="<%= webhooks.instagram %>">Copiar URL</button></div>
+        <div class="linkbox"><code><%= igCfg.verifyToken %></code><button type="button" class="small-btn btn-secondary" data-copy="<%= igCfg.verifyToken %>">Copiar token de verificação</button></div>
+        <form method="POST" action="/admin/automacoes/config/instagram" class="form">
+          <label class="switch"><input type="checkbox" name="ativo" <%= igCfg.ativo ? 'checked' : '' %> /> Automações do Instagram ligadas</label>
+          <div class="grid2">
+            <label>ID da conta do Instagram<input name="igUserId" value="<%= igCfg.igUserId %>" placeholder="17841400000000000" /></label>
+            <label>Token de acesso <%= igCfg.accessTokenMask ? '(salvo: ' + igCfg.accessTokenMask + ')' : '' %><input name="accessToken" type="password" autocomplete="off" placeholder="<%= igCfg.accessTokenMask ? 'deixe vazio para manter' : 'IGAA...' %>" /></label>
+            <label>Chave secreta do app <%= igCfg.appSecretMask ? '(salva: ' + igCfg.appSecretMask + ')' : '' %><input name="appSecret" type="password" autocomplete="off" placeholder="<%= igCfg.appSecretMask ? 'deixe vazio para manter' : 'valida a assinatura do webhook' %>" /></label>
+            <label>Token de verificação do webhook<input name="verifyToken" value="<%= igCfg.verifyToken %>" /></label>
+            <label>API
+              <select name="apiHost" class="t">
+                <option value="graph.instagram.com" <%= igCfg.apiHost === 'graph.instagram.com' ? 'selected' : '' %>>Login do Instagram (graph.instagram.com)</option>
+                <option value="graph.facebook.com" <%= igCfg.apiHost === 'graph.facebook.com' ? 'selected' : '' %>>Login do Facebook / Página (graph.facebook.com)</option>
+              </select>
+            </label>
+            <label>Versão da API<input name="apiVersion" value="<%= igCfg.apiVersion %>" /></label>
+            <label>Repassar webhook para (opcional)<input name="encaminharUrl" value="<%= igCfg.encaminharUrl %>" placeholder="https://n8n.../webhook/instagram" /></label>
+            <label>Repassar quando
+              <select name="encaminharModo" class="t">
+                <option value="sempre" <%= igCfg.encaminharModo === 'sempre' ? 'selected' : '' %>>Sempre</option>
+                <option value="sem_regra" <%= igCfg.encaminharModo === 'sem_regra' ? 'selected' : '' %>>Só quando nenhuma regra respondeu</option>
+              </select>
+            </label>
+          </div>
+          <button type="submit">Salvar Instagram</button>
+        </form>
+        <form method="POST" action="/admin/automacoes/testar/instagram"><button class="btn-secondary">Testar conexão do Instagram</button></form>
+
+        <h3>WhatsApp (Evolution API)</h3>
+        <details>
+          <summary>Como conectar</summary>
+          <ol class="hint">
+            <li>Use a mesma Evolution API que já envia os ingressos: informe a URL do servidor, a API key e o nome da instância.</li>
+            <li>Na instância, em Webhook, cadastre a URL abaixo com o evento <code>MESSAGES_UPSERT</code> e deixe “Webhook by events” <strong>desligado</strong>.</li>
+            <li>Se esse webhook hoje aponta para o n8n (agente de atendimento), coloque a URL do n8n em “Repassar para”: tudo que chega continua indo para lá.</li>
+          </ol>
+        </details>
+        <div class="linkbox"><code><%= webhooks.whatsapp %></code><button type="button" class="small-btn btn-secondary" data-copy="<%= webhooks.whatsapp %>">Copiar URL</button></div>
+        <form method="POST" action="/admin/automacoes/config/whatsapp" class="form">
+          <label class="switch"><input type="checkbox" name="ativo" <%= waCfg.ativo ? 'checked' : '' %> /> Automações do WhatsApp ligadas</label>
+          <div class="grid2">
+            <label>URL da Evolution API<input name="evolutionUrl" value="<%= waCfg.evolutionUrl %>" placeholder="https://evolution.seudominio.com" /></label>
+            <label>API key <%= waCfg.apiKeyMask ? '(salva: ' + waCfg.apiKeyMask + ')' : '' %><input name="apiKey" type="password" autocomplete="off" placeholder="<%= waCfg.apiKeyMask ? 'deixe vazio para manter' : '' %>" /></label>
+            <label>Instância<input name="instancia" value="<%= waCfg.instancia %>" placeholder="crewolada" /></label>
+            <label>Limite de envios de disparo por dia<input type="number" name="limiteDiario" min="1" value="<%= waCfg.limiteDiario %>" /></label>
+            <label>Disparos a partir de (hora)<input type="number" name="janelaInicio" min="0" max="23" value="<%= waCfg.janelaInicio %>" /></label>
+            <label>Disparos até (hora)<input type="number" name="janelaFim" min="0" max="24" value="<%= waCfg.janelaFim %>" /></label>
+            <label>Repassar webhook para (opcional)<input name="encaminharUrl" value="<%= waCfg.encaminharUrl %>" placeholder="https://n8n.../webhook/whatsapp" /></label>
+            <label>Repassar quando
+              <select name="encaminharModo" class="t">
+                <option value="sempre" <%= waCfg.encaminharModo === 'sempre' ? 'selected' : '' %>>Sempre</option>
+                <option value="sem_regra" <%= waCfg.encaminharModo === 'sem_regra' ? 'selected' : '' %>>Só quando nenhuma regra respondeu</option>
+              </select>
+            </label>
+          </div>
+          <label>Palavras de descadastro<input name="optoutPalavras" value="<%= waCfg.optoutPalavras.join(', ') %>" /></label>
+          <label>Resposta ao descadastro (vazio = não responde)<textarea class="t" name="optoutResposta"><%= waCfg.optoutResposta %></textarea></label>
+          <label class="switch"><input type="checkbox" name="novoToken" /> Gerar nova URL de webhook (a atual deixa de funcionar)</label>
+          <button type="submit">Salvar WhatsApp</button>
+        </form>
+        <form method="POST" action="/admin/automacoes/testar/whatsapp" class="form" style="margin-top:12px">
+          <div class="grid2">
+            <label>Enviar teste para (opcional)<input name="numero" placeholder="21999998888" /></label>
+            <label>Texto do teste<input name="texto" placeholder="Teste das automações ✅" /></label>
+          </div>
+          <button class="btn-secondary">Testar conexão do WhatsApp</button>
+        </form>
+      <% } %>
+    </main>
+  </div>
+
+  <script>
+    document.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', () => {
+      navigator.clipboard.writeText(b.dataset.copy).then(() => { const t = b.textContent; b.textContent = 'Copiado!'; setTimeout(() => { b.textContent = t; }, 1500); });
+    }));
+
+    const gatilho = document.getElementById('gatilho');
+    const modo = document.getElementById('modo');
+    function syncRegra() {
+      if (!gatilho) return;
+      document.querySelectorAll('#regra-form [data-show]').forEach((el) => {
+        const k = el.dataset.show;
+        el.style.display = (k === 'kw' ? modo.value !== 'qualquer' : k === gatilho.value) ? '' : 'none';
+      });
+      document.getElementById('lbl-privada').textContent = gatilho.value === 'wa_mensagem' ? 'Resposta no WhatsApp' : gatilho.value === 'ig_dm' ? 'Resposta no Direct' : 'Mensagem no Direct para quem comentou (opcional)';
+    }
+    if (gatilho) { gatilho.addEventListener('change', syncRegra); modo.addEventListener('change', syncRegra); syncRegra(); }
+
+    const loadPosts = document.getElementById('load-posts');
+    if (loadPosts) loadPosts.addEventListener('click', async () => {
+      const box = document.getElementById('posts-pick');
+      box.innerHTML = '<span class="hint">Carregando…</span>';
+      try {
+        const r = await (await fetch('/admin/automacoes/instagram/posts')).json();
+        if (!r.ok) throw new Error(r.error);
+        box.innerHTML = '';
+        r.posts.forEach((p) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.title = p.caption;
+          if (p.thumb) { const img = document.createElement('img'); img.src = p.thumb; img.alt = ''; b.appendChild(img); }
+          b.appendChild(document.createTextNode(p.caption.slice(0, 30) || p.id));
+          b.addEventListener('click', () => { document.getElementById('midiaId').value = p.id; box.innerHTML = ''; });
+          box.appendChild(b);
+        });
+      } catch (err) { box.innerHTML = '<span class="hint" style="color:#fca5a5">' + (err.message || 'Erro') + '</span>'; }
+    });
+
+    const form = document.getElementById('disparo-form');
+    if (form) {
+      const origem = document.getElementById('origem');
+      const previa = document.getElementById('previa');
+      let t;
+      async function atualizar() {
+        document.querySelectorAll('#disparo-form [data-origem]').forEach((el) => { el.style.display = el.dataset.origem.split(' ').includes(origem.value) ? '' : 'none'; });
+        clearTimeout(t);
+        t = setTimeout(async () => {
+          const body = new URLSearchParams({ origem: origem.value, evento: form.evento.value, lista: form.lista.value });
+          try {
+            const r = await (await fetch('/admin/automacoes/disparos/previa', { method: 'POST', body })).json();
+            previa.textContent = r.total + ' contato(s) vão receber' + (r.exemplo.length ? ': ' + r.exemplo.join(', ') + (r.total > r.exemplo.length ? '…' : '') : '.');
+          } catch (e) { previa.textContent = ''; }
+        }, 400);
+      }
+      ['change', 'input'].forEach((ev) => form.addEventListener(ev, (e) => { if (['origem', 'evento', 'lista'].includes(e.target.name)) atualizar(); }));
+      atualizar();
+    }
+  </script>
+</body>
+</html>
