@@ -271,7 +271,8 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
     const db = store.load();
     const hasOrders = Object.values(db.orders || {}).some((o) => orderEventId(o) === id);
     if (!EVENTS.some((e) => e.id === id)) return res.redirect('/admin/eventos?msg=dados');
-    if (id === currentEvent.id) return res.redirect('/admin/eventos?msg=nao-excluir-atual');
+    // A cancelled event left as "current" can go: the site already moved on to the next one.
+    if (id === currentEvent.id && !EVENTS.find((e) => e.id === id).cancelledAt) return res.redirect('/admin/eventos?msg=nao-excluir-atual');
     if (hasOrders) return res.redirect('/admin/eventos?msg=nao-excluir-pedidos');
     await store.withDb((d) => {
       d.events = d.events || {};
@@ -280,6 +281,7 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
       else delete d.events[id];
       if (d.eventLotes) delete d.eventLotes[id];
       if (d.homePage === `gratuito:${id}`) d.homePage = 'evento';
+      if (d.currentEventId === id) delete d.currentEventId;
     });
     onChange();
     res.redirect('/admin/eventos?msg=excluido');

@@ -181,6 +181,11 @@
                 <a href="/admin?evento=<%= c.id %>"><button type="button" class="btn-secondary">Vendas e reembolsos</button></a>
                 <a href="/admin/relatorio?evento=<%= c.id %>"><button type="button" class="btn-secondary">Relatório</button></a>
                 <form action="/admin/eventos/<%= c.id %>/reativar" method="POST" onsubmit="return confirm('Reativar este evento? Só é possível se nenhum e-mail de cancelamento foi enviado.')"><button type="submit" class="btn-secondary">Reativar</button></form>
+                <% if (!c.hasOrders) { %>
+                <form action="/admin/eventos/<%= c.id %>/excluir" method="POST" onsubmit="return confirm('Excluir o evento &quot;<%= c.name %>&quot;? Ele some do admin e do site. Não dá para desfazer.')" class="ev-del">
+                  <button type="submit" class="btn-danger">Excluir</button>
+                </form>
+                <% } %>
               </div>
             <% } else { %>
             <div class="ev-actions">
