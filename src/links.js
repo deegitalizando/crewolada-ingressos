@@ -1,6 +1,7 @@
 const store = require('./store');
 const { resolveHome } = require('./paginaInicial');
 const { EVENTS, currentEvent, eventStatus } = require('./event');
+const linkButtons = require('./linkButtons');
 
 // Public "link in bio" page (/links), the story (/sobre) and short redirects
 // (/youtube, /playlist). The two redirect targets are editable in the admin
@@ -45,7 +46,8 @@ function ticketEvents(salesOpen, availableNow) {
       timeLabel: e.timeLabel || '',
       venue: e.venue || '',
       // The sale page is the home unless the admin put something else there.
-      href: e.id === currentEvent.id ? (resolveHome(store.load()).tipo === 'evento' ? '/' : '/ingressos') : `/${e.slug}`,
+      // /ingressos always shows the sale of the current event, whatever the home page is.
+      href: e.id === currentEvent.id ? '/ingressos' : `/${e.slug}`,
       free: Boolean(e.free),
       note: e.tagline || '',
       status: eventStatus(e),
@@ -55,12 +57,29 @@ function ticketEvents(salesOpen, availableNow) {
 }
 
 function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow, availableNow }) {
+  // The Ingressos button either opens the list of events (auto) or goes straight to
+  // one event's page / a custom link, as set in /admin/links.
+  function withTicketTarget(buttons, events) {
+    return buttons.map((b) => {
+      if (b.tipo !== 'ingressos') return b;
+      if (b.destino === 'link' && b.url) return { ...b, href: b.url };
+      if (b.destino === 'evento') {
+        const ev = events.find((e) => e.id === b.eventoId);
+        if (ev) return { ...b, href: ev.href };
+      }
+      return b; // auto, or the chosen event is no longer on sale
+    });
+  }
+
   const renderLinks = (req, res) => {
+    const open = salesOpenNow ? salesOpenNow() : app.locals.salesOpen;
+    const events = ticketEvents(open, availableNow);
     res.render('links', {
       eventInfo,
       // "Em breve" while the ticket sale of the current event has not opened yet.
-      emBreve: !(salesOpenNow ? salesOpenNow() : app.locals.salesOpen),
-      events: ticketEvents(salesOpenNow ? salesOpenNow() : app.locals.salesOpen, availableNow),
+      emBreve: !open,
+      events,
+      buttons: withTicketTarget(linkButtons.getButtons(store.load(), app.locals.communityUrl), events),
       baseUrl: process.env.BASE_URL || '',
     });
   };
@@ -80,10 +99,32 @@ function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow, a
       links: db.links || {},
       configured: { youtube: isConfigured('youtube', db), playlist: isConfigured('playlist', db) },
       envLocked: { youtube: isHttps(process.env.YOUTUBE_URL), playlist: isHttps(process.env.PLAYLIST_URL) },
+      buttons: linkButtons.getButtons(db, app.locals.communityUrl),
+      // Events the Ingressos button can point to (the one on sale + free registrations).
+      ticketTargets: ticketEvents(true, null).map((e) => ({ id: e.id, label: `${e.name} · ${e.dateLabel}${e.id === currentEvent.id ? ' (evento à venda)' : e.free ? ' (inscrição gratuita)' : ''}`, href: e.href })),
+      currentEventName: currentEvent.name,
+      icones: linkButtons.ICONES,
+      estilos: linkButtons.ESTILOS,
+      msg: req.query.msg || null,
+      erroBotoes: req.query.erroBotoes || null,
       saved: req.query.saved === '1',
       error: req.query.erro === '1',
       baseUrl: process.env.BASE_URL || '',
     });
+  });
+
+  // Buttons of /links: the whole list (order, texts, links, visibility) comes as JSON.
+  app.post('/admin/links/botoes', requireAdminAuth, async (req, res) => {
+    if (req.body.restaurar === '1') {
+      await store.withDb((db) => { delete db.linkButtons; });
+      return res.redirect('/admin/links?msg=restaurado');
+    }
+    let list;
+    try { list = JSON.parse(String(req.body.botoes || '')); } catch (e) { list = null; }
+    const out = linkButtons.sanitize(list);
+    if (out.error) return res.redirect(`/admin/links?erroBotoes=${encodeURIComponent(out.error)}`);
+    await store.withDb((db) => { db.linkButtons = out.botoes; });
+    res.redirect('/admin/links?msg=botoes');
   });
 
   app.post('/admin/links', requireAdminAuth, async (req, res) => {
