@@ -65,6 +65,8 @@ const PRE_REVEILLON_EVENT = {
   name: 'Pré Reveillon Crewolada',
   brand: 'Crewolada',
   theme: 'reveillon',
+  // Own addresses of the sale page: crewolada.com/prereveillon (see server.js).
+  paths: ['prereveillon', 'pre-reveillon', 'reveillon'],
   dateLabel: '19/12/2026',
   timeLabel: '22h',
   venue: 'Bangu Atlético Clube - Rio de Janeiro/RJ',

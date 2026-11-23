@@ -1912,6 +1912,12 @@ function freePageData(ev, db) {
 }
 
 app.get('/:slug', (req, res, next) => {
+  // Paid events with their own address (e.g. /prereveillon): the sale page while
+  // the event is the one on sale; otherwise the links page, never a 404.
+  const s = String(req.params.slug || '').toLowerCase();
+  const paid = EVENTS.find((e) => !e.free && Array.isArray(e.paths) && e.paths.includes(s));
+  if (paid) return paid.id === currentEvent.id ? renderVenda(req, res) : res.redirect('/links');
+
   const ev = findFreeEvent(req.params.slug, req);
   if (!ev) return next();
   if (ev.cancelledAt) return res.status(410).render('evento_cancelado', { eventInfo, ev, communityUrl: app.locals.communityUrl });
