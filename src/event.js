@@ -124,7 +124,14 @@ function syncEvents(db) {
   // Pre Reveillon on deploy. Any other choice made in /admin/eventos is kept.
   let wanted = env ? env.id : (db && db.currentEventId) || PRE_REVEILLON_EVENT.id;
   if (!env && wanted === NEXT_EVENT.id) wanted = PRE_REVEILLON_EVENT.id;
-  const chosen = map[wanted] || map[PRE_REVEILLON_EVENT.id] || list[list.length - 1] || LEGACY_EVENT;
+  let chosen = map[wanted] || map[PRE_REVEILLON_EVENT.id] || list[list.length - 1] || LEGACY_EVENT;
+  // A cancelled event never stays on sale while a next one exists: the site moves
+  // on to the nearest upcoming paid event that is not cancelled.
+  if (!env && chosen.cancelledAt) {
+    const now = Date.now();
+    const next = list.find((e) => !e.free && !e.cancelledAt && e.startAt && Date.parse(e.startAt) > now);
+    if (next) chosen = next;
+  }
   Object.keys(currentEvent).forEach((k) => delete currentEvent[k]);
   Object.assign(currentEvent, chosen);
 }
