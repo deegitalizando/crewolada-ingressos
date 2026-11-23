@@ -109,6 +109,11 @@
     <% if (msg === 'regra_incompleta') { %><div class="flash err">Preencha o nome, a mensagem do Direct e pelo menos uma palavra-chave (ou escolha "Qualquer comentário").</div><% } %>
     <% if (msg === 'limite') { %><div class="flash err">Limite de automações atingido. Remova alguma antes de criar outra.</div><% } %>
 
+    <% if (msg === 'token_vazio') { %><div class="flash err">Cole o token de acesso do Instagram.</div><% } %>
+    <% if (msg === 'token_invalido') { %><div class="flash err">O Instagram recusou esse token: <%= erro %></div><% } %>
+    <% if (msg === 'conectado') { %><div class="flash">Instagram conectado como @<%= ig.username %>. Os comentários do último post já foram verificados (veja o resultado abaixo).</div><% } %>
+    <% if (msg === 'varrido') { %><div class="flash">Verificação concluída. Veja o resultado abaixo.</div><% } %>
+
     <section class="bt-card">
       <h3>Automação do @festacrewolada</h3>
       <p class="hint">Quem comentar uma palavra-chave num post, mandar no Direct ou responder um story recebe as informações da festa no Direct, com botões. Datas, local, preço do lote e ingressos restantes vêm do site na hora. No Direct, o que não bater com nenhuma palavra continua indo para o <a href="/bot" style="color:var(--accent)">Agente de IA</a>.</p>
@@ -117,6 +122,42 @@
         <label class="bt-switch"><input type="checkbox" name="responderComentario" <%= mc.responderComentario ? 'checked' : '' %> /> Responder também em público no comentário ("Te mandei no Direct!")</label>
         <div class="bt-row"><button type="submit">Salvar</button></div>
       </form>
+    </section>
+
+    <section class="bt-card" id="instagram">
+      <h3>Conexão com o Instagram</h3>
+      <% if (ig.conectado) { %>
+        <p class="hint">
+          <span class="tag on">conectado</span> <%= ig.username ? '@' + ig.username : '' %><%= ig.viaEnv ? ' · token da variável INSTAGRAM_ACCESS_TOKEN' : '' %><br />
+          O site lê os comentários dos 3 últimos posts a cada <%= ig.intervaloMin %> min e responde os que tiverem palavra-chave (Direct com botões + resposta pública). Comentários com mais de 7 dias ficam de fora, porque a Meta só deixa mandar Direct até 7 dias depois do comentário.
+          <% if (ig.ultimaVarredura) { %><br /><span class="bt-meta">Última verificação: <%= fmt(ig.ultimaVarredura) %></span><% } %>
+        </p>
+        <% if (ig.erro) { %><div class="flash err" style="margin:0 0 12px">Último erro do Instagram: <%= ig.erro %></div><% } %>
+        <% if (ig.resumo) { %>
+          <p class="bt-meta">Resultado da última verificação manual (<%= fmt(ig.resumo.em) %>):
+            <% if (ig.resumo.ok === false && ig.resumo.erro) { %>erro: <%= ig.resumo.erro %><% } else { %><%= ig.resumo.posts %> post(s), <%= ig.resumo.comentarios %> comentário(s) dos últimos 7 dias, <b><%= ig.resumo.respondidos %> respondido(s)</b><%= ig.resumo.erros && ig.resumo.erros.length ? ', ' + ig.resumo.erros.length + ' com erro' : '' %>.<% } %>
+          </p>
+          <% (ig.resumo.erros || []).forEach(function (e) { %><p class="bt-meta" style="color:#fca5a5"><%= e %></p><% }) %>
+        <% } %>
+        <div class="bt-row">
+          <form action="/manychat/instagram/varrer" method="POST"><input type="hidden" name="escopo" value="ultimo" /><button type="submit">Responder comentários do último post agora</button></form>
+          <form action="/manychat/instagram/varrer" method="POST"><input type="hidden" name="escopo" value="recentes" /><button type="submit" class="secondary">Últimos 5 posts</button></form>
+        </div>
+        <form action="/manychat/instagram/auto" method="POST" class="bt-row">
+          <label class="bt-switch" style="margin:0 !important"><input type="checkbox" name="verificarAuto" <%= ig.verificarAuto ? 'checked' : '' %> onchange="this.form.submit()" /> Verificar comentários novos automaticamente</label>
+        </form>
+        <% if (!ig.viaEnv) { %>
+          <form action="/manychat/instagram/desconectar" method="POST" class="bt-row" onsubmit="return confirm('Desconectar o Instagram?')"><button type="submit" class="secondary">Desconectar</button></form>
+        <% } %>
+      <% } else { %>
+        <p class="hint">Cole o token de acesso do @festacrewolada, que pode ser o mesmo da credencial do Instagram usada no n8n. Assim que conectar, o site responde os comentários com palavra-chave do último post e passa a verificar os novos a cada <%= ig.intervaloMin %> min.</p>
+        <form action="/manychat/instagram/conectar" method="POST">
+          <label>Token de acesso <span class="bt-meta">(começa com IGAA… ou EAA…. Precisa das permissões de comentários e mensagens. Fica só no servidor e não aparece de novo nesta página)</span>
+            <input type="password" name="token" autocomplete="off" required />
+          </label>
+          <div class="bt-row"><button type="submit">Conectar e responder o último post</button></div>
+        </form>
+      <% } %>
     </section>
 
     <section class="bt-card" id="testar">
@@ -180,8 +221,8 @@
     </section>
 
     <section class="bt-card" id="n8n">
-      <h3>Ligação com o Instagram (n8n)</h3>
-      <p class="hint">Mesma estrutura do Método Seta: o n8n recebe o webhook da Meta e pergunta ao site o que responder.</p>
+      <h3>Direct e stories pelo n8n (opcional)</h3>
+      <p class="hint">Os comentários já funcionam pela conexão acima. Para as palavras-chave no Direct e nas respostas a story, o workflow do n8n que recebe o Direct pergunta ao site o que responder, na mesma estrutura do Método Seta.</p>
       <ol class="steps">
         <li>No app da Meta do @festacrewolada, assine os campos <code>comments</code>, <code>messages</code> e <code>live_comments</code> (se quiser lives) do webhook do Instagram, apontando para o workflow do n8n que já recebe o Direct.</li>
         <li>No n8n, para cada evento, chame <code>POST <%= endpoint %></code> com o header <code>x-callback-secret</code> <%= secretConfigurado ? '(o mesmo N8N_CALLBACK_SECRET das outras integrações)' : '(defina N8N_CALLBACK_SECRET no servidor)' %> e o corpo:
@@ -216,7 +257,7 @@ POST {{ graph.enviarDm.path }}             body: {{ graph.enviarDm.body }}</div>
               <td class="bt-meta" style="white-space:nowrap"><%= fmt(l.em) %></td>
               <td><%= canalLabel[l.canal] || l.canal %><br /><span class="bt-meta"><%= l.usuario ? '@' + l.usuario : '' %></span></td>
               <td><%= l.texto %></td>
-              <td><%= l.regra ? l.regra : '—' %></td>
+              <td><%= l.regra ? l.regra : '—' %><% if (l.erro) { %><br /><span class="bt-meta" style="color:#fca5a5">não enviado: <%= l.erro %></span><% } else if (l.dm) { %><br /><span class="bt-meta" style="color:#86efac">✓ Direct<%= l.comentario ? ' + resposta' : '' %></span><% } %></td>
             </tr>
           <% }) %>
         </table>

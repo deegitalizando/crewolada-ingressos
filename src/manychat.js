@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const store = require('./store');
 const { currentEvent, salesHeldBack, salesOpensAt, showLeft } = require('./event');
+const instagram = require('./instagram');
 
 // "ManyChat" of the @festacrewolada Instagram (crewolada.com/manychat), built on
 // the same structure as the Metodo Seta automation (@consorcioparaleigos): the
@@ -117,6 +118,8 @@ function getMC(db) {
     regras: Array.isArray(m.regras) ? m.regras : REGRAS_PADRAO.map(novaRegra),
     log: Array.isArray(m.log) ? m.log : [],
     vistos: m.vistos && typeof m.vistos === 'object' ? m.vistos : {},
+    // Instagram connection: { token?, id, username, tokenEnvio?, verificarAuto, ultimaVarredura, erro }
+    ig: m.ig && typeof m.ig === 'object' ? m.ig : {},
   };
 }
 
@@ -235,6 +238,144 @@ function simular(db, deps, canal, texto, extras = {}) {
   return { match: true, regra: { id: regra.id, nome: regra.nome }, ...montarResposta(regra, canal, msg, deps, mc) };
 }
 
+// ---------------------------------------------------------------- processing
+
+const contaPropria = (mc) => String((mc.ig && mc.ig.username) || process.env.INSTAGRAM_USERNAME || 'festacrewolada').toLowerCase();
+
+// Decides (and records) what to answer to one comment / Direct / story reply.
+// A comment id is evaluated once: vistos['c:<id>'] > 0 answered, < 0 no rule matched
+// (re-evaluated only by a manual "responder agora", e.g. after creating a new rule).
+function processar(canal, msg, deps, { reavaliar = false } = {}) {
+  return store.withDb((db) => {
+    const mc = getMC(db);
+    const agora = Date.now();
+    const registrar = (extra) => {
+      mc.log.unshift({ em: new Date(agora).toISOString(), canal, usuario: msg.usuario, texto: msg.texto.slice(0, 200), ...extra });
+      mc.log.length = Math.min(mc.log.length, MAX_LOG);
+    };
+    const fim = (r) => { db.manychat = mc; return r; };
+    if (!mc.ativo) return { ativo: false, match: false };
+    // Our own comments/replies come back through the webhook: never answer them.
+    if (msg.usuario && msg.usuario.toLowerCase() === contaPropria(mc)) return { ativo: true, match: false, motivo: 'conta_propria' };
+
+    const chaveComentario = canal === 'comentario' && msg.comment_id ? 'c:' + msg.comment_id : null;
+    const antes = chaveComentario ? mc.vistos[chaveComentario] : null;
+    if (antes > 0 || (antes < 0 && !reavaliar)) return { ativo: true, match: false, motivo: 'repetido' };
+
+    const regra = encontrarRegra(mc.regras, canal, msg);
+    if (!regra) {
+      if (chaveComentario) mc.vistos[chaveComentario] = -agora;
+      if (canal !== 'dm' && !antes) registrar({ regra: null });
+      return fim({ ativo: true, match: false });
+    }
+    // Meta retries webhooks and the same person may write several times.
+    const chave = chaveComentario || `u:${msg.sender_id || msg.usuario}:${regra.id}`;
+    const visto = mc.vistos[chave];
+    if (!chaveComentario && visto && agora - visto < COOLDOWN_MS) {
+      return { ativo: true, match: false, motivo: 'repetido', regra: { id: regra.id, nome: regra.nome } };
+    }
+    mc.vistos[chave] = agora;
+    const chaves = Object.keys(mc.vistos);
+    if (chaves.length > MAX_VISTOS) chaves.sort((a, z) => Math.abs(mc.vistos[a]) - Math.abs(mc.vistos[z])).slice(0, chaves.length - MAX_VISTOS).forEach((k) => delete mc.vistos[k]);
+
+    regra.disparos = (regra.disparos || 0) + 1;
+    regra.ultimoDisparo = new Date(agora).toISOString();
+    registrar({ regra: regra.nome });
+    return fim({ ativo: true, match: true, regra: { id: regra.id, nome: regra.nome }, ...montarResposta(regra, canal, msg, deps, mc) });
+  });
+}
+
+// Adds the result of the Graph API calls to the newest log line of that comment.
+function anotarLog(commentUser, texto, nota) {
+  return store.withDb((db) => {
+    const mc = getMC(db);
+    const l = mc.log.find((x) => x.usuario === commentUser && x.texto === texto.slice(0, 200));
+    if (l) Object.assign(l, nota);
+    db.manychat = mc;
+  });
+}
+
+// ---------------------------------------------------------------- Instagram (direct mode)
+// The site itself reads the comments of the latest posts through the Graph API and
+// answers them (Direct first, then the public "te mandei no Direct"). Works without
+// changing the Meta webhook or the n8n workflows; the Direct keywords still come via n8n.
+
+const PRIVATE_REPLY_MS = 7 * 24 * 3600 * 1000; // Meta: private replies up to 7 days after the comment
+const tokenAtual = (mc) => process.env.INSTAGRAM_ACCESS_TOKEN || (mc.ig && mc.ig.token) || '';
+let varrendo = false;
+
+async function conectar(token) {
+  const conta = await instagram.client(token).conta();
+  return conta;
+}
+
+async function varrer(deps, { posts = 3, reavaliar = false } = {}) {
+  if (varrendo) return { ok: false, erro: 'Já existe uma verificação em andamento.' };
+  varrendo = true;
+  const resumo = { ok: true, posts: 0, comentarios: 0, respondidos: 0, erros: [] };
+  try {
+    const mc = getMC(store.load());
+    const token = tokenAtual(mc);
+    if (!token) return { ok: false, erro: 'Instagram não conectado.' };
+    if (!mc.ativo) return { ok: false, erro: 'Automação desligada.' };
+    let ig = mc.ig || {};
+    if (!ig.id) {
+      const conta = await conectar(token);
+      ig = { ...ig, ...conta };
+      await store.withDb((db) => { const m = getMC(db); m.ig = { ...(m.ig || {}), ...conta }; db.manychat = m; });
+    }
+    const leitura = instagram.client(token);
+    const envio = instagram.client(ig.tokenEnvio || token);
+    const proprio = String(ig.username || '').toLowerCase();
+    const midias = await leitura.midias(ig.id, posts);
+    for (const m of midias) {
+      resumo.posts++;
+      const comentarios = await leitura.comentarios(m.id);
+      for (const c of comentarios.reverse()) { // oldest first
+        const usuario = (c.from && c.from.username) || c.username || '';
+        if (!usuario || usuario.toLowerCase() === proprio) continue;
+        if (Date.now() - Date.parse(c.timestamp) > PRIVATE_REPLY_MS) continue;
+        resumo.comentarios++;
+        // Already answered by hand (or by another tool): mark and skip.
+        const jaRespondido = ((c.replies && c.replies.data) || []).some((r) => String(r.username || '').toLowerCase() === proprio);
+        if (jaRespondido) {
+          await store.withDb((db) => { const mm = getMC(db); if (!(mm.vistos['c:' + c.id] > 0)) mm.vistos['c:' + c.id] = Date.now(); db.manychat = mm; });
+          continue;
+        }
+        const msg = { texto: clean(c.text, 1000), usuario, nome: '', sender_id: (c.from && c.from.id) || '', comment_id: c.id, media_id: m.id, permalink: m.permalink || '' };
+        const r = await processar('comentario', msg, deps, { reavaliar });
+        if (!r.match) continue;
+        const nota = {};
+        try {
+          if (r.graph.enviarDm) await envio.enviarMensagem(r.graph.enviarDm.body);
+          nota.dm = 'enviado';
+          if (r.graph.responderComentario) {
+            await envio.responderComentario(c.id, r.graph.responderComentario.body.message);
+            nota.comentario = 'respondido';
+          }
+          resumo.respondidos++;
+        } catch (err) {
+          nota.erro = instagram.erroGraph(err);
+          resumo.erros.push(`@${usuario}: ${nota.erro}`);
+        }
+        await anotarLog(usuario, msg.texto, nota);
+      }
+    }
+    await store.withDb((db) => {
+      const mm = getMC(db);
+      mm.ig = { ...(mm.ig || {}), ultimaVarredura: new Date().toISOString(), erro: resumo.erros[0] || null };
+      db.manychat = mm;
+    });
+    return resumo;
+  } catch (err) {
+    const erro = instagram.erroGraph(err);
+    await store.withDb((db) => { const mm = getMC(db); mm.ig = { ...(mm.ig || {}), ultimaVarredura: new Date().toISOString(), erro }; db.manychat = mm; });
+    return { ...resumo, ok: false, erro };
+  } finally {
+    varrendo = false;
+  }
+}
+
 // ---------------------------------------------------------------- routes
 
 function lerRegra(body) {
@@ -275,7 +416,18 @@ function registerManychatRoutes(app, { requireAdminAuth, eventInfo, deps }) {
       endpoint: `${baseUrl()}/api/n8n/manychat`,
       secretConfigurado: Boolean(process.env.N8N_CALLBACK_SECRET),
       msg: req.query.msg || null,
+      erro: clean(req.query.erro, 300),
       editar: req.query.editar || null,
+      ig: {
+        conectado: Boolean(tokenAtual(mc)),
+        viaEnv: Boolean(process.env.INSTAGRAM_ACCESS_TOKEN),
+        username: mc.ig.username || '',
+        verificarAuto: mc.ig.verificarAuto !== false,
+        ultimaVarredura: mc.ig.ultimaVarredura || null,
+        erro: mc.ig.erro || null,
+        resumo: mc.ig.ultimoResumo || null,
+        intervaloMin: Math.round(Math.max(60, Number(process.env.INSTAGRAM_POLL_SECONDS) || 120) / 60),
+      },
     });
   });
 
@@ -334,6 +486,57 @@ function registerManychatRoutes(app, { requireAdminAuth, eventInfo, deps }) {
     res.json(simular(store.load(), fullDeps(), canal, clean(req.body.texto, 500), extras));
   });
 
+  // ---- Instagram connection (direct mode)
+  const guardarResumo = (resumo) => store.withDb((db) => {
+    const mc = getMC(db);
+    mc.ig = { ...mc.ig, ultimoResumo: { em: new Date().toISOString(), ...resumo, erros: (resumo.erros || []).slice(0, 10) } };
+    db.manychat = mc;
+  });
+
+  app.post('/manychat/instagram/conectar', requireAdminAuth, async (req, res) => {
+    const token = clean(req.body.token, 1000).replace(/\s+/g, '');
+    if (!token) return res.redirect('/manychat?msg=token_vazio#instagram');
+    let conta;
+    try {
+      conta = await conectar(token);
+    } catch (err) {
+      return res.redirect('/manychat?msg=token_invalido&erro=' + encodeURIComponent(instagram.erroGraph(err)) + '#instagram');
+    }
+    await store.withDb((db) => {
+      const mc = getMC(db);
+      mc.ig = { token, ...conta, verificarAuto: true, erro: null };
+      db.manychat = mc;
+    });
+    // Answers the comments already on the latest post right away.
+    await guardarResumo(await varrer(fullDeps(), { posts: 1, reavaliar: true }));
+    res.redirect('/manychat?msg=conectado#instagram');
+  });
+
+  app.post('/manychat/instagram/desconectar', requireAdminAuth, async (req, res) => {
+    await salvar((mc) => { mc.ig = {}; });
+    res.redirect('/manychat?msg=salvo#instagram');
+  });
+
+  app.post('/manychat/instagram/auto', requireAdminAuth, async (req, res) => {
+    await salvar((mc) => { mc.ig = { ...mc.ig, verificarAuto: req.body.verificarAuto === 'on' }; });
+    res.redirect('/manychat?msg=salvo#instagram');
+  });
+
+  app.post('/manychat/instagram/varrer', requireAdminAuth, async (req, res) => {
+    const posts = req.body.escopo === 'recentes' ? 5 : 1;
+    await guardarResumo(await varrer(fullDeps(), { posts, reavaliar: true }));
+    res.redirect('/manychat?msg=varrido#instagram');
+  });
+
+  // New comments are checked every INSTAGRAM_POLL_SECONDS (default 2 min).
+  const intervalo = Math.max(60, Number(process.env.INSTAGRAM_POLL_SECONDS) || 120) * 1000;
+  const timer = setInterval(() => {
+    const mc = getMC(store.load());
+    if (!mc.ativo || !tokenAtual(mc) || mc.ig.verificarAuto === false) return;
+    varrer(fullDeps(), { posts: 3 }).catch((err) => console.error('[manychat] varredura:', err.message));
+  }, intervalo);
+  if (timer.unref) timer.unref();
+
   // Called by n8n for every comment / Direct / story reply on @festacrewolada.
   // Body: { tipo: comentario|dm|story, texto, usuario, nome, sender_id, comment_id, media_id, permalink }
   app.post('/api/n8n/manychat', async (req, res) => {
@@ -352,42 +555,7 @@ function registerManychatRoutes(app, { requireAdminAuth, eventInfo, deps }) {
       media_id: clean(b.media_id, 60),
       permalink: clean(b.permalink, 300),
     };
-    const contaPropria = (process.env.INSTAGRAM_USERNAME || 'festacrewolada').toLowerCase();
-
-    const resultado = await store.withDb((db) => {
-      const mc = getMC(db);
-      const agora = Date.now();
-      const registrar = (extra) => {
-        mc.log.unshift({ em: new Date(agora).toISOString(), canal, usuario: msg.usuario, texto: msg.texto.slice(0, 200), ...extra });
-        mc.log.length = Math.min(mc.log.length, MAX_LOG);
-        db.manychat = mc;
-      };
-      if (!mc.ativo) return { ativo: false, match: false };
-      // Our own comments/replies come back through the webhook: never answer them.
-      if (msg.usuario && msg.usuario.toLowerCase() === contaPropria) return { ativo: true, match: false, motivo: 'conta_propria' };
-
-      const regra = encontrarRegra(mc.regras, canal, msg);
-      if (!regra) {
-        if (canal !== 'dm') registrar({ regra: null });
-        return { ativo: true, match: false };
-      }
-      // Meta retries webhooks and the same person may comment several times.
-      const chave = canal === 'comentario' && msg.comment_id
-        ? 'c:' + msg.comment_id
-        : `u:${msg.sender_id || msg.usuario}:${regra.id}`;
-      const visto = mc.vistos[chave];
-      if (visto && (chave.startsWith('c:') || agora - visto < COOLDOWN_MS)) {
-        return { ativo: true, match: false, motivo: 'repetido', regra: { id: regra.id, nome: regra.nome } };
-      }
-      mc.vistos[chave] = agora;
-      const chaves = Object.keys(mc.vistos);
-      if (chaves.length > MAX_VISTOS) chaves.sort((a, z) => mc.vistos[a] - mc.vistos[z]).slice(0, chaves.length - MAX_VISTOS).forEach((k) => delete mc.vistos[k]);
-
-      regra.disparos = (regra.disparos || 0) + 1;
-      regra.ultimoDisparo = new Date(agora).toISOString();
-      registrar({ regra: regra.nome });
-      return { ativo: true, match: true, regra: { id: regra.id, nome: regra.nome }, ...montarResposta(regra, canal, msg, fullDeps(), mc) };
-    });
+    const resultado = await processar(canal, msg, fullDeps());
     res.json(resultado);
   });
 
@@ -400,4 +568,4 @@ function registerManychatRoutes(app, { requireAdminAuth, eventInfo, deps }) {
   });
 }
 
-module.exports = { registerManychatRoutes, simular, encontrarRegra, norm, REGRAS_PADRAO };
+module.exports = { registerManychatRoutes, simular, encontrarRegra, norm, REGRAS_PADRAO, varrer, processar };
