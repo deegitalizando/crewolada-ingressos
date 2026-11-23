@@ -1693,47 +1693,15 @@ registerPaginaInicialRoutes(app, { requireAdminAuth, onChange: refreshEvents });
 registerTrocarParticipanteRoutes(app, { requireAdminAuth, eventInfo, eventInfoFor, notifyOrderApproved, buildTicketPdf });
 registerCancelamentoRoutes(app, { requireAdminAuth, eventInfo, onChange: refreshEvents, formatDatetimeBrasiliaDisplay });
 registerEventosRoutes(app, {
-  requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia,
+  requireAdminAuth, eventInfo, onChange: refreshEvents, parseDatetimeLocalAsBrasilia, formatDatetimeLocalBrasilia, getSoldCount,
 });
 registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerSorteioRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerMusicaPersonalizadaRoutes(app, { eventInfo });
 
+// Lotes now live in the Ingressos tab (old links keep working).
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
-  const db = store.load();
-  const ev = EVENTS.find((e) => e.id === req.query.evento) || currentEvent;
-  const lotes = getLotes(db, ev.id);
-  const soldCount = getSoldCount(db, ev.id);
-  res.render('admin_lotes', {
-    eventInfo, lotesEvent: { ...ev, status: eventStatus(ev) }, lotes, soldCount, capacity: ev.capacity || null, saved: req.query.saved === '1',
-  });
-});
-
-app.post('/api/admin/lotes', requireAdminAuth, async (req, res) => {
-  const raw = req.body.lotes || {};
-  const lotes = Object.values(raw)
-    .map((l) => ({
-      name: String(l.name || '').trim(),
-      quantity: Math.max(0, parseInt(l.quantity, 10) || 0),
-      price: Math.max(0, Number(l.price) || 0),
-    }))
-    .filter((l) => l.name && l.quantity > 0);
-
-  if (lotes.length === 0) {
-    return res.status(400).send('Cadastre pelo menos um lote valido.');
-  }
-
-  const evId = EVENTS.some((e) => e.id === req.body.evento) ? req.body.evento : currentEvent.id;
-  await store.withDb((db) => {
-    if (evId === LEGACY_EVENT.id) {
-      db.lotes = lotes;
-    } else {
-      db.eventLotes = db.eventLotes || {};
-      db.eventLotes[evId] = lotes;
-    }
-  });
-
-  res.redirect(`/admin/lotes?evento=${encodeURIComponent(evId)}&saved=1`);
+  res.redirect(`/admin/ingressos${req.query.evento ? `?evento=${encodeURIComponent(req.query.evento)}` : ''}`);
 });
 
 app.get('/admin/mensagens', requireAdminAuth, (req, res) => {

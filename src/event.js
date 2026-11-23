@@ -111,6 +111,9 @@ function syncEvents(db) {
   const env = envEvent();
   if (env) map[env.id] = { ...(map[env.id] || {}), ...env };
 
+  // Events deleted in /admin/eventos (built-in ones are only flagged, see eventos.js).
+  Object.keys(map).forEach((id) => { if (map[id].deleted) delete map[id]; });
+
   const list = Object.values(map).sort((a, b) => String(a.startAt || '9999').localeCompare(String(b.startAt || '9999')));
   EVENTS.length = 0;
   list.forEach((e) => EVENTS.push(e));
@@ -119,7 +122,7 @@ function syncEvents(db) {
   // Pre Reveillon on deploy. Any other choice made in /admin/eventos is kept.
   let wanted = env ? env.id : (db && db.currentEventId) || PRE_REVEILLON_EVENT.id;
   if (!env && wanted === NEXT_EVENT.id) wanted = PRE_REVEILLON_EVENT.id;
-  const chosen = map[wanted] || map[PRE_REVEILLON_EVENT.id];
+  const chosen = map[wanted] || map[PRE_REVEILLON_EVENT.id] || list[list.length - 1] || LEGACY_EVENT;
   Object.keys(currentEvent).forEach((k) => delete currentEvent[k]);
   Object.assign(currentEvent, chosen);
 }

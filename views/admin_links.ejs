@@ -32,14 +32,36 @@
       <a href="/admin/criesuamusica" class="tab">Música IA</a>
     </nav>
 
-    <% if (saved) { %><div class="alert" style="margin:0 16px 12px; background:rgba(34,197,94,0.15); border-color:#22c55e; color:#86efac">Links salvos.</div><% } %>
+    <% if (saved) { %><div class="alert ok-alert">Endereços curtos salvos.</div><% } %>
+    <% if (msg === 'botoes') { %><div class="alert ok-alert">Botões salvos. A página <a href="/links" target="_blank">/links</a> já mostra a nova versão.</div><% } %>
+    <% if (msg === 'restaurado') { %><div class="alert ok-alert">Botões restaurados para o padrão.</div><% } %>
     <% if (error) { %><div class="alert" style="margin:0 16px 12px">Use endereços completos começando com https://</div><% } %>
+    <% if (erroBotoes) { %><div class="alert" style="margin:0 16px 12px"><%= erroBotoes %></div><% } %>
 
     <main class="card">
-      <h3 style="margin-top:0">Links da página /links</h3>
+      <div class="lk-head">
+        <div>
+          <h3 style="margin:0">Botões da página /links</h3>
+          <p class="hint" style="margin:4px 0 0; text-align:left">Edite texto e link de cada botão, mude a ordem com as setas, oculte ou exclua. Nada muda no site até você clicar em <b>Salvar botões</b>.</p>
+        </div>
+        <a href="/links" target="_blank" class="lk-open">Ver /links ↗</a>
+      </div>
+
+      <form action="/admin/links/botoes" method="POST" id="f-botoes">
+        <input type="hidden" name="botoes" id="in-botoes" />
+        <div id="lk-list"></div>
+        <button type="button" class="btn-secondary" id="lk-add" style="margin-top:4px">+ Adicionar botão</button>
+        <div class="lk-save">
+          <button type="submit">Salvar botões</button>
+          <button type="submit" class="btn-secondary" name="restaurar" value="1" formnovalidate onclick="return confirm('Voltar todos os botões para o padrão original? Suas alterações nos botões serão perdidas.')">Restaurar padrão</button>
+        </div>
+      </form>
+    </main>
+
+    <main class="card">
+      <h3 style="margin-top:0">Endereços curtos /youtube e /playlist</h3>
       <p class="hint" style="margin-top:0; text-align:left">
-        A página <a href="/links" target="_blank" style="color:var(--accent)">/links</a> usa os endereços curtos
-        <b>/youtube</b> e <b>/playlist</b>, que levam para os endereços que você cadastrar aqui. Pode trocar quando quiser, sem precisar publicar o site de novo.
+        Os botões que usam <b>/youtube</b> ou <b>/playlist</b> levam para os endereços abaixo. Útil para divulgar um link curto (crewolada.com/youtube) que você pode trocar quando quiser.
       </p>
       <form action="/admin/links" method="POST">
         <label>Canal do YouTube (/youtube)
@@ -54,9 +76,148 @@
         <% if (envLocked.playlist) { %><p class="hint" style="text-align:left">Definido pela variável PLAYLIST_URL no servidor.</p>
         <% } else if (!configured.playlist) { %><p class="hint" style="text-align:left">Usando o padrão: a playlist da Crewolada no Spotify.</p><% } %>
 
-        <button type="submit" style="margin-top:16px">Salvar</button>
+        <button type="submit" style="margin-top:16px">Salvar endereços</button>
       </form>
     </main>
+
+  <template id="lk-tpl">
+    <article class="lk-item">
+      <div class="lk-bar">
+        <span class="lk-num"></span>
+        <strong class="lk-name"></strong>
+        <span class="lk-tag lk-hidden-tag">Oculto</span>
+        <span class="lk-tools">
+          <button type="button" class="lk-ico" data-act="up" title="Subir" aria-label="Subir">↑</button>
+          <button type="button" class="lk-ico" data-act="down" title="Descer" aria-label="Descer">↓</button>
+          <button type="button" class="lk-ico lk-vis" data-act="vis" title="Mostrar/ocultar na página" aria-label="Mostrar ou ocultar">👁</button>
+          <button type="button" class="lk-ico" data-act="edit" title="Editar" aria-label="Editar">✎</button>
+          <button type="button" class="lk-ico lk-del" data-act="del" title="Excluir" aria-label="Excluir">✕</button>
+        </span>
+      </div>
+      <div class="lk-fields">
+        <label class="full">Título <input type="text" data-f="titulo" maxlength="80" placeholder="Nosso canal do YouTube" /></label>
+        <label>Texto pequeno acima <input type="text" data-f="rotulo" maxlength="40" placeholder="Assista" /></label>
+        <label>Selo <input type="text" data-f="selo" maxlength="12" placeholder="Novo" /></label>
+        <label class="full">Descrição (opcional) <input type="text" data-f="descricao" maxlength="120" placeholder="Uma linha abaixo do título" /></label>
+        <label class="full lk-url">Link <input type="text" data-f="url" maxlength="500" placeholder="https://... ou /contato" /></label>
+        <p class="hint full lk-ing-note" style="margin:-4px 0 0; text-align:left">Este botão abre a escolha de eventos com ingresso à venda (o link é automático).</p>
+        <label>Ícone <select data-f="icone"><% Object.keys(icones).forEach(function(k) { %><option value="<%= k %>"><%= icones[k] %></option><% }) %></select></label>
+        <label>Estilo <select data-f="estilo"><% Object.keys(estilos).forEach(function(k) { %><option value="<%= k %>"><%= estilos[k] %></option><% }) %></select></label>
+        <label class="lk-check lk-url"><input type="checkbox" data-f="novaAba" /> Abrir em nova aba</label>
+        <label class="lk-check"><input type="checkbox" data-f="visivel" /> Mostrar na página</label>
+      </div>
+    </article>
+  </template>
+
+  <style>
+    .ok-alert { margin: 0 16px 12px; background: rgba(34,197,94,0.15); border-color: #22c55e; color: #86efac; }
+    .ok-alert a { color: inherit; }
+    .lk-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+    .lk-open { flex: none; color: var(--accent); font-weight: 700; font-size: 14px; text-decoration: none; }
+    .lk-item { border: 1px solid var(--card-border); border-radius: 12px; background: #141414; margin-bottom: 10px; }
+    .lk-item.off { opacity: .6; }
+    .lk-bar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; }
+    .lk-num { flex: none; width: 24px; height: 24px; border-radius: 50%; background: #222; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: var(--text-dim); }
+    .lk-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; }
+    .lk-tag { font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: rgba(255,255,255,.1); color: var(--text-dim); display: none; }
+    .lk-item.off .lk-hidden-tag { display: inline-block; }
+    .lk-item.off .lk-vis { text-decoration: line-through; }
+    .lk-tools { display: flex; gap: 4px; flex: none; }
+    .lk-ico { width: 34px !important; height: 34px; margin: 0 !important; padding: 0 !important; border-radius: 8px; background: #222 !important; color: #ddd !important; font-size: 15px; line-height: 1; border: 1px solid transparent !important; }
+    .lk-ico:hover { border-color: var(--accent) !important; }
+    .lk-ico[disabled] { opacity: .3; }
+    .lk-del:hover { border-color: #ef4444 !important; color: #fca5a5 !important; }
+    .lk-fields { display: none; grid-template-columns: 1fr; gap: 10px; padding: 4px 12px 14px; border-top: 1px solid var(--card-border); padding-top: 12px; }
+    .lk-item.open .lk-fields { display: grid; }
+    @media (min-width: 640px) { .lk-fields { grid-template-columns: 1fr 1fr; } }
+    .lk-fields .full { grid-column: 1 / -1; }
+    .lk-check { flex-direction: row !important; align-items: center; gap: 8px; display: flex; }
+    .lk-check input { width: 18px !important; height: 18px; margin: 0; }
+    .lk-item[data-tipo="ingressos"] .lk-url { display: none; }
+    .lk-item:not([data-tipo="ingressos"]) .lk-ing-note { display: none; }
+    .lk-save { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    .lk-save button { width: auto; margin: 0; }
+  </style>
+
+  <script>
+    (function () {
+      var data = <%- JSON.stringify(buttons).replace(/</g, '\\u003c') %>;
+      var list = document.getElementById('lk-list');
+      var tpl = document.getElementById('lk-tpl');
+
+      function fill(el, b) {
+        el.dataset.id = b.id || '';
+        el.dataset.tipo = b.tipo || 'link';
+        el.querySelectorAll('[data-f]').forEach(function (inp) {
+          var k = inp.getAttribute('data-f');
+          if (inp.type === 'checkbox') inp.checked = k === 'visivel' ? b.visivel !== false : Boolean(b[k]);
+          else inp.value = b[k] == null ? '' : b[k];
+        });
+        sync(el);
+      }
+      function sync(el) {
+        el.querySelector('.lk-name').textContent = el.querySelector('[data-f=titulo]').value || '(sem título)';
+        el.classList.toggle('off', !el.querySelector('[data-f=visivel]').checked);
+      }
+      function renumber() {
+        var items = list.querySelectorAll('.lk-item');
+        items.forEach(function (el, i) {
+          el.querySelector('.lk-num').textContent = i + 1;
+          el.querySelector('[data-act=up]').disabled = i === 0;
+          el.querySelector('[data-act=down]').disabled = i === items.length - 1;
+        });
+      }
+      function add(b, open) {
+        var el = tpl.content.firstElementChild.cloneNode(true);
+        fill(el, b);
+        if (open) el.classList.add('open');
+        list.appendChild(el);
+        renumber();
+        return el;
+      }
+
+      data.forEach(function (b) { add(b, false); });
+
+      list.addEventListener('input', function (e) { var el = e.target.closest('.lk-item'); if (el) sync(el); });
+      list.addEventListener('change', function (e) { var el = e.target.closest('.lk-item'); if (el) sync(el); });
+      list.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-act]');
+        if (!btn) return;
+        var el = btn.closest('.lk-item');
+        var act = btn.getAttribute('data-act');
+        if (act === 'up' && el.previousElementSibling) list.insertBefore(el, el.previousElementSibling);
+        if (act === 'down' && el.nextElementSibling) list.insertBefore(el.nextElementSibling, el);
+        if (act === 'edit') el.classList.toggle('open');
+        if (act === 'vis') { var cb = el.querySelector('[data-f=visivel]'); cb.checked = !cb.checked; sync(el); }
+        if (act === 'del') {
+          if (el.dataset.tipo === 'ingressos' && !confirm('Este é o botão de Ingressos. Prefira desmarcar "Mostrar na página" para escondê-lo. Excluir mesmo assim?')) return;
+          if (el.dataset.tipo !== 'ingressos' && !confirm('Excluir o botão "' + el.querySelector('[data-f=titulo]').value + '"?')) return;
+          el.remove();
+        }
+        renumber();
+      });
+      document.getElementById('lk-add').addEventListener('click', function () {
+        var el = add({ tipo: 'link', estilo: 'normal', icone: 'link', titulo: '', url: 'https://', novaAba: true, visivel: true }, true);
+        el.querySelector('[data-f=titulo]').focus();
+      });
+
+      document.getElementById('f-botoes').addEventListener('submit', function (e) {
+        if (e.submitter && e.submitter.name === 'restaurar') return;
+        var out = [];
+        var bad = null;
+        list.querySelectorAll('.lk-item').forEach(function (el) {
+          var b = { id: el.dataset.id, tipo: el.dataset.tipo };
+          el.querySelectorAll('[data-f]').forEach(function (inp) {
+            b[inp.getAttribute('data-f')] = inp.type === 'checkbox' ? inp.checked : inp.value.trim();
+          });
+          if (!b.titulo && !bad) bad = el;
+          out.push(b);
+        });
+        if (bad) { e.preventDefault(); bad.classList.add('open'); bad.querySelector('[data-f=titulo]').focus(); alert('Preencha o título de todos os botões.'); return; }
+        document.getElementById('in-botoes').value = JSON.stringify(out);
+      });
+    })();
+  </script>
   </div>
 </body>
 </html>

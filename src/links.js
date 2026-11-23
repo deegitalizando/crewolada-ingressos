@@ -1,6 +1,7 @@
 const store = require('./store');
 const { resolveHome } = require('./paginaInicial');
 const { EVENTS, currentEvent, eventStatus } = require('./event');
+const linkButtons = require('./linkButtons');
 
 // Public "link in bio" page (/links), the story (/sobre) and short redirects
 // (/youtube, /playlist). The two redirect targets are editable in the admin
@@ -61,6 +62,7 @@ function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow, a
       // "Em breve" while the ticket sale of the current event has not opened yet.
       emBreve: !(salesOpenNow ? salesOpenNow() : app.locals.salesOpen),
       events: ticketEvents(salesOpenNow ? salesOpenNow() : app.locals.salesOpen, availableNow),
+      buttons: linkButtons.getButtons(store.load(), app.locals.communityUrl),
       baseUrl: process.env.BASE_URL || '',
     });
   };
@@ -80,10 +82,29 @@ function registerLinksRoutes(app, { requireAdminAuth, eventInfo, salesOpenNow, a
       links: db.links || {},
       configured: { youtube: isConfigured('youtube', db), playlist: isConfigured('playlist', db) },
       envLocked: { youtube: isHttps(process.env.YOUTUBE_URL), playlist: isHttps(process.env.PLAYLIST_URL) },
+      buttons: linkButtons.getButtons(db, app.locals.communityUrl),
+      icones: linkButtons.ICONES,
+      estilos: linkButtons.ESTILOS,
+      msg: req.query.msg || null,
+      erroBotoes: req.query.erroBotoes || null,
       saved: req.query.saved === '1',
       error: req.query.erro === '1',
       baseUrl: process.env.BASE_URL || '',
     });
+  });
+
+  // Buttons of /links: the whole list (order, texts, links, visibility) comes as JSON.
+  app.post('/admin/links/botoes', requireAdminAuth, async (req, res) => {
+    if (req.body.restaurar === '1') {
+      await store.withDb((db) => { delete db.linkButtons; });
+      return res.redirect('/admin/links?msg=restaurado');
+    }
+    let list;
+    try { list = JSON.parse(String(req.body.botoes || '')); } catch (e) { list = null; }
+    const out = linkButtons.sanitize(list);
+    if (out.error) return res.redirect(`/admin/links?erroBotoes=${encodeURIComponent(out.error)}`);
+    await store.withDb((db) => { db.linkButtons = out.botoes; });
+    res.redirect('/admin/links?msg=botoes');
   });
 
   app.post('/admin/links', requireAdminAuth, async (req, res) => {
