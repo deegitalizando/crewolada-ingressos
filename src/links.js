@@ -1,6 +1,6 @@
 const store = require('./store');
 const { resolveHome } = require('./paginaInicial');
-const { EVENTS, currentEvent, eventStatus } = require('./event');
+const { EVENTS, currentEvent, eventStatus, showLeft } = require('./event');
 const linkButtons = require('./linkButtons');
 
 // Public "link in bio" page (/links), the story (/sobre) and short redirects
@@ -51,7 +51,11 @@ function ticketEvents(salesOpen, availableNow) {
       free: Boolean(e.free),
       note: e.tagline || '',
       status: eventStatus(e),
-      left: e.id === currentEvent.id && availableNow ? availableNow() : null,
+      left: (() => {
+        if (e.id !== currentEvent.id || !availableNow) return null;
+        const n = availableNow();
+        return showLeft(n, e) ? n : null; // only when few are left
+      })(),
       total: e.id === currentEvent.id ? e.capacity || null : null,
     }));
 }

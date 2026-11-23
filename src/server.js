@@ -8,7 +8,7 @@ const cookieParser = require('cookie-parser');
 const store = require('./store');
 const mp = require('./mercadopago');
 const { getLotes, getCurrentLote, getSoldOutLotes } = require('./lotes');
-const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, orderEventId, eventForOrder, eventStatus, syncEvents, getEventById, SP_EVENT, salesOpensAt, salesHeldBack } = require('./event');
+const { currentEvent, LEGACY_EVENT, EVENTS, inEvent, orderEventId, eventForOrder, eventStatus, syncEvents, getEventById, SP_EVENT, salesOpensAt, salesHeldBack , showLeftBelow, showLeft } = require('./event');
 const { registerEventosRoutes } = require('./eventos');
 const { registerContatoRoutes } = require('./contato');
 const { registerLinksRoutes } = require('./links');
@@ -333,7 +333,7 @@ function renderVenda(req, res) {
   if (!app.locals.salesOpen) return res.render('encerrado', { eventInfo });
   if (!salesOpenNow()) {
     const at = salesOpensAt(currentEvent);
-    return res.render('em_breve', { eventInfo, total: currentEvent.capacity || 0, opensAtIso: new Date(at).toISOString(), opensLabel: opensLabelBR(at), communityUrl: app.locals.communityUrl });
+    return res.render('em_breve', { eventInfo, total: showLeft(currentEvent.capacity || 0) ? currentEvent.capacity : 0, opensAtIso: new Date(at).toISOString(), opensLabel: opensLabelBR(at), communityUrl: app.locals.communityUrl });
   }
   const db = store.load();
   const lotes = getLotes(db);
@@ -356,7 +356,7 @@ function renderVenda(req, res) {
   // Events with their own look (flyer theme) get their own sale page.
   const view = currentEvent.theme === 'reveillon' ? 'index_reveillon' : 'index';
   res.render(view, {
-    eventInfo, lote, maxQty, lotes, rawSoldCount: soldCount, error: null, soldOutLotes: productMode ? [] : getSoldOutLotes(lotes, soldCount),
+    eventInfo, lote, maxQty, lotes, rawSoldCount: soldCount, showLeftBelow: showLeftBelow(currentEvent), error: null, soldOutLotes: productMode ? [] : getSoldOutLotes(lotes, soldCount),
     lowStockThreshold: LOW_STOCK_THRESHOLD,
     comingSoon,
     soldCount: soldForView,

@@ -162,6 +162,15 @@ function salesHeldBack(event = currentEvent, now = Date.now()) {
   return t !== null && now < t;
 }
 
+// Buyers only see how many tickets are left once fewer than this remain
+// (editable per event in /admin/ingressos). 0 = never show the count.
+const DEFAULT_SHOW_LEFT_BELOW = 50;
+function showLeftBelow(event = currentEvent) {
+  const n = event ? event.showLeftBelow : undefined;
+  return Number.isInteger(n) && n >= 0 ? n : DEFAULT_SHOW_LEFT_BELOW;
+}
+const showLeft = (left, event = currentEvent) => Number.isFinite(left) && left > 0 && left < showLeftBelow(event);
+
 // Variables available to message templates ({{evento}}, {{data}}...).
 function eventTemplateVars(event = currentEvent) {
   return { evento: event.name, data: event.dateLabel, hora: event.timeLabel || '', local: event.venue };
@@ -170,5 +179,5 @@ function eventTemplateVars(event = currentEvent) {
 module.exports = {
   LEGACY_EVENT, NEXT_EVENT, SP_EVENT, PRE_REVEILLON_EVENT, EVENTS, currentEvent, syncEvents,
   orderEventId, inEvent, getEventById, eventForOrder, eventStatus, eventTemplateVars,
-  salesOpensAt, salesHeldBack,
+  salesOpensAt, salesHeldBack, showLeftBelow, showLeft,
 };

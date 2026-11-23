@@ -15,6 +15,8 @@
     return { ...l, status, ceiling, restam: l.quantity - vendidos, pct: Math.round((vendidos / l.quantity) * 100) };
   });
   const proximo = loteAtualIdx >= 0 ? degraus[loteAtualIdx + 1] : null;
+  // The count left in the lote is only shown once it drops below showLeftBelow.
+  const mostra = (n) => n > 0 && n < showLeftBelow;
   const atual = loteAtualIdx >= 0 ? degraus[loteAtualIdx] : null;
 %>
 <!DOCTYPE html>
@@ -312,8 +314,12 @@
               <% if (proximo) { %><div class="bb-next">Depois vira<b>R$ <%= brl(proximo.price) %></b><%= proximo.name %></div><% } %>
             </div>
             <div class="bb-meter" id="avail" aria-live="polite">
-              <div class="row"><span>Restam <strong id="lote-left"><%= lote.remaining %></strong> no <%= lote.name %></span><span id="days-left"></span></div>
+              <% if (mostra(lote.remaining)) { %>
+              <div class="row"><span><%= lote.remaining === 1 ? 'Último ingresso' : 'Últimos' %> <strong id="lote-left"<%= lote.remaining === 1 ? ' hidden' : '' %>><%= lote.remaining %></strong> no <%= lote.name %></span><span id="days-left"></span></div>
               <div class="bar"><i id="lote-fill" style="width: <%= atual ? atual.pct : 0 %>%"></i></div>
+              <% } else { %>
+              <div class="row"><span>Ingressos limitados · garanta antes do lote virar</span><span id="days-left"></span></div>
+              <% } %>
             </div>
             <% if (error) { %><div class="alert"><%= error %></div><% } %>
             <div class="qty-row">
@@ -349,7 +355,7 @@
         <div class="sec-head">
           <span class="eyebrow">Ingressos por lote</span>
           <h2>Quem chega antes <span class="gold-text">paga menos</span></h2>
-          <p>São <%= totalCapacity %> ingressos divididos em <%= degraus.length %> lotes. Quando um lote acaba, o preço sobe automaticamente para o próximo — e não volta.</p>
+          <p>Os ingressos são divididos em <%= degraus.length %> lotes. Quando um lote acaba, o preço sobe automaticamente para o próximo — e não volta.</p>
         </div>
         <div class="lotes">
           <% degraus.forEach(function (l) { %>
@@ -357,13 +363,13 @@
               <span class="tag"><%= l.status === 'esgotado' ? 'Esgotado' : l.status === 'atual' ? 'À venda' : 'Em breve' %></span>
               <div class="n"><%= l.name %></div>
               <div class="p"><span>R$</span><%= brl(l.price) %></div>
-              <div class="q"><%= l.quantity %> ingressos<% if (l.status === 'atual') { %> · restam <%= l.restam %><% } %></div>
-              <div class="bar"><i style="width: <%= l.status === 'esgotado' ? 100 : l.pct %>%"></i></div>
+              <div class="q"><%= l.status === 'atual' && mostra(l.restam) ? (l.restam === 1 ? 'Último ingresso' : 'Últimos ' + l.restam + ' ingressos') : l.status === 'esgotado' ? 'Esgotado' : 'Ingressos limitados' %></div>
+              <% if (l.status === 'esgotado' || (l.status === 'atual' && mostra(l.restam))) { %><div class="bar"><i style="width: <%= l.status === 'esgotado' ? 100 : l.pct %>%"></i></div><% } %>
               <% if (l.status === 'atual') { %><a class="mini" href="#ingressos">Comprar por R$ <%= brl(l.price) %></a><% } %>
             </article>
           <% }) %>
         </div>
-        <p class="lotes-note">Contagem atualizada a cada ingresso vendido. Cada ingresso é individual e vale para 1 pessoa.</p>
+        <p class="lotes-note">Cada ingresso é individual e vale para 1 pessoa.</p>
       </div>
     </section>
 
@@ -451,15 +457,19 @@
 
       <% if (lote && !comingSoon && atual) { %>
       // ----- live count of the current lote; reload when it turns (new price)
-      var TOTAL = <%= totalCapacity || 0 %>, FLOOR = <%= atual.ceiling - atual.quantity %>, CEIL = <%= atual.ceiling %>, QTY = <%= atual.quantity %>;
+      var TOTAL = <%= totalCapacity || 0 %>, FLOOR = <%= atual.ceiling - atual.quantity %>, CEIL = <%= atual.ceiling %>, QTY = <%= atual.quantity %>, SHOW_BELOW = <%= showLeftBelow %>;
       function poll() {
         if (document.hidden) return;
         fetch('/api/disponibilidade', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
           var sold = TOTAL - d.left;
           if (!d.open || d.left <= 0 || sold >= CEIL) { location.reload(); return; }
           var rest = CEIL - sold;
-          document.getElementById('lote-left').textContent = rest;
-          document.getElementById('lote-fill').style.width = Math.round((QTY - rest) / QTY * 100) + '%';
+          var el = document.getElementById('lote-left');
+          if (!el) { if (rest < SHOW_BELOW) { location.reload(); return; } }
+          else {
+            el.textContent = rest;
+            document.getElementById('lote-fill').style.width = Math.round((QTY - rest) / QTY * 100) + '%';
+          }
           maxQty = Math.min(rest, MAXQ); if (qty > maxQty) { qty = maxQty; } render();
         }).catch(function () {});
       }

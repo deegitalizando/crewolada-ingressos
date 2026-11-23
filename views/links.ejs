@@ -269,7 +269,7 @@
                 <span class="v sm"><%= e.venue || 'A definir' %></span>
               </span>
             </span>
-            <% if (e.left !== null && e.left !== undefined) { %><span class="hr left"><strong><%= e.left %></strong> de <%= e.total %> ingressos disponíveis</span><% } %>
+            <% if (e.left !== null && e.left !== undefined) { %><span class="hr left">Últimos <strong><%= e.left %></strong> ingressos</span><% } %>
             <span class="tag <%= e.free ? 'free' : '' %>"><%= e.free ? 'Inscrição gratuita' : 'Ingressos à venda' %></span>
           </a>
         <% }) %>

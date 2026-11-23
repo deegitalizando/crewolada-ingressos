@@ -126,6 +126,19 @@
           <button type="submit" style="margin-top:18px">Salvar tipos de ingresso</button>
         </form>
       </main>
+
+      <main class="card" style="margin:16px 0 0">
+        <h3 style="margin-top:0">Quantidade restante na página de venda</h3>
+        <form action="/admin/ingressos" method="POST">
+          <input type="hidden" name="evento" value="<%= ev.id %>" />
+          <input type="hidden" name="modo" value="aviso" />
+          <label>Mostrar ao comprador quantos ingressos restam só quando faltarem menos de
+            <input type="number" name="showLeftBelow" min="0" value="<%= showLeftBelow %>" style="max-width:160px" />
+          </label>
+          <p class="in-dim" style="margin:4px 0 12px">Antes disso a página mostra só "Ingressos limitados". <%= mode === 'lotes' ? 'Nos lotes, vale para o que resta no lote à venda.' : 'Vale para o total que resta à venda.' %> Use 0 para nunca mostrar.</p>
+          <button type="submit" class="btn-secondary" style="width:auto">Salvar</button>
+        </form>
+      </main>
     </section>
 
   <style>

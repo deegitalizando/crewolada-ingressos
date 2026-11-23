@@ -3,6 +3,7 @@ const { opcoesHome } = require('./paginaInicial');
 const { getLotes } = require('./lotes');
 const { getProducts, getChildRules } = require('./produtos');
 const {
+  showLeftBelow,
   EVENTS, currentEvent, LEGACY_EVENT, NEXT_EVENT, SP_EVENT, PRE_REVEILLON_EVENT, syncEvents, orderEventId, eventStatus, salesHeldBack,
 } = require('./event');
 
@@ -128,6 +129,7 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
       soldCount,
       products: getProducts(ev),
       rules: getChildRules(ev),
+      showLeftBelow: showLeftBelow(ev),
       saved: req.query.saved === '1',
       novo: req.query.novo === '1',
       erro: req.query.erro || null,
@@ -140,6 +142,17 @@ function registerEventosRoutes(app, { requireAdminAuth, eventInfo, onChange, par
     const back = (q) => res.redirect(`/admin/ingressos?evento=${encodeURIComponent(ev.id)}&${q}`);
     const soldCount = getSoldCount(store.load(), ev.id);
     const money = (v) => Math.round((parseFloat(String(v || '').replace(',', '.')) || 0) * 100) / 100;
+
+    // When buyers start seeing how many tickets are left.
+    if (req.body.modo === 'aviso') {
+      const n = parseInt(req.body.showLeftBelow, 10);
+      await store.withDb((db) => {
+        db.events = db.events || {};
+        db.events[ev.id] = { ...(db.events[ev.id] || {}), id: ev.id, showLeftBelow: Number.isInteger(n) && n >= 0 ? Math.min(n, 100000) : null };
+      });
+      onChange();
+      return back('saved=1');
+    }
 
     if (req.body.modo === 'lotes') {
       const lotes = Object.values(req.body.lotes || {})
