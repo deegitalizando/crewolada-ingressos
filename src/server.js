@@ -353,8 +353,10 @@ function renderVenda(req, res) {
     comingSoon = false;
     lote = remaining > 0 ? { name: products[0].name, price: Math.min(...products.map((p) => p.price)), remaining } : null;
   }
-  res.render('index', {
-    eventInfo, lote, maxQty, error: null, soldOutLotes: productMode ? [] : getSoldOutLotes(lotes, soldCount),
+  // Events with their own look (flyer theme) get their own sale page.
+  const view = currentEvent.theme === 'reveillon' ? 'index_reveillon' : 'index';
+  res.render(view, {
+    eventInfo, lote, maxQty, lotes, rawSoldCount: soldCount, error: null, soldOutLotes: productMode ? [] : getSoldOutLotes(lotes, soldCount),
     lowStockThreshold: LOW_STOCK_THRESHOLD,
     comingSoon,
     soldCount: soldForView,

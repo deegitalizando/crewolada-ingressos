@@ -1,0 +1,518 @@
+<%
+  const brl = (n) => (Number.isInteger(n) ? String(n) : Number(n).toFixed(2).replace('.', ','));
+  const priceLabel = lote ? brl(lote.price) : '';
+  const left = Math.max(0, (totalCapacity || 0) - soldCount);
+  const soldOut = !lote && !comingSoon;
+  // Ladder of lotes: sold out / on sale now / next.
+  let floor = 0;
+  let loteAtualIdx = -1;
+  const degraus = (lotes || []).map((l, i) => {
+    const ceiling = floor + l.quantity;
+    const status = rawSoldCount >= ceiling ? 'esgotado' : rawSoldCount >= floor ? 'atual' : 'proximo';
+    if (status === 'atual') loteAtualIdx = i;
+    const vendidos = Math.max(0, Math.min(l.quantity, rawSoldCount - floor));
+    floor = ceiling;
+    return { ...l, status, ceiling, restam: l.quantity - vendidos, pct: Math.round((vendidos / l.quantity) * 100) };
+  });
+  const proximo = loteAtualIdx >= 0 ? degraus[loteAtualIdx + 1] : null;
+  const atual = loteAtualIdx >= 0 ? degraus[loteAtualIdx] : null;
+%>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>Pré Reveillon Crewolada · <%= eventInfo.dateLabel %> · Ingressos</title>
+  <meta name="description" content="Pré Reveillon Crewolada: <%= eventInfo.dateLabel %>, <%= eventInfo.timeLabel %>, no <%= eventInfo.venue %>. Vem celebrar com a gente o fim de ano em grande estilo! Ingressos por lote a partir de R$ 20." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Pré Reveillon Crewolada · <%= eventInfo.dateLabel %> · Bangu Atlético Clube" />
+  <meta property="og:description" content="Vem celebrar com a gente o fim de ano em grande estilo! <%= atual ? atual.name + ' por R$ ' + brl(atual.price) + ', ingressos limitados.' : '' %>" />
+  <meta property="og:image" content="<%= baseUrl %>/img/flyer-pre-reveillon.jpg" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#0B0B0C" />
+  <%- include('partials/head') %>
+  <link rel="preload" href="/fonts/bricolage-grotesque.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/img/flyer-pre-reveillon.webp" as="image" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <style>
+    :root { --accent: #D4A23A; }
+    html { scroll-behavior: smooth; }
+    body.rv {
+      --ink: #0B0B0C; --muted: #5E5A52; --line: rgba(11, 11, 12, 0.1); --paper: #F7F5F0; --card: #FFFFFF;
+      --gold: #C9962E; --gold-2: #F3D27A; --gold-3: #9A6E16;
+      --gold-grad: linear-gradient(135deg, #8C6414 0%, #E9C66A 28%, #FFF0B8 46%, #D4A23A 62%, #8C6414 100%);
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      margin: 0; color: var(--ink); font-family: 'DM Sans', system-ui, sans-serif; font-size: 17px; line-height: 1.6;
+      overflow-x: hidden; -webkit-font-smoothing: antialiased;
+      background:
+        radial-gradient(120% 70% at 85% 0%, #FFFFFF 0%, rgba(255,255,255,0) 60%),
+        radial-gradient(90% 60% at 0% 40%, #EFEBE3 0%, rgba(239,235,227,0) 70%),
+        var(--paper);
+    }
+    .rv *, .rv *::before, .rv *::after { box-sizing: border-box; }
+    .rv h1, .rv h2, .rv h3 { font-family: 'Bricolage Grotesque', 'DM Sans', sans-serif; margin: 0; letter-spacing: -0.03em; line-height: 1; }
+    .rv p { margin: 0; }
+    .rv a { color: inherit; }
+    :where(.rv main, .rv .hero) button { all: unset; box-sizing: border-box; cursor: pointer; }
+    .wrap { width: min(1120px, 100% - 32px); margin-inline: auto; }
+    .gold-text { background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+    /* ---------- disco balls + sparkles (decor) ---------- */
+    .decor { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .ball { position: absolute; width: var(--s); aspect-ratio: 1; border-radius: 50%;
+      background:
+        radial-gradient(circle at 32% 28%, rgba(255,255,255,.95) 0 6%, rgba(255,255,255,0) 22%),
+        repeating-linear-gradient(0deg, rgba(0,0,0,.55) 0 1px, transparent 1px 11%),
+        repeating-linear-gradient(90deg, rgba(0,0,0,.55) 0 1px, transparent 1px 11%),
+        conic-gradient(from 20deg, #2a2a2a, #f4f4f4, #6b6b6b, #ffffff, #3a3a3a, #d9d9d9, #1d1d1d, #bdbdbd, #2a2a2a);
+      box-shadow: inset -14px -18px 40px rgba(0,0,0,.55), inset 10px 10px 30px rgba(255,255,255,.35), 0 30px 60px -20px rgba(0,0,0,.45);
+      animation: sway 9s ease-in-out infinite alternate; }
+    @keyframes sway { from { transform: rotate(-4deg); } to { transform: rotate(4deg) translateY(8px); } }
+    .ball-a { --s: min(36vw, 300px); left: calc(var(--s) * -0.42); top: calc(var(--s) * -0.38); }
+    .ball-b { --s: min(30vw, 240px); right: calc(var(--s) * -0.4); bottom: 6%; }
+    .spark { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); animation: twinkle var(--d, 3s) ease-in-out var(--dl, 0s) infinite; }
+    .spark svg { width: 100%; height: 100%; display: block; }
+    @keyframes twinkle { 0%, 100% { opacity: .25; transform: scale(.6) rotate(0deg); } 50% { opacity: 1; transform: scale(1) rotate(45deg); } }
+
+    /* ---------- topbar ---------- */
+    .topbar { position: relative; z-index: 5; }
+    .topbar .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+    .brand { display: inline-flex; align-items: center; gap: 12px; text-decoration: none; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 19px; letter-spacing: -0.02em; }
+    .brand img { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 2px var(--gold-2), 0 4px 14px -4px rgba(0,0,0,.5); }
+    .link-pill { text-decoration: none; font-weight: 700; font-size: 14px; padding: 10px 18px; border-radius: 999px; background: var(--ink); color: #fff !important; transition: transform 0.4s var(--ease), box-shadow 0.4s var(--ease); box-shadow: 0 0 0 1px var(--gold) inset; }
+    .link-pill:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px var(--gold-2) inset, 0 10px 20px -10px rgba(0,0,0,.5); }
+
+    /* ---------- hero ---------- */
+    .hero { position: relative; min-height: 100svh; display: flex; flex-direction: column; overflow: hidden; }
+    .hero-grid { position: relative; z-index: 3; flex: 1; display: grid; gap: 40px; align-items: center; padding-block: 16px 72px; }
+    @media (min-width: 960px) { .hero-grid { grid-template-columns: 1fr 1fr; gap: 64px; padding-block: 24px 96px; } }
+
+    .flyer { position: relative; width: min(88vw, 470px); margin-inline: auto; }
+    .flyer-card { position: relative; border-radius: 22px; overflow: hidden; aspect-ratio: 1122 / 1402; background: #fff;
+      box-shadow: 0 0 0 1px rgba(201,150,46,.55), 0 0 0 7px #fff, 0 0 0 8px rgba(201,150,46,.45), 0 50px 90px -40px rgba(0,0,0,.6);
+      animation: bob 7s ease-in-out infinite; }
+    @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-0.8deg); } 50% { transform: translateY(-12px) rotate(0.6deg); } }
+    .flyer-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .flyer-card::after { content: ''; position: absolute; inset: 0; pointer-events: none;
+      background: linear-gradient(115deg, transparent 38%, rgba(255, 255, 255, 0.55) 50%, transparent 62%); transform: translateX(-120%); animation: shine 6s ease-in-out infinite; }
+    @keyframes shine { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+    .flyer.soldout .flyer-card img { filter: grayscale(1) brightness(.75); }
+    .soldout-band { position: absolute; z-index: 5; left: -8%; right: -8%; top: 50%; transform: translateY(-50%) rotate(-11deg); background: var(--ink); color: #fff; border-block: 3px solid var(--gold); padding: 14px 0; text-align: center; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: clamp(22px, 6.6vw, 34px); letter-spacing: .08em; text-transform: uppercase; }
+
+    .badge-price { position: absolute; z-index: 4; right: -18px; top: -18px; width: 104px; height: 104px; border-radius: 50%; display: grid; place-items: center; text-align: center; line-height: 1;
+      background: var(--ink); color: #fff; box-shadow: 0 0 0 3px var(--gold), 0 0 0 6px #fff, 0 20px 36px -14px rgba(0,0,0,.6); transform: rotate(10deg); animation: bob2 5s ease-in-out infinite; }
+    .badge-price b { display: block; font-family: 'Bricolage Grotesque', sans-serif; font-size: 30px; letter-spacing: -.04em; }
+    .badge-price small { display: block; font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-2); margin-top: 3px; }
+    @keyframes bob2 { 0%, 100% { translate: 0 0; } 50% { translate: 0 -9px; } }
+
+    .copy { text-align: center; }
+    @media (min-width: 960px) { .copy { text-align: left; } }
+    .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: .22em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+    .eyebrow::before, .eyebrow::after { content: ''; width: 28px; height: 1px; background: var(--gold); }
+    @media (min-width: 960px) { .eyebrow::before { display: none; } }
+    .rv .hero .title { margin-top: 18px; color: var(--ink); background: none; -webkit-text-fill-color: currentColor; font-weight: 800; font-size: clamp(3.4rem, 11vw, 6.4rem); letter-spacing: -.05em; line-height: .86; text-transform: uppercase; transform: skewX(-8deg); }
+    .rv .hero .title .l2 { display: block; -webkit-text-fill-color: transparent; }
+    .swoosh { display: block; width: min(420px, 80%); height: 14px; margin: 14px auto 0; }
+    @media (min-width: 960px) { .swoosh { margin-left: 0; } }
+    .lede { margin-top: 18px; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; font-weight: 700; color: #2b2925; line-height: 1.9; }
+
+    /* phones: the flyer right above already shows the title, so the buy box comes first */
+    @media (max-width: 959px) { .copy .eyebrow, .rv .hero .title, .copy .swoosh, .copy .lede { display: none; } .facts { margin-top: 0; } }
+    .facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 26px; }
+    @media (min-width: 960px) { .facts { justify-content: flex-start; } }
+    .fact { display: inline-flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 999px; background: rgba(255,255,255,.8); border: 1px solid rgba(201,150,46,.4); font-weight: 700; font-size: 15px; backdrop-filter: blur(6px); }
+    .fact svg { width: 20px; height: 20px; flex: none; color: var(--gold); fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* ---------- buy box ---------- */
+    .buybox { margin: 30px auto 0; width: min(460px, 100%); padding: 22px; border-radius: 24px; background: var(--ink); color: #fff; text-align: left; position: relative;
+      box-shadow: 0 0 0 1px rgba(243,210,122,.5) inset, 0 40px 70px -36px rgba(0,0,0,.7); }
+    @media (min-width: 960px) { .buybox { margin-left: 0; } }
+    .buybox::before { content: ''; position: absolute; inset: -1px; border-radius: 25px; padding: 1px; background: var(--gold-grad); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; }
+    .bb-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .bb-lote { font-size: 12px; letter-spacing: .16em; text-transform: uppercase; font-weight: 700; color: var(--gold-2); display: inline-flex; align-items: center; gap: 8px; }
+    .live { width: 8px; height: 8px; border-radius: 50%; background: #3BE07A; box-shadow: 0 0 0 0 rgba(59,224,122,.6); animation: live 1.8s ease-out infinite; }
+    @keyframes live { 70%, 100% { box-shadow: 0 0 0 10px rgba(59,224,122,0); } }
+    .bb-price { font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 54px; letter-spacing: -.05em; line-height: 1; margin-top: 6px; }
+    .bb-price span { font-size: .4em; vertical-align: .95em; margin-right: 4px; letter-spacing: 0; }
+    .bb-next { text-align: right; font-size: 12.5px; color: rgba(255,255,255,.62); line-height: 1.35; }
+    .bb-next b { display: block; color: #fff; font-size: 15px; text-decoration: line-through; text-decoration-color: rgba(255,255,255,0); }
+    .bb-meter { margin-top: 16px; }
+    .bb-meter .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: rgba(255,255,255,.72); margin-bottom: 7px; }
+    .bb-meter .row strong { color: #fff; }
+    .bar { height: 8px; border-radius: 5px; background: rgba(255,255,255,.12); overflow: hidden; }
+    .bar i { display: block; height: 100%; border-radius: 5px; background: var(--gold-grad); background-size: 200% 100%; animation: flow 3s linear infinite; transition: width .8s var(--ease); }
+    @keyframes flow { to { background-position: -200% 0; } }
+
+    .qty-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.12); }
+    .qty-row .lbl { font-weight: 700; }
+    .qty-row .lbl small { display: block; font-weight: 400; font-size: 13px; color: rgba(255,255,255,.6); }
+    .qty { display: flex; align-items: center; gap: 14px; }
+    .qty-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,.28); display: grid; place-items: center; font-size: 22px; color: #fff; transition: border-color .3s, transform .4s var(--ease), background-color .3s; }
+    .qty-btn:hover { border-color: var(--gold-2); transform: scale(1.08); }
+    .qty-btn[disabled] { opacity: .3; cursor: not-allowed; transform: none; }
+    .qty-val { min-width: 30px; text-align: center; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 30px; }
+
+    .cta-buy { position: relative; overflow: hidden; display: flex !important; align-items: center; gap: 14px; width: 100%; margin-top: 18px; padding: 18px 20px; border-radius: 16px;
+      font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 20px; color: var(--ink); user-select: none; -webkit-tap-highlight-color: transparent;
+      background: linear-gradient(180deg, #FFF0B8 0%, #E9C66A 45%, #C9962E 100%);
+      box-shadow: 0 5px 0 #7A5410, 0 20px 40px -16px rgba(233,198,106,.6);
+      transition: transform .18s var(--ease), box-shadow .18s var(--ease); animation: buyglow 2.4s ease-in-out infinite; }
+    @keyframes buyglow { 0%, 100% { box-shadow: 0 5px 0 #7A5410, 0 20px 40px -16px rgba(233,198,106,.6), 0 0 0 0 rgba(243,210,122,.55); }
+                         60% { box-shadow: 0 5px 0 #7A5410, 0 20px 40px -16px rgba(233,198,106,.6), 0 0 0 14px rgba(243,210,122,0); } }
+    .cta-buy::before { content: ''; position: absolute; top: 0; bottom: 0; left: -40%; width: 30%; transform: skewX(-20deg); pointer-events: none;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.8), transparent); animation: sweep 3.4s ease-in-out infinite; }
+    @keyframes sweep { 0%, 50% { left: -40%; } 100% { left: 140%; } }
+    .cta-buy:hover { transform: translateY(-2px); }
+    .cta-buy:active { transform: translateY(4px); box-shadow: 0 1px 0 #7A5410; animation: none; }
+    .cta-buy .t { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; line-height: 1.15; }
+    .cta-buy .t small { font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 700; opacity: .72; }
+    .cta-buy .go { position: relative; z-index: 1; flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--ink); color: var(--gold-2); display: grid; place-items: center; }
+    .cta-buy .go svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; animation: nudge 1.4s ease-in-out infinite; }
+    @keyframes nudge { 0%, 100% { transform: translateX(-2px); } 50% { transform: translateX(3px); } }
+    .cta-buy.loading { pointer-events: none; animation: none; }
+    .cta-buy.loading .go { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .trust { margin-top: 14px; font-size: 13px; color: rgba(255,255,255,.62); text-align: center; }
+    .alert { border: 1px solid #f87171; color: #fecaca; border-radius: 12px; padding: 10px 14px; margin-top: 14px; font-size: 14px; }
+    .confetti-bit { position: fixed; z-index: 90; width: 8px; height: 12px; border-radius: 2px; pointer-events: none; animation: confetti .9s ease-out forwards; }
+    @keyframes confetti { to { transform: translate(var(--cx), var(--cy)) rotate(var(--cr)); opacity: 0; } }
+
+    .soldout-box { margin: 30px auto 0; width: min(460px, 100%); padding: 24px; border-radius: 20px; background: var(--ink); color: #fff; text-align: center; box-shadow: 0 0 0 1px var(--gold) inset; }
+    @media (min-width: 960px) { .soldout-box { margin-left: 0; } }
+    .soldout-box h2 { font-size: 1.9rem; text-transform: uppercase; }
+    .soldout-box p { margin-top: 8px; color: rgba(255,255,255,.75); font-size: 15px; }
+
+    /* ---------- lotes ---------- */
+    section.block { position: relative; padding-block: 64px; }
+    @media (min-width: 768px) { section.block { padding-block: 104px; } }
+    .sec-head { text-align: center; max-width: 640px; margin: 0 auto 40px; }
+    .sec-head .eyebrow::before { display: block; }
+    .sec-head h2 { margin-top: 14px; font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; text-transform: uppercase; letter-spacing: -.04em; }
+    .sec-head p { margin-top: 14px; color: var(--muted); }
+    .lotes { display: grid; gap: 16px; }
+    @media (min-width: 820px) { .lotes { grid-template-columns: repeat(<%= Math.max(1, degraus.length) %>, 1fr); gap: 20px; } }
+    .lote { position: relative; padding: 28px 24px 24px; border-radius: 22px; background: var(--card); border: 1px solid var(--line); transition: transform .4s var(--ease), box-shadow .4s var(--ease); }
+    .lote:hover { transform: translateY(-4px); box-shadow: 0 24px 40px -28px rgba(0,0,0,.4); }
+    .lote .n { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; color: var(--muted); }
+    .lote .p { margin-top: 10px; font-family: 'Bricolage Grotesque', sans-serif; font-weight: 800; font-size: 52px; letter-spacing: -.05em; line-height: 1; }
+    .lote .p span { font-size: .38em; vertical-align: .95em; margin-right: 4px; letter-spacing: 0; }
+    .lote .q { margin-top: 8px; color: var(--muted); font-size: 15px; }
+    .lote .tag { position: absolute; top: 18px; right: 18px; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; padding: 6px 10px; border-radius: 999px; }
+    .lote .bar { margin-top: 18px; background: rgba(11,11,12,.08); height: 6px; }
+    .lote.atual { background: var(--ink); color: #fff; border-color: transparent; box-shadow: 0 0 0 1px var(--gold) inset, 0 30px 60px -34px rgba(0,0,0,.7); }
+    .lote.atual .n, .lote.atual .q { color: rgba(255,255,255,.7); }
+    .lote.atual .p { color: var(--gold-2); }
+    .lote.atual .tag { background: var(--gold-grad); color: var(--ink); }
+    .lote.atual .bar { background: rgba(255,255,255,.14); }
+    .lote.esgotado { opacity: .62; }
+    .lote.esgotado .p { text-decoration: line-through; text-decoration-thickness: 3px; }
+    .lote.esgotado .tag { background: var(--ink); color: #fff; }
+    .lote.proximo .tag { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+    .lotes-note { margin-top: 32px; text-align: center; font-size: 14px; color: var(--muted); }
+    .lote .mini { display: inline-flex; margin-top: 18px; font-weight: 800; font-size: 15px; text-decoration: none; color: var(--ink); padding: 12px 18px; border-radius: 999px; background: var(--gold-grad); transition: transform .4s var(--ease); }
+    .lote .mini:hover { transform: translateY(-2px); }
+
+    /* ---------- info ---------- */
+    .info { display: grid; gap: 16px; }
+    @media (min-width: 820px) { .info { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
+    .info-item { padding: 28px 24px; border-radius: 22px; background: rgba(255,255,255,.7); border: 1px solid var(--line); }
+    .info-item svg { width: 24px; height: 24px; color: var(--gold); fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    .info-item h3 { margin-top: 16px; font-size: 1.6rem; font-weight: 800; text-transform: uppercase; }
+    .info-item p { margin-top: 6px; color: var(--muted); font-size: 15px; }
+    .info-item a { font-weight: 700; text-decoration: none; border-bottom: 1px solid var(--gold); transition: color .3s; }
+    .info-item a:hover { color: var(--gold-3); }
+
+    .how { margin-top: 40px; display: grid; gap: 14px; counter-reset: s; }
+    @media (min-width: 820px) { .how { grid-template-columns: repeat(3, 1fr); } }
+    .how li { list-style: none; display: flex; gap: 14px; align-items: flex-start; font-size: 15px; color: #2b2925; }
+    .how li::before { counter-increment: s; content: counter(s); flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; font-size: 14px; background: var(--ink); color: var(--gold-2); }
+    .how { padding: 0; }
+
+    .community { text-align: center; }
+    .community p { color: var(--muted); max-width: 30em; margin: 12px auto 24px; }
+    .btn-line { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; padding: 15px 26px; border-radius: 999px; border: 1.5px solid var(--ink); transition: background-color .3s, color .3s, transform .4s var(--ease); }
+    .btn-line:hover { background: var(--ink); color: #fff; transform: translateY(-2px); }
+
+    .foot { border-top: 1px solid var(--line); padding-block: 28px; }
+    .foot .links { display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 14px; color: var(--muted); }
+    .foot .links a { text-decoration: none; transition: color .3s; }
+    .foot .links a:hover { color: var(--ink); }
+    .rv .legal-footer { margin: 0; padding: 24px 0 120px; border-top: 0; color: var(--muted); }
+    .rv .legal-footer a { color: var(--ink); }
+    .rv .legal-footer h4 { color: var(--ink); }
+
+    .sticky-cta { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: rgba(11,11,12,.92); backdrop-filter: blur(12px); border-top: 1px solid rgba(201,150,46,.5); transform: translateY(110%); transition: transform .5s var(--ease); }
+    .sticky-cta.show { transform: none; }
+    .sticky-cta a { display: flex; justify-content: center; align-items: center; gap: 8px; text-decoration: none; font-weight: 800; padding: 15px; border-radius: 14px; color: var(--ink); background: linear-gradient(180deg, #FFF0B8 0%, #E9C66A 45%, #C9962E 100%); }
+    @media (min-width: 1024px) { .sticky-cta { display: none; } }
+
+    @media (max-width: 560px) {
+      .badge-price { right: -8px; top: -14px; width: 86px; height: 86px; }
+      .badge-price b { font-size: 25px; }
+      .lede { font-size: 11.5px; letter-spacing: .22em; }
+      .bb-price { font-size: 46px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .ball, .spark, .flyer-card, .flyer-card::after, .badge-price, .live, .bar i, .cta-buy, .cta-buy::before, .cta-buy .go svg { animation: none !important; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body data-fx="off" class="rv">
+  <% const SPARK = '<svg viewBox="0 0 24 24"><path d="M12 0c.6 6.3 5.7 11.4 12 12-6.3.6-11.4 5.7-12 12-.6-6.3-5.7-11.4-12-12C6.3 11.4 11.4 6.3 12 0z" fill="#D4A23A"/></svg>'; %>
+  <section class="hero" id="hero">
+    <div class="decor" aria-hidden="true">
+      <div class="ball ball-a"></div>
+      <div class="ball ball-b"></div>
+      <span class="spark" style="--x:12%;--y:22%;--s:22px;--d:3.2s"><%- SPARK %></span>
+      <span class="spark" style="--x:88%;--y:16%;--s:30px;--d:2.6s;--dl:-1s"><%- SPARK %></span>
+      <span class="spark" style="--x:52%;--y:8%;--s:14px;--d:3.6s;--dl:-2s"><%- SPARK %></span>
+      <span class="spark" style="--x:6%;--y:70%;--s:16px;--d:2.9s;--dl:-.5s"><%- SPARK %></span>
+      <span class="spark" style="--x:94%;--y:58%;--s:18px;--d:3.3s;--dl:-1.6s"><%- SPARK %></span>
+      <span class="spark" style="--x:46%;--y:92%;--s:12px;--d:2.4s;--dl:-.8s"><%- SPARK %></span>
+    </div>
+
+    <header class="topbar">
+      <div class="wrap">
+        <a class="brand" href="/"><img src="/img/logo.jpg" alt="" width="38" height="38" /> Crewolada</a>
+        <a class="link-pill" href="#lotes">Ver lotes</a>
+      </div>
+    </header>
+
+    <div class="wrap hero-grid" id="ingressos">
+      <div class="flyer<%= soldOut ? ' soldout' : '' %>" id="flyer">
+        <div class="flyer-card">
+          <img src="/img/flyer-pre-reveillon.webp" width="1122" height="1402" alt="Pré Reveillon Crewolada — <%= eventInfo.dateLabel %>, <%= eventInfo.timeLabel %>, Bangu Atlético Clube. Ingressos em crewolada.com" />
+        </div>
+        <% if (lote && !comingSoon) { %><div class="badge-price"><div><b>R$ <%= priceLabel %></b><small><%= lote.name %></small></div></div><% } %>
+        <% if (soldOut) { %><div class="soldout-band" aria-hidden="true">Esgotado</div><% } %>
+      </div>
+
+      <div class="copy">
+        <span class="eyebrow">Crewolada apresenta</span>
+        <h1 class="title"><span class="l1">Pré</span> <span class="l2 gold-text">Reveillon</span></h1>
+        <svg class="swoosh" viewBox="0 0 420 14" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="sw" x1="0" x2="1"><stop offset="0" stop-color="#C9962E" stop-opacity="0"/><stop offset=".35" stop-color="#F3D27A"/><stop offset=".7" stop-color="#C9962E"/><stop offset="1" stop-color="#C9962E" stop-opacity="0"/></linearGradient></defs>
+          <path d="M2 11 C 120 2, 300 2, 418 7" stroke="url(#sw)" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </svg>
+        <p class="lede">Vem celebrar com a gente<br />o fim de ano em grande estilo!</p>
+
+        <div class="facts">
+          <span class="fact"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><%= eventInfo.dateLabel.slice(0, 5) %> · sábado</span>
+          <span class="fact"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><%= eventInfo.timeLabel %></span>
+          <span class="fact"><svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>Bangu Atlético Clube</span>
+        </div>
+
+        <% if (lote && !comingSoon) { %>
+          <form action="/checkout/dados" method="GET" id="qty-form" class="buybox">
+            <input type="hidden" name="qty" id="qty-input" value="1" />
+            <div class="bb-head">
+              <div>
+                <span class="bb-lote"><span class="live" aria-hidden="true"></span><%= lote.name %> · à venda agora</span>
+                <div class="bb-price"><span>R$</span><%= priceLabel %></div>
+              </div>
+              <% if (proximo) { %><div class="bb-next">Depois vira<b>R$ <%= brl(proximo.price) %></b><%= proximo.name %></div><% } %>
+            </div>
+            <div class="bb-meter" id="avail" aria-live="polite">
+              <div class="row"><span>Restam <strong id="lote-left"><%= lote.remaining %></strong> no <%= lote.name %></span><span id="days-left"></span></div>
+              <div class="bar"><i id="lote-fill" style="width: <%= atual ? atual.pct : 0 %>%"></i></div>
+            </div>
+            <% if (error) { %><div class="alert"><%= error %></div><% } %>
+            <div class="qty-row">
+              <div class="lbl">Ingressos<small>R$ <%= priceLabel %> cada</small></div>
+              <div class="qty">
+                <button type="button" class="qty-btn" id="qty-minus" aria-label="Menos um ingresso">−</button>
+                <span class="qty-val" id="qty-value">1</span>
+                <button type="button" class="qty-btn" id="qty-plus" aria-label="Mais um ingresso">+</button>
+              </div>
+            </div>
+            <button type="submit" class="cta-buy" id="cta-buy">
+              <span class="t"><span id="cta-text">Garantir meu ingresso</span><small id="cta-total">R$ <%= lote.price.toFixed(2).replace('.', ',') %></small></span>
+              <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
+            </button>
+            <p class="trust">Pix ou cartão · QR Code no WhatsApp e e-mail · Desista em até <%= refundDays %> dias</p>
+          </form>
+        <% } else if (comingSoon) { %>
+          <div class="soldout-box"><h2>Em breve</h2><p>As vendas abrem em breve. Entre na comunidade para saber primeiro.</p><p style="margin-top:16px"><a class="btn-line" style="border-color:#fff" href="#comunidade">Avisar quando abrir</a></p></div>
+        <% } else { %>
+          <div class="soldout-box" role="status">
+            <h2>Ingressos esgotados</h2>
+            <p>Todos os ingressos do Pré Reveillon foram vendidos. Obrigado, família! 🖤</p>
+            <p style="margin-top:16px"><a class="btn-line" style="border-color:#fff" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a></p>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section class="block" id="lotes">
+      <div class="wrap">
+        <div class="sec-head">
+          <span class="eyebrow">Ingressos por lote</span>
+          <h2>Quem chega antes <span class="gold-text">paga menos</span></h2>
+          <p>São <%= totalCapacity %> ingressos divididos em <%= degraus.length %> lotes. Quando um lote acaba, o preço sobe automaticamente para o próximo — e não volta.</p>
+        </div>
+        <div class="lotes">
+          <% degraus.forEach(function (l) { %>
+            <article class="lote <%= l.status %>">
+              <span class="tag"><%= l.status === 'esgotado' ? 'Esgotado' : l.status === 'atual' ? 'À venda' : 'Em breve' %></span>
+              <div class="n"><%= l.name %></div>
+              <div class="p"><span>R$</span><%= brl(l.price) %></div>
+              <div class="q"><%= l.quantity %> ingressos<% if (l.status === 'atual') { %> · restam <%= l.restam %><% } %></div>
+              <div class="bar"><i style="width: <%= l.status === 'esgotado' ? 100 : l.pct %>%"></i></div>
+              <% if (l.status === 'atual') { %><a class="mini" href="#ingressos">Comprar por R$ <%= brl(l.price) %></a><% } %>
+            </article>
+          <% }) %>
+        </div>
+        <p class="lotes-note">Contagem atualizada a cada ingresso vendido. Cada ingresso é individual e vale para 1 pessoa.</p>
+      </div>
+    </section>
+
+    <section class="block" id="info" style="padding-top:0">
+      <div class="wrap">
+        <div class="sec-head">
+          <span class="eyebrow">Anota aí</span>
+          <h2>Data, hora e local</h2>
+        </div>
+        <div class="info">
+          <div class="info-item">
+            <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            <h3><%= eventInfo.dateLabel.slice(0, 5) %></h3>
+            <p>Sábado, <%= eventInfo.dateLabel %>. A última grande festa da Crewolada antes da virada do ano.</p>
+          </div>
+          <div class="info-item">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            <h3><%= eventInfo.timeLabel %></h3>
+            <p>Abertura dos portões às <%= eventInfo.timeLabel %>. Chegue cedo e evite fila na entrada.</p>
+          </div>
+          <div class="info-item">
+            <svg viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <h3>Bangu</h3>
+            <p>Bangu Atlético Clube · Rio de Janeiro/RJ. <a href="https://www.google.com/maps/search/?api=1&query=Bangu+Atl%C3%A9tico+Clube" target="_blank" rel="noopener">Abrir no mapa</a></p>
+          </div>
+        </div>
+        <ol class="how">
+          <li>Escolha a quantidade e pague com Pix ou cartão, sem sair do site.</li>
+          <li>Receba o ingresso com QR Code no WhatsApp e no e-mail na hora.</li>
+          <li>Na entrada, mostre o QR Code no celular. Cada código vale 1 entrada.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="block community" id="comunidade" style="padding-top:0">
+      <div class="wrap">
+        <h2 style="font-size:clamp(1.5rem,4vw,2.25rem)">Fique por dentro</h2>
+        <p>Entre na comunidade no WhatsApp e saiba antes quando o lote virar.</p>
+        <a class="btn-line" href="<%= communityUrl %>" target="_blank" rel="noopener">Entrar na comunidade</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <div class="links">
+        <a href="/meus-ingressos">Meus ingressos</a>
+        <a href="/pesquisa">Pesquisa</a>
+        <a href="/politica-de-privacidade">Privacidade</a>
+        <a href="/termos-de-uso">Termos</a>
+        <a href="/politica-de-cancelamento">Cancelamento</a>
+      </div>
+      <%- include('partials/footer_legal') %>
+    </div>
+  </footer>
+
+  <% if (lote && !comingSoon) { %>
+  <div class="sticky-cta" id="sticky-cta"><a href="#ingressos">Garantir ingresso · <%= lote.name %> · R$ <%= priceLabel %></a></div>
+  <% } %>
+
+  <%- include('partials/lgpd_banner') %>
+
+  <script>
+    (function () {
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // ----- days left
+      var dl = document.getElementById('days-left');
+      var startAt = Date.parse('<%= eventInfo.startAt || '' %>');
+      if (dl && !Number.isNaN(startAt)) {
+        var days = Math.ceil((startAt - Date.now()) / 86400000);
+        dl.textContent = days > 1 ? 'faltam ' + days + ' dias' : days === 1 ? 'é amanhã' : 'é hoje';
+      }
+
+      // ----- sticky buy bar on phones: after the hero, hidden while the buy box is on screen
+      var sticky = document.getElementById('sticky-cta');
+      var box = document.getElementById('qty-form');
+      var hero = document.getElementById('hero');
+      if (sticky && box && hero && 'IntersectionObserver' in window) {
+        var heroOut = false, boxIn = false;
+        var upd = function () { sticky.classList.toggle('show', heroOut && !boxIn); };
+        new IntersectionObserver(function (en) { heroOut = !en[0].isIntersecting; upd(); }, { threshold: 0.15 }).observe(hero);
+        new IntersectionObserver(function (en) { boxIn = en[0].isIntersecting; upd(); }, { threshold: 0.2 }).observe(box);
+      }
+
+      <% if (lote && !comingSoon && atual) { %>
+      // ----- live count of the current lote; reload when it turns (new price)
+      var TOTAL = <%= totalCapacity || 0 %>, FLOOR = <%= atual.ceiling - atual.quantity %>, CEIL = <%= atual.ceiling %>, QTY = <%= atual.quantity %>;
+      function poll() {
+        if (document.hidden) return;
+        fetch('/api/disponibilidade', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
+          var sold = TOTAL - d.left;
+          if (!d.open || d.left <= 0 || sold >= CEIL) { location.reload(); return; }
+          var rest = CEIL - sold;
+          document.getElementById('lote-left').textContent = rest;
+          document.getElementById('lote-fill').style.width = Math.round((QTY - rest) / QTY * 100) + '%';
+          maxQty = Math.min(rest, MAXQ); if (qty > maxQty) { qty = maxQty; } render();
+        }).catch(function () {});
+      }
+      setInterval(poll, 15000);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) poll(); });
+
+      // ----- quantity + buy button
+      var MAXQ = <%= maxQty %>;
+      var maxQty = Math.min(<%= lote.remaining %>, MAXQ);
+      var unitPrice = <%= lote.price %>;
+      var qty = 1;
+      var qtyInput = document.getElementById('qty-input');
+      var qtyValue = document.getElementById('qty-value');
+      var minusBtn = document.getElementById('qty-minus');
+      var plusBtn = document.getElementById('qty-plus');
+      var ctaBtn = document.getElementById('cta-buy');
+      var ctaTotal = document.getElementById('cta-total');
+      var ctaText = document.getElementById('cta-text');
+      function render() {
+        qtyValue.textContent = qty;
+        qtyInput.value = qty;
+        var totalLabel = 'R$ ' + (qty * unitPrice).toFixed(2).replace('.', ',');
+        ctaTotal.textContent = (qty > 1 ? qty + ' ingressos · ' : '') + totalLabel;
+        if (qty <= 1) minusBtn.setAttribute('disabled', ''); else minusBtn.removeAttribute('disabled');
+        if (qty >= maxQty) plusBtn.setAttribute('disabled', ''); else plusBtn.removeAttribute('disabled');
+      }
+      minusBtn.addEventListener('click', function () { if (qty > 1) { qty -= 1; render(); } });
+      plusBtn.addEventListener('click', function () { if (qty < maxQty) { qty += 1; render(); } });
+      render();
+
+      // gold confetti where the finger/cursor landed
+      ctaBtn.addEventListener('pointerdown', function (e) {
+        if (reduce) return;
+        var colors = ['#F3D27A', '#C9962E', '#0B0B0C', '#FFFFFF', '#9A6E16'];
+        for (var i = 0; i < 26; i++) {
+          var c = document.createElement('span');
+          c.className = 'confetti-bit';
+          c.style.left = e.clientX + 'px';
+          c.style.top = e.clientY + 'px';
+          c.style.background = colors[i % colors.length];
+          c.style.setProperty('--cx', (Math.random() * 300 - 150) + 'px');
+          c.style.setProperty('--cy', (Math.random() * -220 - 30) + 'px');
+          c.style.setProperty('--cr', (Math.random() * 720 - 360) + 'deg');
+          document.body.appendChild(c);
+          setTimeout(function (el) { el.remove(); }, 1000, c);
+        }
+      });
+      document.getElementById('qty-form').addEventListener('submit', function () {
+        ctaBtn.classList.add('loading');
+        ctaText.textContent = 'Abrindo pagamento...';
+      });
+      <% } %>
+    })();
+  </script>
+</body>
+</html>

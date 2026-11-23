@@ -58,7 +58,27 @@ const SP_EVENT = {
   hidden: true,
 };
 
-const SEEDS = [LEGACY_EVENT, NEXT_EVENT, SP_EVENT];
+// Pre Reveillon at Bangu (19/12/2026 22h), sold in three lotes. Its sale page
+// uses the flyer theme (views/index_reveillon.ejs), chosen by `theme`.
+const PRE_REVEILLON_EVENT = {
+  id: 'pre-reveillon-2026-12-19',
+  name: 'Pré Reveillon Crewolada',
+  brand: 'Crewolada',
+  theme: 'reveillon',
+  dateLabel: '19/12/2026',
+  timeLabel: '22h',
+  venue: 'Bangu Atlético Clube - Rio de Janeiro/RJ',
+  startAt: '2026-12-20T01:00:00.000Z', // 19/12/2026 22h (Brasilia)
+  capacity: 1000,
+  // Programmed here so the sale opens on deploy; editable later in /admin/lotes.
+  defaultLotes: [
+    { name: '1º Lote', quantity: 100, price: 20 },
+    { name: '2º Lote', quantity: 100, price: 25 },
+    { name: '3º Lote', quantity: 800, price: 30 },
+  ],
+};
+
+const SEEDS = [LEGACY_EVENT, NEXT_EVENT, SP_EVENT, PRE_REVEILLON_EVENT];
 
 // Both are mutated IN PLACE by syncEvents(), so every module that imported
 // them keeps seeing the live values without re-requiring anything.
@@ -95,8 +115,11 @@ function syncEvents(db) {
   EVENTS.length = 0;
   list.forEach((e) => EVENTS.push(e));
 
-  const wanted = env ? env.id : (db && db.currentEventId) || NEXT_EVENT.id;
-  const chosen = map[wanted] || map[NEXT_EVENT.id];
+  // The Tardezinha (14/11) is over: a site still pointing at it moves on to the
+  // Pre Reveillon on deploy. Any other choice made in /admin/eventos is kept.
+  let wanted = env ? env.id : (db && db.currentEventId) || PRE_REVEILLON_EVENT.id;
+  if (!env && wanted === NEXT_EVENT.id) wanted = PRE_REVEILLON_EVENT.id;
+  const chosen = map[wanted] || map[PRE_REVEILLON_EVENT.id];
   Object.keys(currentEvent).forEach((k) => delete currentEvent[k]);
   Object.assign(currentEvent, chosen);
 }
@@ -133,7 +156,7 @@ function eventTemplateVars(event = currentEvent) {
 }
 
 module.exports = {
-  LEGACY_EVENT, NEXT_EVENT, SP_EVENT, EVENTS, currentEvent, syncEvents,
+  LEGACY_EVENT, NEXT_EVENT, SP_EVENT, PRE_REVEILLON_EVENT, EVENTS, currentEvent, syncEvents,
   orderEventId, inEvent, getEventById, eventForOrder, eventStatus, eventTemplateVars,
   salesOpensAt, salesHeldBack,
 };

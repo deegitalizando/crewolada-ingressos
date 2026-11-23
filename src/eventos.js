@@ -3,10 +3,10 @@ const { opcoesHome } = require('./paginaInicial');
 const { getLotes } = require('./lotes');
 const { getProducts, getChildRules } = require('./produtos');
 const {
-  EVENTS, currentEvent, LEGACY_EVENT, NEXT_EVENT, syncEvents, orderEventId, eventStatus, salesHeldBack,
+  EVENTS, currentEvent, LEGACY_EVENT, NEXT_EVENT, PRE_REVEILLON_EVENT, syncEvents, orderEventId, eventStatus, salesHeldBack,
 } = require('./event');
 
-const SEED_IDS = new Set([LEGACY_EVENT.id, NEXT_EVENT.id]);
+const SEED_IDS = new Set([LEGACY_EVENT.id, NEXT_EVENT.id, PRE_REVEILLON_EVENT.id]);
 
 const slug = (s) => String(s || '')
   .normalize('NFD').replace(/[̀-ͯ]/g, '')
