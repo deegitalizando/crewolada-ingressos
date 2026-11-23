@@ -40,6 +40,7 @@ function buildWhatsappTicketLink() {
 const { approveOrder } = require('./fulfillment');
 const { registerCortesiaRoutes } = require('./cortesia');
 const { registerBotRoutes } = require('./bot');
+const { registerManychatRoutes } = require('./manychat');
 const { registerContabilidadeRoutes } = require('./contabilidade');
 const { registerRelatorioRoutes } = require('./relatorio');
 const { registerPesquisaRoutes } = require('./pesquisa');
@@ -1155,7 +1156,7 @@ app.get('/admin', (req, res) => {
 });
 
 // Pages outside /admin that send the user through the admin login and back.
-const ADMIN_LOGIN_NEXT = ['/downloads', '/contabilidade'];
+const ADMIN_LOGIN_NEXT = ['/downloads', '/contabilidade', '/manychat'];
 
 app.post('/admin/login', (req, res) => {
   const { login, password } = req.body;
@@ -1683,6 +1684,38 @@ registerBotRoutes(app, {
     vagasLivres: (id) => {
       const ev = getEventById(id);
       return ev.capacity ? Math.max(0, ev.capacity - getSoldCount(store.load(), id)) : null;
+    },
+    communityUrl: app.locals.communityUrl,
+    whatsappTicketUrl: buildWhatsappTicketLink(),
+    whatsappLabel: app.locals.contact.whatsappLabel,
+  },
+});
+// Instagram auto-replies (comment keyword -> Direct), crewolada.com/manychat.
+registerManychatRoutes(app, {
+  eventInfo,
+  // Not logged in: the login form shows right here and comes back to /manychat.
+  requireAdminAuth: (req, res, next) => (isAdmin(req) ? next() : req.method === 'GET'
+    ? res.render('admin_login', { eventInfo, error: null, next: '/manychat' })
+    : res.redirect('/manychat')),
+  deps: {
+    salesOpenNow: () => salesOpenNow(),
+    opensLabel: (ts) => opensLabelBR(ts),
+    // Price line and tickets left of the current event, as the sale page shows them.
+    infoVenda: () => {
+      const db = store.load();
+      const brl = (n) => 'R$ ' + Number(n).toFixed(2).replace('.', ',');
+      if (currentEvent.free) return { preco: 'Entrada gratuita (inscrição obrigatória)', restantes: null, esgotado: false };
+      const products = getProducts(currentEvent);
+      if (products.length) {
+        const restantes = getAvailable(db);
+        return { preco: products.map((p) => `${p.name}: ${brl(p.price)}`).join(' · '), restantes, esgotado: restantes <= 0 };
+      }
+      const lotes = getLotes(db);
+      const vendidos = getSoldCount(db);
+      const lote = getCurrentLote(lotes, vendidos);
+      if (!lote) return { preco: '', restantes: 0, esgotado: lotes.length > 0 };
+      const total = lotes.reduce((sum, l) => sum + l.quantity, 0);
+      return { preco: `${lote.name}: ${brl(lote.price)}`, restantes: Math.max(0, total - vendidos), esgotado: false };
     },
     communityUrl: app.locals.communityUrl,
     whatsappTicketUrl: buildWhatsappTicketLink(),
