@@ -1,5 +1,6 @@
 <% const priceLabel = lote ? (Number.isInteger(lote.price) ? String(lote.price) : lote.price.toFixed(2).replace('.', ',')) : ''; %>
 <% const left = Math.max(0, (totalCapacity || 0) - soldCount); %>
+<% const showLeft = left > 0 && left < (typeof showLeftBelow === 'number' ? showLeftBelow : 50); /* count only when few are left */ %>
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -7,7 +8,7 @@
   <meta name="description" content="<%= eventInfo.name %>: <%= eventInfo.dateLabel %>, <%= eventInfo.timeLabel %>, <%= eventInfo.venue %>. Churrasco, música, família e comunidade. Lote único e limitado." />
   <meta property="og:type" content="website" />
   <meta property="og:title" content="<%= eventInfo.name %> · <%= eventInfo.dateLabel %> · <%= eventInfo.venue %>" />
-  <meta property="og:description" content="Lote único e limitado a <%= totalCapacity || 300 %> ingressos. Churrasco, música, família e comunidade." />
+  <meta property="og:description" content="Ingressos limitados. Churrasco, música, família e comunidade." />
   <meta property="og:image" content="<%= baseUrl %>/img/flyer-tardezinha.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#56B9FF" />
@@ -302,7 +303,7 @@
       <% if (lote && !comingSoon && productMode) { %>
         <div class="buy-inline">
           <button type="button" class="cta-buy" id="open-sheet" aria-haspopup="dialog">
-            <span class="lbl"><span>Garantir meu ingresso</span> <small>a partir de R$ <%= priceLabel %> · restam <b id="cta-left"><%= left %></b></small></span>
+            <span class="lbl"><span>Garantir meu ingresso</span> <small>a partir de R$ <%= priceLabel %><% if (showLeft) { %> · restam <b id="cta-left"><%= left %></b><% } %></small></span>
             <span class="go" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
           </button>
           <p class="trust">Pix ou cartão · QR Code por e-mail · Desista em até <%= refundDays %> dias</p>
@@ -311,13 +312,17 @@
           </p>
           <p class="menu-line kids">Crianças até <%= childRules.freeUntil %> anos não pagam · até <%= childRules.halfUntil %> anos pagam meia</p>
         </div>
-        <div class="avail<%= (totalCapacity && left / totalCapacity <= 0.2) ? ' low' : '' %>" id="avail" aria-live="polite">
+        <div class="avail<%= showLeft ? ' low' : '' %>" id="avail" aria-live="polite">
+          <% if (showLeft) { %>
           <div class="avail-top">
-            <span><strong id="avail-left"><%= left %></strong> <span id="avail-word"><%= left === 1 ? 'ingresso disponível' : 'ingressos disponíveis' %></span></span>
-            <span class="avail-of">de <%= totalCapacity %> · <span id="days-left"></span></span>
+            <span><strong id="avail-left"><%= left %></strong> <span id="avail-word"><%= left === 1 ? 'último ingresso' : 'últimos ingressos' %></span></span>
+            <span class="avail-of"><span id="days-left"></span></span>
           </div>
           <div class="avail-bar"><i id="avail-fill" style="width: <%= totalCapacity ? Math.round(left / totalCapacity * 100) : 0 %>%"></i></div>
-          <% if (productMode) { %><p class="avail-note">Atualizado ao vivo a cada ingresso vendido. Crianças até <%= childRules.freeUntil %> anos não pagam e não ocupam vaga.</p><% } else { %><p class="avail-note">Atualizado ao vivo a cada ingresso vendido.</p><% } %>
+          <% } else { %>
+          <div class="avail-top"><span><strong style="font-size:18px">Ingressos limitados</strong></span><span class="avail-of"><span id="days-left"></span></span></div>
+          <% } %>
+          <% if (productMode) { %><p class="avail-note">Crianças até <%= childRules.freeUntil %> anos não pagam e não ocupam vaga.</p><% } %>
         </div>
       <% } else if (lote && !comingSoon) { %>
         <form action="/checkout/dados" method="GET" id="qty-form" class="buy-inline">
@@ -334,13 +339,17 @@
           </button>
           <p class="trust">Pix ou cartão · QR Code por e-mail · Desista em até <%= refundDays %> dias</p>
         </form>
-        <div class="avail<%= (totalCapacity && left / totalCapacity <= 0.2) ? ' low' : '' %>" id="avail" aria-live="polite">
+        <div class="avail<%= showLeft ? ' low' : '' %>" id="avail" aria-live="polite">
+          <% if (showLeft) { %>
           <div class="avail-top">
-            <span><strong id="avail-left"><%= left %></strong> <span id="avail-word"><%= left === 1 ? 'ingresso disponível' : 'ingressos disponíveis' %></span></span>
-            <span class="avail-of">de <%= totalCapacity %> · <span id="days-left"></span></span>
+            <span><strong id="avail-left"><%= left %></strong> <span id="avail-word"><%= left === 1 ? 'último ingresso' : 'últimos ingressos' %></span></span>
+            <span class="avail-of"><span id="days-left"></span></span>
           </div>
           <div class="avail-bar"><i id="avail-fill" style="width: <%= totalCapacity ? Math.round(left / totalCapacity * 100) : 0 %>%"></i></div>
-          <% if (productMode) { %><p class="avail-note">Atualizado ao vivo a cada ingresso vendido. Crianças até <%= childRules.freeUntil %> anos não pagam e não ocupam vaga.</p><% } else { %><p class="avail-note">Atualizado ao vivo a cada ingresso vendido.</p><% } %>
+          <% } else { %>
+          <div class="avail-top"><span><strong style="font-size:18px">Ingressos limitados</strong></span><span class="avail-of"><span id="days-left"></span></span></div>
+          <% } %>
+          <% if (productMode) { %><p class="avail-note">Crianças até <%= childRules.freeUntil %> anos não pagam e não ocupam vaga.</p><% } %>
         </div>
       <% } else if (comingSoon) { %>
         <a class="btn hero-cta" href="#comunidade">Avisar quando abrir</a>
@@ -529,13 +538,15 @@
         var box = document.getElementById('avail');
         if (!box) return;
         var total = <%= totalCapacity || 0 %>;
+        var SHOW_BELOW = <%= typeof showLeftBelow === 'number' ? showLeftBelow : 50 %>;
         function poll() {
           if (document.hidden) return;
           fetch('/api/disponibilidade', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (d) {
             if (!d.open || d.left <= 0) { location.reload(); return; }
+            if (!document.getElementById('avail-left')) { if (d.left < SHOW_BELOW) location.reload(); return; }
             document.getElementById('avail-left').textContent = d.left;
             var cl = document.getElementById('cta-left'); if (cl) cl.textContent = d.left;
-            document.getElementById('avail-word').textContent = d.left === 1 ? 'ingresso disponível' : 'ingressos disponíveis';
+            document.getElementById('avail-word').textContent = d.left === 1 ? 'último ingresso' : 'últimos ingressos';
             document.getElementById('avail-fill').style.width = (total ? Math.round(d.left / total * 100) : 0) + '%';
             box.classList.toggle('low', total > 0 && d.left / total <= 0.2);
           }).catch(function () {});
