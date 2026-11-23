@@ -14,6 +14,8 @@
 //   url        https://..., /path, mailto: or tel:
 //   novaAba    open in a new tab
 //   visivel    false hides it without deleting
+//   destino    (Ingressos button only) 'auto' = list of events on sale,
+//              'evento' = straight to eventoId's page, 'link' = straight to url
 const store = require('./store');
 
 const ICONES = {
@@ -31,7 +33,7 @@ const ESTILOS = { normal: 'Normal', principal: 'Principal (dourado)', destaque: 
 
 function defaults(communityUrl) {
   return [
-    { id: 'ingressos', tipo: 'ingressos', estilo: 'principal', icone: 'ingresso', rotulo: 'Garanta o seu', selo: '', titulo: 'Ingressos', descricao: '', url: '', novaAba: false, visivel: true },
+    { id: 'ingressos', tipo: 'ingressos', destino: 'auto', eventoId: '', estilo: 'principal', icone: 'ingresso', rotulo: 'Garanta o seu', selo: '', titulo: 'Ingressos', descricao: '', url: '', novaAba: false, visivel: true },
     { id: 'criesuamusica', tipo: 'link', estilo: 'destaque', icone: 'musica', rotulo: 'Novidade', selo: 'Novo', titulo: 'Crie Sua Própria Música com Nossa IA', descricao: 'Letra, voz e batida feitas pra você em 1 minuto.', url: '/criesuamusica', novaAba: false, visivel: true },
     { id: 'comunidade', tipo: 'link', estilo: 'normal', icone: 'whatsapp', rotulo: 'Comunidade no WhatsApp', selo: '', titulo: 'Entre na nossa comunidade', descricao: 'Fique por dentro de tudo em primeira mão.', url: communityUrl || '/', novaAba: true, visivel: true },
     { id: 'youtube', tipo: 'link', estilo: 'normal', icone: 'youtube', rotulo: 'Assista', selo: '', titulo: 'Nosso canal do YouTube', descricao: '', url: '/youtube', novaAba: false, visivel: true },
@@ -61,14 +63,20 @@ function sanitize(list) {
     if (tipo === 'ingressos') temIngressos = true;
     const titulo = txt(raw.titulo, 80);
     if (!titulo) return { error: 'Todo botão precisa de um título.' };
-    const url = tipo === 'ingressos' ? '' : txt(raw.url, 500);
-    if (tipo === 'link' && !isValidUrl(url)) return { error: `O link do botão "${titulo}" é inválido. Use https://... ou um caminho do site como /contato.` };
+    const destino = tipo === 'ingressos' && ['evento', 'link'].includes(raw.destino) ? raw.destino : 'auto';
+    const eventoId = tipo === 'ingressos' && destino === 'evento' ? txt(raw.eventoId, 80) : '';
+    if (destino === 'evento' && !eventoId) return { error: 'Escolha o evento para onde o botão Ingressos deve levar.' };
+    const url = tipo === 'ingressos' && destino !== 'link' ? '' : txt(raw.url, 500);
+    if (url !== '' || tipo === 'link') {
+      if (!isValidUrl(url)) return { error: `O link do botão "${titulo}" é inválido. Use https://... ou um caminho do site como /contato.` };
+    }
     let id = txt(raw.id, 40).replace(/[^a-z0-9-]/gi, '') || `botao-${botoes.length + 1}`;
     for (let i = 2; ids.has(id); i += 1) id = `${id}-${i}`;
     ids.add(id);
     botoes.push({
       id,
       tipo,
+      ...(tipo === 'ingressos' ? { destino, eventoId } : {}),
       estilo: ESTILOS[raw.estilo] ? raw.estilo : 'normal',
       icone: ICONES[raw.icone] ? raw.icone : 'link',
       rotulo: txt(raw.rotulo, 40),

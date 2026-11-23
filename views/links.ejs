@@ -226,11 +226,12 @@
            var ext = b.novaAba || /^https?:/i.test(b.url || '');
            var icons = { ingresso: 'g-ticket', whatsapp: 'g-wpp', youtube: 'g-play', playlist: 'g-list', microfone: 'g-mic', livro: 'g-book', instagram: 'g-insta', link: 'g-link' }; %>
       <li class="item" style="--i:<%= i %>">
-        <% if (b.tipo === 'ingressos') { %><button type="button" class="<%= cls %>" id="open-tickets" aria-haspopup="dialog"><% } else { %><a class="<%= cls %>" href="<%= b.url %>"<% if (b.novaAba) { %> target="_blank" rel="noopener"<% } %>><% } %>
+        <% var sheetBtn = b.tipo === 'ingressos' && !b.href; var href = b.href || b.url; %>
+        <% if (sheetBtn) { %><button type="button" class="<%= cls %>" id="open-tickets" aria-haspopup="dialog"><% } else { %><a class="<%= cls %>" href="<%= href %>"<% if (b.novaAba) { %> target="_blank" rel="noopener"<% } %>><% } %>
           <% if (b.icone === 'musica') { %><span class="ic" aria-hidden="true"><span class="bars"><i></i><i></i><i></i><i></i><i></i></span></span><% } else { %><span class="ic"><svg class="g"><use href="#<%= icons[b.icone] || 'g-link' %>"/></svg></span><% } %>
           <span class="tx"><% if (b.rotulo || b.selo) { %><span class="lb"><%= b.rotulo %><% if (b.selo) { %><%= b.rotulo ? ' · ' : '' %><b class="new"><%= b.selo %></b><% } %></span><% } %><span class="mn"><%= b.titulo %></span><% if (b.descricao) { %><span class="ds"><%= b.descricao %></span><% } %></span>
-          <svg class="ar g" viewBox="0 0 24 24"><path d="<%= ext && b.tipo !== 'ingressos' ? 'M7 17 17 7M8 7h9v9' : 'M5 12h14M12 5l7 7-7 7' %>"/></svg>
-        <% if (b.tipo === 'ingressos') { %></button><% } else { %></a><% } %>
+          <svg class="ar g" viewBox="0 0 24 24"><path d="<%= ext && !sheetBtn && /^https?:/i.test(href || '') ? 'M7 17 17 7M8 7h9v9' : 'M5 12h14M12 5l7 7-7 7' %>"/></svg>
+        <% if (sheetBtn) { %></button><% } else { %></a><% } %>
       </li>
       <% }) %>
     </ul>

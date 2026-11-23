@@ -100,7 +100,22 @@
         <label>Selo <input type="text" data-f="selo" maxlength="12" placeholder="Novo" /></label>
         <label class="full">Descrição (opcional) <input type="text" data-f="descricao" maxlength="120" placeholder="Uma linha abaixo do título" /></label>
         <label class="full lk-url">Link <input type="text" data-f="url" maxlength="500" placeholder="https://... ou /contato" /></label>
-        <p class="hint full lk-ing-note" style="margin:-4px 0 0; text-align:left">Este botão abre a escolha de eventos com ingresso à venda (o link é automático).</p>
+        <label class="full lk-ing lk-dest-link">Link <input type="text" data-f="urlIng" maxlength="500" placeholder="https://... ou /ingressos" /></label>
+        <label class="full lk-ing">Ao clicar em Ingressos
+          <select data-f="destino">
+            <option value="auto">Mostrar a lista de eventos à venda (automático)</option>
+            <option value="evento">Ir direto para a página de um evento</option>
+            <option value="link">Ir para um link que eu escolher</option>
+          </select>
+        </label>
+        <label class="full lk-ing lk-dest-evento">Evento
+          <select data-f="eventoId">
+            <% if (!ticketTargets.length) { %><option value="">Nenhum evento à venda agora</option><% } %>
+            <% ticketTargets.forEach(function (t) { %><option value="<%= t.id %>"><%= t.label %> → <%= t.href %></option><% }) %>
+          </select>
+        </label>
+        <p class="hint full lk-ing lk-dest-auto" style="margin:-4px 0 0; text-align:left">Abre uma janela com os eventos que estão vendendo agora. Hoje o evento à venda é <b><%= currentEventName %></b> (muda em Eventos → "Definir como atual").</p>
+        <p class="hint full lk-ing lk-dest-evento" style="margin:-4px 0 0; text-align:left">Se esse evento deixar de vender, o botão volta a mostrar a lista automática.</p>
         <label>Ícone <select data-f="icone"><% Object.keys(icones).forEach(function(k) { %><option value="<%= k %>"><%= icones[k] %></option><% }) %></select></label>
         <label>Estilo <select data-f="estilo"><% Object.keys(estilos).forEach(function(k) { %><option value="<%= k %>"><%= estilos[k] %></option><% }) %></select></label>
         <label class="lk-check lk-url"><input type="checkbox" data-f="novaAba" /> Abrir em nova aba</label>
@@ -134,7 +149,10 @@
     .lk-check { flex-direction: row !important; align-items: center; gap: 8px; display: flex; }
     .lk-check input { width: 18px !important; height: 18px; margin: 0; }
     .lk-item[data-tipo="ingressos"] .lk-url { display: none; }
-    .lk-item:not([data-tipo="ingressos"]) .lk-ing-note { display: none; }
+    .lk-item:not([data-tipo="ingressos"]) .lk-ing { display: none; }
+    .lk-item[data-tipo="ingressos"]:not([data-dest="auto"]) .lk-dest-auto,
+    .lk-item[data-tipo="ingressos"]:not([data-dest="evento"]) .lk-dest-evento,
+    .lk-item[data-tipo="ingressos"]:not([data-dest="link"]) .lk-dest-link { display: none; }
     .lk-save { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
     .lk-save button { width: auto; margin: 0; }
   </style>
@@ -150,13 +168,17 @@
         el.dataset.tipo = b.tipo || 'link';
         el.querySelectorAll('[data-f]').forEach(function (inp) {
           var k = inp.getAttribute('data-f');
-          if (inp.type === 'checkbox') inp.checked = k === 'visivel' ? b.visivel !== false : Boolean(b[k]);
-          else inp.value = b[k] == null ? '' : b[k];
+          var v = k === 'urlIng' ? b.url : k === 'destino' ? (b.destino || 'auto') : b[k];
+          if (inp.type === 'checkbox') inp.checked = k === 'visivel' ? b.visivel !== false : Boolean(v);
+          else if (inp.tagName === 'SELECT' && v && !inp.querySelector('option[value="' + v + '"]')) { var o = document.createElement('option'); o.value = v; o.textContent = v + ' (não está mais à venda)'; inp.appendChild(o); inp.value = v; }
+          else if (inp.tagName === 'SELECT' && !v) { /* keep the first option */ }
+          else inp.value = v == null ? '' : v;
         });
         sync(el);
       }
       function sync(el) {
         el.querySelector('.lk-name').textContent = el.querySelector('[data-f=titulo]').value || '(sem título)';
+        el.dataset.dest = el.querySelector('[data-f=destino]').value;
         el.classList.toggle('off', !el.querySelector('[data-f=visivel]').checked);
       }
       function renumber() {
@@ -210,6 +232,8 @@
           el.querySelectorAll('[data-f]').forEach(function (inp) {
             b[inp.getAttribute('data-f')] = inp.type === 'checkbox' ? inp.checked : inp.value.trim();
           });
+          if (b.tipo === 'ingressos') b.url = b.destino === 'link' ? b.urlIng : '';
+          delete b.urlIng;
           if (!b.titulo && !bad) bad = el;
           out.push(b);
         });
