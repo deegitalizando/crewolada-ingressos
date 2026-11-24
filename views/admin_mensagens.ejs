@@ -222,14 +222,22 @@
           Mensagem
           <textarea name="mensagem" rows="3" required></textarea>
         </label>
-        <label>
-          Público
-          <select name="audiencia">
-            <option value="ingressos">Compradores de ingresso</option>
-            <option value="musica">Compradores de música</option>
-            <option value="todos">Todos</option>
-          </select>
-        </label>
+        <div class="template-box" id="publico-box" style="margin:0">
+          <strong>Quem recebe</strong>
+          <p class="hint" style="margin:4px 0 8px">De onde vieram:</p>
+          <% Object.entries(publicoInfo.fontes).forEach(function([k, l]) { %>
+            <label class="radio-row" style="padding:4px 0"><input type="checkbox" name="fontes" value="<%= k %>" <%= ['pagos', 'gratuitos', 'participantes'].includes(k) ? 'checked' : '' %> /> <%= l %></label>
+          <% }) %>
+          <p class="hint" style="margin:12px 0 8px">De quais eventos (vale para ingresso, cortesia, acompanhante e compra não paga). Nenhum marcado = todos os eventos.</p>
+          <% publicoInfo.eventos.forEach(function(ev) { %>
+            <label class="radio-row" style="padding:4px 0"><input type="checkbox" name="eventos" value="<%= ev.id %>" /> <%= ev.name %> <span class="hint">(<%= ev.dateLabel %> · <%= ev.pedidos %> pedidos)</span></label>
+          <% }) %>
+          <p class="hint" style="margin:12px 0 8px">Não enviar para quem já tem ingresso de:</p>
+          <% publicoInfo.eventos.forEach(function(ev) { %>
+            <label class="radio-row" style="padding:4px 0"><input type="checkbox" name="excluirEventos" value="<%= ev.id %>" <%= ev.atual ? 'checked' : '' %> /> <%= ev.name %></label>
+          <% }) %>
+          <div class="hint" id="publico-previa" style="margin-top:10px;color:var(--accent)">Calculando…</div>
+        </div>
         <label>
           Enviar em (horario de Brasilia)
           <input type="datetime-local" name="sendAt" required />
@@ -246,7 +254,7 @@
             <% campaigns.forEach(function(c) { %>
               <tr>
                 <td><%= c.mensagem %></td>
-                <td><%= ({ ingressos: 'Ingresso', musica: 'Música', todos: 'Todos' })[c.audiencia] || 'Ingresso' %></td>
+                <td style="white-space:normal;max-width:260px"><%= c.filtros ? publicoInfo.descrever(c.filtros) : (({ ingressos: 'Ingresso (evento atual)', musica: 'Música', todos: 'Todos (evento atual)' })[c.audiencia] || 'Ingresso') %></td>
                 <td><%= c.sendAtLocal.replace('T', ' ') %></td>
                 <td><%= c.sent ? 'Enviada' : 'Pendente' %></td>
                 <td>
@@ -267,6 +275,25 @@
     </main>
   </div>
   <script>
+    (function () {
+      var box = document.getElementById('publico-box');
+      if (!box) return;
+      var out = document.getElementById('publico-previa'), t;
+      function atualizar() {
+        clearTimeout(t);
+        t = setTimeout(async function () {
+          var fd = new URLSearchParams();
+          box.querySelectorAll('input:checked').forEach(function (i) { fd.append(i.name, i.value); });
+          try {
+            var r = await (await fetch('/api/admin/campanhas/previa', { method: 'POST', body: fd })).json();
+            var dias = Math.ceil(r.comWhatsapp / <%= Math.max(1, waResumo.porDia) %>);
+            out.textContent = r.total + ' pessoas: ' + r.comWhatsapp + ' com WhatsApp (levam cerca de ' + dias + ' dia(s) no ritmo da Proteção do WhatsApp) e ' + r.soEmail + ' só com e-mail (recebem na hora).' + (r.exemplo.length ? ' Ex.: ' + r.exemplo.join('; ') : '');
+          } catch (e) { out.textContent = ''; }
+        }, 300);
+      }
+      box.addEventListener('change', atualizar);
+      atualizar();
+    })();
     // "Gerar versões" next to each WhatsApp message box: the versions come back
     // separated by ||| so they can be reviewed and edited before saving.
     document.querySelectorAll('textarea[name="dias5"], textarea[name="dia1"], textarea[name="diaEvento"], textarea[name="hora1"], textarea[name="mensagem"]').forEach(function (ta) {

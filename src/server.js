@@ -43,6 +43,7 @@ const { registerBotRoutes } = require('./bot');
 const automacoes = require('./automacoes');
 const { registerAutomacoesRoutes, startAutomacoesScheduler } = automacoes;
 const waFila = require('./waFila');
+const publico = require('./publico');
 const { registerManychatRoutes } = require('./manychat');
 const { registerContabilidadeRoutes } = require('./contabilidade');
 const { registerRelatorioRoutes } = require('./relatorio');
@@ -1777,6 +1778,7 @@ app.get('/admin/mensagens', requireAdminAuth, (req, res) => {
     campaigns: campaigns.map((c) => ({ ...c, sendAtLocal: formatDatetimeLocalBrasilia(c.sendAt) })),
     waResumo: waFila.resumo(db),
     emailResumo: emailCampanha.resumo(db),
+    publicoInfo: { fontes: publico.FONTES, eventos: publico.eventosComPedidos(db), currentEventId: currentEvent.id, descrever: publico.descreverFiltros },
     emailOk: req.query.emailOk || null,
     emailErro: req.query.emailErro || null,
     fmtDisplay: (iso) => (iso ? formatDatetimeBrasiliaDisplay(iso) : ''),
@@ -1806,11 +1808,14 @@ app.post('/api/admin/campanhas', requireAdminAuth, async (req, res) => {
     return res.redirect('/admin/mensagens');
   }
   const audiencia = ['ingressos', 'musica', 'todos'].includes(req.body.audiencia) ? req.body.audiencia : 'ingressos';
+  // New campaigns pick their audience with filters (src/publico.js): sources, events, exclusions.
+  const filtros = req.body.fontes ? publico.normalizarFiltros(req.body) : null;
 
   const campaign = {
     id: crypto.randomUUID(),
     mensagem,
     audiencia,
+    filtros,
     sendAt: parseDatetimeLocalAsBrasilia(sendAtLocal),
     sent: false,
     createdAt: new Date().toISOString(),
@@ -1822,6 +1827,10 @@ app.post('/api/admin/campanhas', requireAdminAuth, async (req, res) => {
   });
 
   res.redirect('/admin/mensagens?saved=1');
+});
+
+app.post('/api/admin/campanhas/previa', requireAdminAuth, (req, res) => {
+  res.json(publico.resumoPublico(store.load(), req.body));
 });
 
 app.post('/api/admin/campanhas/:id/excluir', requireAdminAuth, async (req, res) => {
