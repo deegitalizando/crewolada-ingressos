@@ -1,6 +1,6 @@
 const store = require('./store');
-const { sendReminder } = require('./n8n');
-const { getTemplates, renderTemplate } = require('./templates');
+const { getTemplates } = require('./templates');
+const { enfileirar } = require('./waFila');
 const { currentEvent, inEvent, eventTemplateVars, EVENTS, getEventById } = require('./event');
 
 const MILESTONES = ['dias5', 'dia1', 'diaEvento', 'hora1'];
@@ -30,43 +30,19 @@ function getMilestoneDates(eventStartAt) {
   };
 }
 
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// Lets an admin write a few rewordings of the same message separated by
-// "|||" (same convention as the AI-generated variations in the n8n
-// broadcast flow) so a bulk send doesn't fire the exact same text to every
-// recipient — another signal WhatsApp's spam detection weighs heavily.
-function pickVariation(messageTemplate) {
-  const variations = String(messageTemplate || '')
-    .split('|||')
-    .map((v) => v.trim())
-    .filter(Boolean);
-  if (variations.length === 0) return messageTemplate;
-  return variations[Math.floor(Math.random() * variations.length)];
-}
-
-// Spaced out and jittered on purpose: firing a WhatsApp send per buyer
-// back-to-back, with identical timing, is exactly the burst pattern that
-// gets a business number flagged/banned. 4-9s between sends keeps this
-// broadcast at a human-plausible pace.
-async function sendToAllPaidBuyers(db, messageTemplate, eventId = currentEvent.id) {
+// Mass sends never go out back-to-back: they enter the protected WhatsApp queue
+// (src/waFila.js), which sends one every ~2 min (editable in /admin/mensagens),
+// in different versions of the text, inside the daily window and limit.
+async function sendToAllPaidBuyers(db, messageTemplate, eventId = currentEvent.id, titulo = 'Lembrete') {
   if (getEventById(eventId).cancelledAt) return; // cancelled events send no reminders
   const buyers = Object.values(db.orders).filter((o) => o.status === 'paid' && inEvent(o, eventId));
-  for (let i = 0; i < buyers.length; i++) {
-    const order = buyers[i];
-    const mensagem = renderTemplate(pickVariation(messageTemplate), { ...eventTemplateVars(getEventById(eventId)), nome: order.buyerName });
-    try {
-      await sendReminder({
-        nome: order.buyerName,
-        whatsapp: order.buyerPhone,
-        email: order.buyerEmail,
-        mensagem,
-      });
-    } catch (err) {
-      console.error(`Falha ao enviar mensagem para ${order.buyerEmail}:`, err.message);
-    }
-    if (i < buyers.length - 1) await wait(4000 + Math.random() * 5000);
-  }
+  await enfileirar({
+    origem: 'ingressos',
+    titulo: `${titulo} · ${getEventById(eventId).name}`,
+    template: messageTemplate,
+    varsBase: eventTemplateVars(getEventById(eventId)),
+    destinatarios: buyers.map((o) => ({ nome: o.buyerName, whatsapp: o.buyerPhone, email: o.buyerEmail })),
+  });
 }
 
 // Same broadcast, aimed at everyone who has ever received a custom song -
@@ -75,20 +51,16 @@ async function sendToAllPaidBuyers(db, messageTemplate, eventId = currentEvent.i
 // Dia dos Namorados, Natal) rather than to how long ago each buyer ordered.
 async function sendToAllMusicaBuyers(db, messageTemplate) {
   const buyers = Object.values(db.musicaPedidos || {}).filter((p) => p.status === 'entregue');
-  for (let i = 0; i < buyers.length; i++) {
-    const pedido = buyers[i];
-    const mensagem = renderTemplate(pickVariation(messageTemplate), {
-      nome: pedido.nome,
-      link: `${process.env.BASE_URL || 'https://www.crewolada.com'}/criesuamusica`,
-    });
-    try {
-      await sendReminder({ nome: pedido.nome, whatsapp: pedido.remoteJid || '', email: pedido.email, mensagem });
-    } catch (err) {
-      console.error(`Falha ao enviar campanha de musica para ${pedido.email || pedido.remoteJid}:`, err.message);
-    }
-    if (i < buyers.length - 1) await wait(4000 + Math.random() * 5000);
-  }
+  await enfileirar({
+    origem: 'musica',
+    titulo: 'Campanha · compradores de música',
+    template: messageTemplate,
+    varsBase: { link: `${process.env.BASE_URL || 'https://www.crewolada.com'}/criesuamusica` },
+    destinatarios: buyers.map((p) => ({ nome: p.nome, whatsapp: String(p.remoteJid || '').split('@')[0], email: p.email })),
+  });
 }
+
+const MILESTONE_LABEL = { dias5: '5 dias antes', dia1: '1 dia antes', diaEvento: 'No dia', hora1: '1 hora antes' };
 
 async function checkAndSendReminders() {
   // First run for a new event: point the milestones at its start time and
@@ -121,7 +93,7 @@ async function checkAndSendReminders() {
           d.remindersSent[key] = true;
         });
 
-        await sendToAllPaidBuyers(db, templates[key]);
+        await sendToAllPaidBuyers(db, templates[key], currentEvent.id, MILESTONE_LABEL[key]);
       }
     }
   }
@@ -148,7 +120,7 @@ async function checkAndSendReminders() {
           d.eventReminders[ev.id] = d.eventReminders[ev.id] || {};
           d.eventReminders[ev.id][key] = true;
         });
-        if (!stale) await sendToAllPaidBuyers(db, templates[key], ev.id);
+        if (!stale) await sendToAllPaidBuyers(db, templates[key], ev.id, MILESTONE_LABEL[key]);
       }
     }
   }
@@ -169,7 +141,7 @@ async function checkAndSendReminders() {
       await sendToAllMusicaBuyers(db, campaign.mensagem);
     }
     if (campaign.audiencia !== 'musica') {
-      await sendToAllPaidBuyers(db, campaign.mensagem);
+      await sendToAllPaidBuyers(db, campaign.mensagem, currentEvent.id, 'Campanha');
     }
   }
 }
