@@ -87,6 +87,17 @@ O workflow **"WORKFLOW CREWOLADA"** no n8n tem 4 gatilhos (webhooks):
 - `crewolada-broadcast-painel` — broadcast disparado pelo painel `/admin`.
 - `crewolada-lembrete` — lembretes agendados (texto simples, sem PDF) enviados pelo agendador do app.
 
+## ManyChat do Instagram (`/manychat`)
+
+Respostas automaticas do @festacrewolada por palavra-chave, na mesma estrutura do Metodo Seta (@consorcioparaleigos): o site guarda as automacoes e o n8n conversa com a Graph API do Instagram.
+
+- Painel em `crewolada.com/manychat` (login do admin): liga/desliga, automacoes (palavras-chave, canais, posts especificos, resposta publica com variacoes, mensagem no Direct com ate 3 botoes), simulador e historico.
+- Ja vem com 5 automacoes da festa: Ingressos, Data e local, Comunidade, Meu ingresso e Contratar. Data, local, preco do lote, ingressos restantes e situacao das vendas saem do evento atual na hora (`{evento}`, `{data}`, `{local}`, `{preco}`, `{link}`, `{situacao}`...).
+- Comentarios e respostas a story: dispara quando o texto **contem** a palavra-chave. Direct: so quando a mensagem **e exatamente** a palavra-chave; o resto segue para o Agente de IA (`/bot`).
+- **Conexao direta (ativa os comentarios sem mexer no n8n):** no painel, cole o token do Instagram do @festacrewolada (ou defina `INSTAGRAM_ACCESS_TOKEN`). Ao conectar, o site responde na hora os comentarios com palavra-chave do ultimo post e depois verifica os 3 ultimos posts a cada 2 min (`INSTAGRAM_POLL_SECONDS`). Primeiro manda o Direct (resposta privada da Meta, ate 7 dias depois do comentario) e so entao responde em publico. Pula comentarios que a conta ja respondeu. Aceita token `IGAA...` (Instagram Login) ou `EAA...` (Facebook/Pagina).
+- n8n (Direct e stories): para cada comentario/Direct/story chame `POST /api/n8n/manychat` (header `X-Callback-Secret`) com `{ tipo, texto, usuario, nome, sender_id, comment_id, media_id }`. Com `match: true` a resposta traz `graph.responderComentario` e `graph.enviarDm` prontos (caminho + corpo) para enviar em `graph.instagram.com`. Sem match no Direct, segue para o agente.
+- O site ignora a propria conta (`INSTAGRAM_USERNAME`), nao responde duas vezes o mesmo comentario e espera 10 min antes de repetir a mesma automacao para a mesma pessoa.
+
 ## Configurando o webhook no Mercado Pago
 
 No painel do Mercado Pago (Suas integracoes > sua aplicacao > Webhooks), cadastre:

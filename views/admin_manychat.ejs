@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <title>ManyChat Instagram - Crewolada</title>
+  <%- include('partials/head') %>
+  <style>
+    .bt-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; padding: 18px; margin: 0 16px 16px; }
+    .bt-card h3 { margin: 0 0 4px; font-size: 18px; }
+    .bt-card > p.hint { margin: 0 0 14px; color: var(--text-dim); font-size: 14px; }
+    .bt-card label { display: block; font-size: 13px; font-weight: 700; margin-top: 12px; }
+    .bt-card input[type="text"], .bt-card input[type="url"], .bt-card textarea, .bt-card select { width: 100%; margin-top: 6px; box-sizing: border-box; }
+    .bt-card textarea { min-height: 90px; resize: vertical; font-family: inherit; }
+    .bt-switch { display: flex; align-items: center; gap: 10px; font-weight: 700; margin-top: 8px !important; }
+    .bt-switch input { width: 20px; height: 20px; margin: 0; }
+    .bt-checks { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+    .bt-checks label { display: flex; align-items: center; gap: 6px; font-weight: 600; margin-top: 8px; }
+    .bt-checks input { width: 18px; height: 18px; margin: 0; }
+    .bt-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 14px; }
+    .bt-row button { width: auto; margin: 0; padding: 10px 18px; }
+    .bt-row form { margin: 0; }
+    .bt-item { border-top: 1px solid rgba(255, 255, 255, 0.08); padding: 14px 0; }
+    .bt-item:first-of-type { border-top: 0; }
+    .bt-item.off { opacity: 0.55; }
+    .bt-item h4 { margin: 0; font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .bt-item .tx { margin: 6px 0 0; color: var(--text-dim); font-size: 14px; white-space: pre-wrap; }
+    .bt-item .bt-row { margin-top: 8px; }
+    .bt-item .bt-row button { padding: 6px 12px; font-size: 13px; }
+    .bt-item details summary, .bt-card details summary { cursor: pointer; color: var(--accent); font-size: 13px; margin-top: 8px; }
+    .bt-meta { color: var(--text-dim); font-size: 12px; margin-top: 4px; font-weight: 400; }
+    .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.1); }
+    .tag.on { background: rgba(34, 197, 94, 0.18); color: #86efac; }
+    .tag.kw { background: rgba(255, 255, 255, 0.06); font-weight: 600; }
+    .kws { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .bt-pre { margin-top: 10px; white-space: pre-wrap; font-size: 13px; background: rgba(0, 0, 0, 0.35); border-radius: 10px; padding: 12px; overflow-x: auto; }
+    .bt-grid2 { display: grid; grid-template-columns: 1fr 2fr; gap: 8px; }
+    .vars, .log { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+    .vars td:first-child { width: 9.5em; }
+    .vars td, .log td { white-space: normal; }
+    .vars td { padding: 6px 4px; border-top: 1px solid rgba(255, 255, 255, 0.06); vertical-align: top; overflow-wrap: anywhere; }
+    .vars td:first-child { white-space: nowrap; font-family: ui-monospace, monospace; color: var(--accent); }
+    .chat { margin-top: 12px; display: grid; gap: 8px; }
+    .bubble { background: rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 10px 12px; font-size: 14px; white-space: pre-wrap; }
+    .bubble .btns { display: grid; gap: 6px; margin-top: 10px; }
+    .bubble .btns a { display: block; text-align: center; padding: 8px; border-radius: 10px; background: rgba(255, 255, 255, 0.12); color: var(--text); text-decoration: none; font-weight: 700; font-size: 13px; }
+    .bubble-label { font-size: 12px; color: var(--text-dim); }
+    .log td { overflow-wrap: anywhere; padding: 6px 4px; border-top: 1px solid rgba(255, 255, 255, 0.06); vertical-align: top; }
+    .flash { margin: 0 16px 16px; padding: 12px 16px; border-radius: 12px; background: rgba(34, 197, 94, 0.15); color: #86efac; font-size: 14px; }
+    .flash.err { background: rgba(251, 113, 133, 0.15); color: #fecdd3; }
+    ol.steps { margin: 8px 0 0; padding-left: 20px; font-size: 14px; color: var(--text-dim); }
+    ol.steps li { margin-bottom: 8px; }
+    ol.steps code, .bt-card p code { color: var(--text); }
+    @media (max-width: 560px) { .bt-grid2 { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <%
+    function fmt(iso) { return iso ? new Date(iso).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''; }
+    function regraForm(r) {
+      r = r || { ativo: true, nome: '', canais: ['comentario', 'story'], modo: 'contem', palavras: [], posts: [], respostasComentario: [], mensagem: '', botoes: [] };
+  %>
+      <form action="/manychat/regras" method="POST">
+        <% if (r.id) { %><input type="hidden" name="id" value="<%= r.id %>" /><% } %>
+        <label>Nome da automação<input type="text" name="nome" maxlength="80" value="<%= r.nome %>" placeholder="Ex.: Sorteio do Pré Reveillon" required /></label>
+        <label class="bt-switch"><input type="checkbox" name="ativo" <%= r.ativo ? 'checked' : '' %> /> Ativa</label>
+        <label>Onde dispara</label>
+        <div class="bt-checks">
+          <% canais.forEach(function (c) { %>
+            <label><input type="checkbox" name="canal_<%= c %>" <%= r.canais.includes(c) ? 'checked' : '' %> /> <%= canalLabel[c] %></label>
+          <% }) %>
+        </div>
+        <label>Como comparar (comentários e stories)
+          <select name="modo">
+            <option value="contem" <%= r.modo === 'contem' ? 'selected' : '' %>>O texto contém a palavra-chave</option>
+            <option value="exata" <%= r.modo === 'exata' ? 'selected' : '' %>>O texto é exatamente a palavra-chave</option>
+            <option value="qualquer" <%= r.modo === 'qualquer' ? 'selected' : '' %>>Qualquer comentário (use com "Só nestes posts")</option>
+          </select>
+        </label>
+        <label>Palavras-chave <span class="bt-meta">(separadas por vírgula; maiúsculas e acentos não importam. No Direct a mensagem tem de ser exatamente a palavra)</span>
+          <input type="text" name="palavras" maxlength="2000" value="<%= r.palavras.join(', ') %>" placeholder="ingresso, eu quero, link" />
+        </label>
+        <label>Só nestes posts/reels <span class="bt-meta">(opcional: links do post ou IDs de mídia, um por linha. Vazio = todos os posts)</span>
+          <textarea name="posts" style="min-height:60px" placeholder="https://www.instagram.com/p/XXXXXXXX/"><%= r.posts.join('\n') %></textarea>
+        </label>
+        <label>Resposta pública no comentário <span class="bt-meta">(uma variação por linha; o sistema sorteia uma para não parecer robô)</span>
+          <textarea name="respostasComentario" maxlength="3000" placeholder="Te mandei no Direct! 🔥"><%= r.respostasComentario.join('\n') %></textarea>
+        </label>
+        <label>Mensagem no Direct <span class="bt-meta">(até 640 caracteres depois de preencher as variáveis)</span>
+          <textarea name="mensagem" maxlength="1000" required placeholder="Oi {nome}! ..."><%= r.mensagem %></textarea>
+        </label>
+        <label>Botões do Direct <span class="bt-meta">(até <%= maxBotoes %>; texto até 20 caracteres; o link aceita variáveis como {link})</span></label>
+        <% for (var i = 0; i < maxBotoes; i++) { var b = r.botoes[i] || {}; %>
+          <div class="bt-grid2">
+            <input type="text" name="botao_titulo_<%= i %>" maxlength="20" value="<%= b.titulo || '' %>" placeholder="Texto do botão" />
+            <input type="text" name="botao_url_<%= i %>" maxlength="500" value="<%= b.url || '' %>" placeholder="https://... ou {link}" />
+          </div>
+        <% } %>
+        <div class="bt-row"><button type="submit"><%= r.id ? 'Salvar automação' : 'Criar automação' %></button></div>
+      </form>
+  <% } %>
+
+  <div class="page page-wide">
+    <header class="hero hero-sm">
+      <img class="logo logo-sm" src="/img/logo.jpg" alt="Crewolada" />
+      <h1>ManyChat · Instagram</h1>
+      <form action="/admin/logout" method="POST" class="logout-form"><button type="submit" class="link-btn">Sair</button></form>
+    </header>
+
+    <% if (msg === 'salvo') { %><div class="flash">Salvo. Vale a partir do próximo comentário ou mensagem.</div><% } %>
+    <% if (msg === 'regra_incompleta') { %><div class="flash err">Preencha o nome, a mensagem do Direct e pelo menos uma palavra-chave (ou escolha "Qualquer comentário").</div><% } %>
+    <% if (msg === 'limite') { %><div class="flash err">Limite de automações atingido. Remova alguma antes de criar outra.</div><% } %>
+
+    <% if (msg === 'token_vazio') { %><div class="flash err">Cole o token de acesso do Instagram.</div><% } %>
+    <% if (msg === 'token_invalido') { %><div class="flash err">O Instagram recusou esse token: <%= erro %></div><% } %>
+    <% if (msg === 'conectado') { %><div class="flash">Instagram conectado como @<%= ig.username %>. Os comentários do último post já foram verificados (veja o resultado abaixo).</div><% } %>
+    <% if (msg === 'varrido') { %><div class="flash">Verificação concluída. Veja o resultado abaixo.</div><% } %>
+
+    <section class="bt-card">
+      <h3>Automação do @festacrewolada</h3>
+      <p class="hint">Quem comentar uma palavra-chave num post, mandar no Direct ou responder um story recebe as informações da festa no Direct, com botões. Datas, local, preço do lote e ingressos restantes vêm do site na hora. No Direct, o que não bater com nenhuma palavra continua indo para o <a href="/bot" style="color:var(--accent)">Agente de IA</a>.</p>
+      <form action="/manychat/geral" method="POST">
+        <label class="bt-switch"><input type="checkbox" name="ativo" <%= mc.ativo ? 'checked' : '' %> /> Automação ligada</label>
+        <label class="bt-switch"><input type="checkbox" name="responderComentario" <%= mc.responderComentario ? 'checked' : '' %> /> Responder também em público no comentário ("Te mandei no Direct!")</label>
+        <div class="bt-row"><button type="submit">Salvar</button></div>
+      </form>
+    </section>
+
+    <section class="bt-card" id="instagram">
+      <h3>Conexão com o Instagram</h3>
+      <% if (ig.conectado) { %>
+        <p class="hint">
+          <span class="tag on">conectado</span> <%= ig.username ? '@' + ig.username : '' %><%= ig.viaEnv ? ' · token da variável INSTAGRAM_ACCESS_TOKEN' : '' %><br />
+          O site lê os comentários dos 3 últimos posts a cada <%= ig.intervaloMin %> min e responde os que tiverem palavra-chave (Direct com botões + resposta pública). Comentários com mais de 7 dias ficam de fora, porque a Meta só deixa mandar Direct até 7 dias depois do comentário.
+          <% if (ig.ultimaVarredura) { %><br /><span class="bt-meta">Última verificação: <%= fmt(ig.ultimaVarredura) %></span><% } %>
+        </p>
+        <% if (ig.erro) { %><div class="flash err" style="margin:0 0 12px">Último erro do Instagram: <%= ig.erro %></div><% } %>
+        <% if (ig.resumo) { %>
+          <p class="bt-meta">Resultado da última verificação manual (<%= fmt(ig.resumo.em) %>):
+            <% if (ig.resumo.ok === false && ig.resumo.erro) { %>erro: <%= ig.resumo.erro %><% } else { %><%= ig.resumo.posts %> post(s), <%= ig.resumo.comentarios %> comentário(s) dos últimos 7 dias, <b><%= ig.resumo.respondidos %> respondido(s)</b><%= ig.resumo.erros && ig.resumo.erros.length ? ', ' + ig.resumo.erros.length + ' com erro' : '' %>.<% } %>
+          </p>
+          <% (ig.resumo.erros || []).forEach(function (e) { %><p class="bt-meta" style="color:#fca5a5"><%= e %></p><% }) %>
+        <% } %>
+        <div class="bt-row">
+          <form action="/manychat/instagram/varrer" method="POST"><input type="hidden" name="escopo" value="ultimo" /><button type="submit">Responder comentários do último post agora</button></form>
+          <form action="/manychat/instagram/varrer" method="POST"><input type="hidden" name="escopo" value="recentes" /><button type="submit" class="secondary">Últimos 5 posts</button></form>
+        </div>
+        <form action="/manychat/instagram/auto" method="POST" class="bt-row">
+          <label class="bt-switch" style="margin:0 !important"><input type="checkbox" name="verificarAuto" <%= ig.verificarAuto ? 'checked' : '' %> onchange="this.form.submit()" /> Verificar comentários novos automaticamente</label>
+        </form>
+        <% if (!ig.viaEnv) { %>
+          <form action="/manychat/instagram/desconectar" method="POST" class="bt-row" onsubmit="return confirm('Desconectar o Instagram?')"><button type="submit" class="secondary">Desconectar</button></form>
+        <% } %>
+      <% } else { %>
+        <p class="hint">Cole o token de acesso do @festacrewolada, que pode ser o mesmo da credencial do Instagram usada no n8n. Assim que conectar, o site responde os comentários com palavra-chave do último post e passa a verificar os novos a cada <%= ig.intervaloMin %> min.</p>
+        <form action="/manychat/instagram/conectar" method="POST">
+          <label>Token de acesso <span class="bt-meta">(começa com IGAA… ou EAA…. Precisa das permissões de comentários e mensagens. Fica só no servidor e não aparece de novo nesta página)</span>
+            <input type="password" name="token" autocomplete="off" required />
+          </label>
+          <div class="bt-row"><button type="submit">Conectar e responder o último post</button></div>
+        </form>
+      <% } %>
+    </section>
+
+    <section class="bt-card" id="testar">
+      <h3>Testar</h3>
+      <p class="hint">Simula uma mensagem e mostra o que a pessoa receberia. Não envia nada nem conta disparo.</p>
+      <form id="test-form">
+        <div class="bt-grid2">
+          <select name="canal">
+            <% canais.forEach(function (c) { %><option value="<%= c %>"><%= canalLabel[c] %></option><% }) %>
+          </select>
+          <input type="text" name="texto" maxlength="500" placeholder='Ex.: "EU QUERO 🔥"' required />
+        </div>
+        <label>ID da mídia ou link do post <span class="bt-meta">(opcional, para testar automações de um post)</span><input type="text" name="media_id" maxlength="300" /></label>
+        <div class="bt-row"><button type="submit">Simular</button></div>
+      </form>
+      <div id="test-out" class="chat" aria-live="polite"></div>
+    </section>
+
+    <section class="bt-card" id="regras">
+      <h3>Automações (<%= mc.regras.length %>)</h3>
+      <p class="hint">A primeira automação que combinar é a usada, de cima para baixo. Automações de um post específico têm prioridade sobre as gerais.</p>
+      <% mc.regras.forEach(function (r, idx) { %>
+        <div class="bt-item <%= r.ativo ? '' : 'off' %>" id="r-<%= r.id %>">
+          <h4>
+            <%= r.nome %>
+            <span class="tag <%= r.ativo ? 'on' : '' %>"><%= r.ativo ? 'ativa' : 'pausada' %></span>
+            <% r.canais.forEach(function (c) { %><span class="tag"><%= canalLabel[c] %></span><% }) %>
+            <% if (r.posts.length) { %><span class="tag"><%= r.posts.length %> post(s)</span><% } %>
+          </h4>
+          <div class="kws">
+            <% if (r.modo === 'qualquer') { %><span class="tag kw">qualquer comentário</span><% } %>
+            <% r.palavras.forEach(function (p) { %><span class="tag kw"><%= p %></span><% }) %>
+          </div>
+          <p class="bt-meta"><%= r.disparos || 0 %> disparo(s)<%= r.ultimoDisparo ? ' · último em ' + fmt(r.ultimoDisparo) : '' %></p>
+          <details <%= editar === r.id ? 'open' : '' %>>
+            <summary>Editar</summary>
+            <% regraForm(r) %>
+          </details>
+          <div class="bt-row">
+            <form action="/manychat/regras/<%= r.id %>/alternar" method="POST"><button type="submit" class="secondary"><%= r.ativo ? 'Pausar' : 'Ativar' %></button></form>
+            <% if (idx > 0) { %><form action="/manychat/regras/<%= r.id %>/subir" method="POST"><button type="submit" class="secondary" aria-label="Subir">↑</button></form><% } %>
+            <% if (idx < mc.regras.length - 1) { %><form action="/manychat/regras/<%= r.id %>/descer" method="POST"><button type="submit" class="secondary" aria-label="Descer">↓</button></form><% } %>
+            <form action="/manychat/regras/<%= r.id %>/zerar" method="POST"><button type="submit" class="secondary">Zerar contador</button></form>
+            <form action="/manychat/regras/<%= r.id %>/excluir" method="POST" onsubmit="return confirm('Excluir esta automação?')"><button type="submit" class="secondary">Excluir</button></form>
+          </div>
+        </div>
+      <% }) %>
+      <details style="margin-top:12px">
+        <summary>+ Nova automação</summary>
+        <% regraForm(null) %>
+      </details>
+      <form action="/manychat/restaurar-padrao" method="POST" class="bt-row"><button type="submit" class="secondary">Recolocar automações padrão que faltam</button></form>
+    </section>
+
+    <section class="bt-card">
+      <h3>Variáveis</h3>
+      <p class="hint">Use nas mensagens, respostas e links dos botões. Valores de agora:</p>
+      <table class="vars">
+        <% Object.keys(vars).forEach(function (k) { %><tr><td>{<%= k %>}</td><td><%= vars[k] %></td></tr><% }) %>
+      </table>
+    </section>
+
+    <section class="bt-card" id="n8n">
+      <h3>Direct e stories pelo n8n (opcional)</h3>
+      <p class="hint">Os comentários já funcionam pela conexão acima. Para as palavras-chave no Direct e nas respostas a story, o workflow do n8n que recebe o Direct pergunta ao site o que responder, na mesma estrutura do Método Seta.</p>
+      <ol class="steps">
+        <li>No app da Meta do @festacrewolada, assine os campos <code>comments</code>, <code>messages</code> e <code>live_comments</code> (se quiser lives) do webhook do Instagram, apontando para o workflow do n8n que já recebe o Direct.</li>
+        <li>No n8n, para cada evento, chame <code>POST <%= endpoint %></code> com o header <code>x-callback-secret</code> <%= secretConfigurado ? '(o mesmo N8N_CALLBACK_SECRET das outras integrações)' : '(defina N8N_CALLBACK_SECRET no servidor)' %> e o corpo:
+          <div class="bt-pre">{
+  "tipo": "comentario" | "dm" | "story",
+  "texto": "{{ comment.text ou message.text }}",
+  "usuario": "{{ from.username }}",
+  "nome": "{{ nome, se tiver }}",
+  "sender_id": "{{ sender.id / from.id }}",
+  "comment_id": "{{ comment id (só comentário) }}",
+  "media_id": "{{ media.id (só comentário) }}"
+}</div>
+        </li>
+        <li>Se a resposta tiver <code>match: true</code>, envie para <code>https://graph.instagram.com/v21.0</code> com o token do @festacrewolada:
+          <div class="bt-pre">POST {{ graph.responderComentario.path }}  body: {{ graph.responderComentario.body }}   (se não for null)
+POST {{ graph.enviarDm.path }}             body: {{ graph.enviarDm.body }}</div>
+          O corpo do Direct já vem pronto (texto + botões). No comentário ele usa a resposta privada da Meta (1 por comentário, até 7 dias depois).
+        </li>
+        <li>Se vier <code>match: false</code> e for Direct, siga para o Agente de IA como hoje. Ignore mensagens com <code>is_echo</code> (enviadas pela própria conta).</li>
+      </ol>
+      <p class="bt-meta">O site já ignora a própria conta (@<%= process.env.INSTAGRAM_USERNAME || 'festacrewolada' %>), não responde duas vezes o mesmo comentário e espera 10 minutos antes de repetir a mesma automação para a mesma pessoa.</p>
+    </section>
+
+    <section class="bt-card" id="log">
+      <h3>Últimos disparos</h3>
+      <% if (!mc.log.length) { %>
+        <p class="hint">Nada ainda. Os comentários e stories que chegarem aparecem aqui (as conversas do Direct que vão para o agente não).</p>
+      <% } else { %>
+        <table class="log">
+          <% mc.log.slice(0, 80).forEach(function (l) { %>
+            <tr>
+              <td class="bt-meta" style="white-space:nowrap"><%= fmt(l.em) %></td>
+              <td><%= canalLabel[l.canal] || l.canal %><br /><span class="bt-meta"><%= l.usuario ? '@' + l.usuario : '' %></span></td>
+              <td><%= l.texto %></td>
+              <td><%= l.regra ? l.regra : '—' %><% if (l.erro) { %><br /><span class="bt-meta" style="color:#fca5a5">não enviado: <%= l.erro %></span><% } else if (l.dm) { %><br /><span class="bt-meta" style="color:#86efac">✓ Direct<%= l.comentario ? ' + resposta' : '' %></span><% } %></td>
+            </tr>
+          <% }) %>
+        </table>
+        <form action="/manychat/log/limpar" method="POST" class="bt-row" onsubmit="return confirm('Limpar o histórico?')"><button type="submit" class="secondary">Limpar histórico</button></form>
+      <% } %>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById('test-form');
+      var out = document.getElementById('test-out');
+      function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        out.innerHTML = '';
+        var body = new URLSearchParams(new FormData(form));
+        try {
+          var r = await fetch('/manychat/testar', { method: 'POST', body: body });
+          var d = await r.json();
+          if (!d.match) { out.appendChild(el('p', 'bt-meta', 'Nenhuma automação combinou. No Direct, a mensagem iria para o Agente de IA.')); return; }
+          out.appendChild(el('p', 'bt-meta', 'Automação: ' + d.regra.nome));
+          if (d.comentario) { out.appendChild(el('span', 'bubble-label', 'Resposta pública no comentário')); out.appendChild(el('div', 'bubble', d.comentario)); }
+          if (d.dm) {
+            out.appendChild(el('span', 'bubble-label', 'Direct'));
+            var b = el('div', 'bubble', d.dm.texto);
+            if (d.dm.botoes.length) {
+              var btns = el('div', 'btns');
+              d.dm.botoes.forEach(function (x) { var a = el('a', null, x.titulo); a.href = x.url; a.target = '_blank'; a.rel = 'noopener'; btns.appendChild(a); });
+              b.appendChild(btns);
+            }
+            out.appendChild(b);
+          }
+        } catch (err) { out.appendChild(el('p', 'bt-meta', 'Não foi possível testar agora.')); }
+      });
+    })();
+  </script>
+</body>
+</html>
