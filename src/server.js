@@ -40,6 +40,8 @@ function buildWhatsappTicketLink() {
 const { approveOrder } = require('./fulfillment');
 const { registerCortesiaRoutes } = require('./cortesia');
 const { registerBotRoutes } = require('./bot');
+const { registerAutomacoesRoutes, startAutomacoesScheduler } = require('./automacoes');
+const waFila = require('./waFila');
 const { registerManychatRoutes } = require('./manychat');
 const { registerContabilidadeRoutes } = require('./contabilidade');
 const { registerRelatorioRoutes } = require('./relatorio');
@@ -90,6 +92,12 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Files uploaded to the AI agent panel arrive as base64 JSON (up to 8 MB raw).
 app.use('/bot/arquivos', express.json({ limit: '12mb' }));
+// The WhatsApp webhook keeps the raw body so it can be forwarded byte-for-byte
+// to n8n (src/automacoes.js).
+app.use('/api/webhooks/whatsapp', express.json({
+  limit: '5mb',
+  verify: (req, res, buf) => { req.rawBody = Buffer.from(buf); },
+}));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -1731,6 +1739,18 @@ registerEventosRoutes(app, {
 registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerSorteioRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerMusicaPersonalizadaRoutes(app, { eventInfo });
+waFila.registerWaFilaRoutes(app, { requireAdminAuth });
+// WhatsApp sweep: answers chats nobody replied to. Ticket requests go through the same
+// lookup the n8n bot calls (sends the PDF and returns the text to reply).
+require('./varreduraWa').registerVarreduraRoutes(app, {
+  requireAdminAuth,
+  buscarEnviarIngresso: async (telefone, mensagem) => (await require('axios').post(
+    `http://127.0.0.1:${PORT}/api/n8n/ingresso-por-telefone`,
+    { telefone, mensagem },
+    { headers: { 'x-callback-secret': process.env.N8N_CALLBACK_SECRET || '' }, timeout: 120000, proxy: false, validateStatus: () => true },
+  )).data,
+});
+registerAutomacoesRoutes(app, { requireAdminAuth, eventInfo, parseDatetimeLocalAsBrasilia, formatDatetimeBrasiliaDisplay });
 
 // Lotes now live in the Ingressos tab (old links keep working).
 app.get('/admin/lotes', requireAdminAuth, (req, res) => {
@@ -1747,6 +1767,8 @@ app.get('/admin/mensagens', requireAdminAuth, (req, res) => {
     eventStartAtLocal: formatDatetimeLocalBrasilia(db.eventStartAt),
     remindersSent: db.remindersSent || {},
     campaigns: campaigns.map((c) => ({ ...c, sendAtLocal: formatDatetimeLocalBrasilia(c.sendAt) })),
+    waResumo: waFila.resumo(db),
+    fmtDisplay: (iso) => (iso ? formatDatetimeBrasiliaDisplay(iso) : ''),
     musicaAbandonoHoras: Number(process.env.MUSICA_ABANDONO_HORAS || 2),
     musicaRecompraDias: Number(process.env.MUSICA_RECOMPRA_DIAS || 7),
     saved: req.query.saved === '1',
@@ -2046,4 +2068,6 @@ app.listen(PORT, () => {
   startReminderScheduler();
   startMusicaFollowUpScheduler();
   musicas.startMusicScheduler();
+  startAutomacoesScheduler();
+  waFila.startWaFilaScheduler();
 });

@@ -30,6 +30,7 @@
       <a href="/admin/sorteio" class="tab">Sorteio</a>
       <a href="/downloads" class="tab">Músicas</a>
       <a href="/admin/criesuamusica" class="tab">Música IA</a>
+      <a href="/admin/automacoes" class="tab">Automações</a>
     </nav>
 
     <main class="card">
@@ -54,7 +55,7 @@
         </div>
 
         <h3>Lembretes automaticos</h3>
-        <p class="hint" style="margin-top:0">Enviados uma unica vez para todos os compradores pagos. Use {{nome}} na mensagem. Pode escrever variações separadas por <code>|||</code> para variar o texto entre destinatários.</p>
+        <p class="hint" style="margin-top:0">Enviados uma unica vez para todos os compradores pagos. Use {{nome}} na mensagem. Versões diferentes são criadas automaticamente no envio; para revisar antes, use <em>Gerar versões</em> (ficam separadas por <code>|||</code>).</p>
 
         <div class="template-box">
           <label>
@@ -109,9 +110,60 @@
       </form>
     </main>
 
+    <main class="card" id="protecao">
+      <% const w = waResumo, c = w.cfg; %>
+      <h3 style="margin-top:0">Proteção do WhatsApp (envios em massa)</h3>
+      <p class="hint" style="margin-top:0">Lembretes e campanhas não saem todos de uma vez: entram numa fila que manda <strong>uma mensagem a cada <%= Math.round(c.intervaloSeg / 60 * 10) / 10 %> min</strong> (com variação aleatória de ±<%= c.variacaoPct %>%), só das <%= c.janelaInicio %>h às <%= c.janelaFim %>h e até <%= c.limiteDiario %> por dia. Cada pessoa recebe uma <strong>versão diferente</strong> do texto (<%= c.versoes %> versões<%= c.iaAtiva ? ', criadas pela IA' : '' %>), nunca a mesma duas vezes seguidas, e quem respondeu SAIR não recebe. Quem não tem WhatsApp recebe o e-mail na hora.</p>
+
+      <div class="stats-row">
+        <div class="stat-box"><span class="stat-label">Na fila</span><span class="stat-value"><%= w.pendentes %></span></div>
+        <div class="stat-box"><span class="stat-label">Enviados hoje</span><span class="stat-value"><%= w.enviadosHoje %> / <%= c.limiteDiario %></span></div>
+        <div class="stat-box"><span class="stat-label">Situação</span><span class="stat-value" style="font-size:16px"><%= c.pausado ? 'Pausado' : (w.pendentes ? 'Enviando' : 'Livre') %></span></div>
+        <div class="stat-box"><span class="stat-label">Fila termina em</span><span class="stat-value" style="font-size:16px"><%= !w.pendentes ? '—' : (w.dias > 1 ? w.dias + ' dias' : (w.duracaoMin >= 60 ? Math.round(w.duracaoMin / 6) / 10 + ' h' : w.duracaoMin + ' min')) %></span></div>
+      </div>
+      <% if (w.pendentes && !c.pausado && w.proximoEnvioEm) { %><p class="hint">Próximo envio: <%= fmtDisplay(w.proximoEnvioEm) %>.</p><% } %>
+      <p class="hint">Com esse ritmo cabem cerca de <strong><%= w.porDia %> mensagens por dia</strong>. Para listas grandes o envio se estende por mais de um dia — por isso o lembrete de "1 hora antes" só chega a todos se a lista for pequena.</p>
+
+      <div class="btn-row" style="flex-wrap:wrap">
+        <% if (c.pausado) { %>
+          <form action="/api/admin/whatsapp-envio/retomar" method="POST" style="flex:1"><button type="submit">Retomar envios</button></form>
+        <% } else { %>
+          <form action="/api/admin/whatsapp-envio/pausar" method="POST" style="flex:1"><button type="submit" class="btn-secondary">Pausar envios</button></form>
+        <% } %>
+        <% if (w.falhas) { %><form action="/api/admin/whatsapp-envio/reenviar-falhas" method="POST" style="flex:1"><button type="submit" class="btn-secondary">Reenviar <%= w.falhas %> falha(s)</button></form><% } %>
+        <% if (w.pendentes) { %><form action="/api/admin/whatsapp-envio/cancelar" method="POST" style="flex:1" onsubmit="return confirm('Cancelar todas as mensagens que ainda estão na fila?')"><button type="submit" class="btn-danger">Cancelar fila</button></form><% } %>
+      </div>
+
+      <% if (w.lotes.length) { %>
+        <div class="table-wrap" style="margin-top:16px"><table>
+          <thead><tr><th>Envio</th><th>Criado</th><th>Enviados</th><th>Na fila</th><th>Falhas</th></tr></thead>
+          <tbody>
+            <% w.lotes.forEach(function(l) { %>
+              <tr title="<%= l.versoes.join('\n\n---\n\n') %>"><td><%= l.titulo %> <span class="hint">(<%= l.versoes.length %> versões)</span></td><td><%= fmtDisplay(l.criadoEm) %></td><td><%= l.enviados %></td><td><%= l.pendentes %></td><td><%= l.falhas %></td></tr>
+            <% }) %>
+          </tbody>
+        </table></div>
+      <% } %>
+
+      <form action="/api/admin/whatsapp-envio/config" method="POST" class="form" style="margin-top:20px">
+        <h3 style="margin:0">Ajustes</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <label>Intervalo entre mensagens (segundos)<input type="number" name="intervaloSeg" min="30" max="3600" value="<%= c.intervaloSeg %>" /></label>
+          <label>Variação aleatória do intervalo (%)<input type="number" name="variacaoPct" min="0" max="60" value="<%= c.variacaoPct %>" /></label>
+          <label>Enviar a partir de (hora)<input type="number" name="janelaInicio" min="0" max="23" value="<%= c.janelaInicio %>" /></label>
+          <label>Enviar até (hora)<input type="number" name="janelaFim" min="0" max="24" value="<%= c.janelaFim %>" /></label>
+          <label>Limite de mensagens por dia<input type="number" name="limiteDiario" min="1" max="2000" value="<%= c.limiteDiario %>" /></label>
+          <label>Versões diferentes de cada mensagem<input type="number" name="versoes" min="1" max="10" value="<%= c.versoes %>" /></label>
+        </div>
+        <label class="radio-row"><input type="checkbox" name="iaAtiva" <%= c.iaAtiva ? 'checked' : '' %> /> Criar as versões com IA (se a IA falhar, o texto é reescrito automaticamente)</label>
+        <p class="hint" style="margin:0">Recomendado: no mínimo 120 s, até 150 por dia e 5 versões. Diminuir o intervalo ou aumentar o limite aumenta o risco de bloqueio.</p>
+        <button type="submit">Salvar ajustes</button>
+      </form>
+    </main>
+
     <main class="card">
       <h3>Campanhas agendadas</h3>
-      <p class="hint" style="margin-top:0">Crie uma mensagem avulsa (WhatsApp + e-mail) com data/hora livre para disparar para o público escolhido. Use {{nome}} na mensagem (e {{link}} se escolher o público de música). Para reduzir risco de bloqueio no WhatsApp, escreva 3-5 variações do mesmo texto separadas por <code>|||</code> — uma é sorteada por destinatário. Útil para datas comemorativas (Dia dos Namorados, Natal, etc.) incentivando quem já comprou uma música a criar outra.</p>
+      <p class="hint" style="margin-top:0">Crie uma mensagem avulsa (WhatsApp + e-mail) com data/hora livre para disparar para o público escolhido. Use {{nome}} na mensagem (e {{link}} se escolher o público de música). O envio pelo WhatsApp segue a Proteção do WhatsApp acima: versões diferentes são criadas automaticamente (ou escreva as suas separadas por <code>|||</code>, ou use o botão Gerar versões). Útil para datas comemorativas (Dia dos Namorados, Natal, etc.) incentivando quem já comprou uma música a criar outra.</p>
 
       <form action="/api/admin/campanhas" method="POST" class="form">
         <label>
@@ -162,5 +214,29 @@
       </div>
     </main>
   </div>
+  <script>
+    // "Gerar versões" next to each WhatsApp message box: the versions come back
+    // separated by ||| so they can be reviewed and edited before saving.
+    document.querySelectorAll('textarea[name="dias5"], textarea[name="dia1"], textarea[name="diaEvento"], textarea[name="hora1"], textarea[name="mensagem"]').forEach(function (ta) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'btn-secondary';
+      b.style.cssText = 'width:auto;margin-top:6px;padding:6px 12px;font-size:12px';
+      b.textContent = 'Gerar versões';
+      b.addEventListener('click', async function () {
+        b.disabled = true; b.textContent = 'Gerando…';
+        try {
+          var r = await fetch('/api/admin/mensagens/versoes', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mensagem: ta.value }) });
+          var d = await r.json();
+          if (!r.ok) throw new Error(d.error || 'Erro');
+          ta.value = d.versoes.join('\n|||\n');
+          ta.rows = Math.min(16, d.versoes.length * 3);
+          b.textContent = d.versoes.length + ' versões — revise e salve';
+        } catch (e) { b.textContent = e.message; }
+        b.disabled = false;
+      });
+      ta.insertAdjacentElement('afterend', b);
+    });
+  </script>
 </body>
 </html>

@@ -65,6 +65,17 @@ Use `{{nome}}` em qualquer uma dessas mensagens para personalizar com o nome do 
 
 `/vendas` e `/vendas/mensagens` continuam funcionando como redirecionamento para `/admin` e `/admin/mensagens`, por compatibilidade com links antigos.
 
+### Automações do WhatsApp (`/admin/automacoes`)
+O Instagram tem uma automação única, em `/manychat` (abaixo). Esta aba cuida só do WhatsApp (Evolution API):
+
+- **Respostas automáticas** por palavra-chave (ou resposta padrão), com simulador, limite por pessoa e variações com `|||`.
+- **Disparos WhatsApp** para compradores, contatos ou lista colada, com fila, intervalo, janela de horário, limite diário e descadastro **SAIR** (VOLTAR reativa).
+- **Sem resposta (varredura)**: lê as conversas recentes da instância e lista as que terminam com mensagem do cliente sem resposta há mais de X horas. Quem pediu ingresso recebe a mesma resposta do bot (`/api/n8n/ingresso-por-telefone`: PDF + "Encontrei…", ou pedido de CPF/e-mail); os outros, uma mensagem geral editável. Envio de um em um, no ritmo da Proteção do WhatsApp.
+- **Conexões**: URL, API key e instância da Evolution API e a URL do webhook (`MESSAGES_UPSERT`, "Webhook by events" desligado), com repasse opcional ao n8n.
+
+### Proteção do WhatsApp (`/admin/mensagens`)
+Lembretes e campanhas entram numa fila (`src/waFila.js`): uma mensagem a cada 2 min por padrão (±20% aleatório), das 9h às 21h, até 150 por dia, tudo editável no painel. Cada destinatário recebe uma versão diferente do texto (5 versões: as escritas com `|||` + geradas por IA no webhook n8n `crewolada-variacoes` / `N8N_VARIACOES_WEBHOOK_URL`, com reescrita automática se a IA falhar). Botão **Gerar versões** em cada mensagem, pausar/retomar/cancelar a fila e reenviar falhas. Quem não tem WhatsApp recebe o e-mail na hora.
+
 ## Integracao com n8n (ja configurada)
 
 O workflow **"WORKFLOW CREWOLADA"** no n8n tem 4 gatilhos (webhooks):
