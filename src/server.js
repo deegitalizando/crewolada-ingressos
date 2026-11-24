@@ -1746,6 +1746,8 @@ registerPesquisaRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasili
 registerSorteioRoutes(app, { requireAdminAuth, eventInfo, formatDatetimeBrasiliaDisplay });
 registerMusicaPersonalizadaRoutes(app, { eventInfo });
 waFila.registerWaFilaRoutes(app, { requireAdminAuth });
+const emailCampanha = require('./emailCampanha');
+emailCampanha.registerEmailCampanhaRoutes(app, { requireAdminAuth });
 // WhatsApp sweep: answers chats nobody replied to. Ticket requests go through the same
 // lookup the n8n bot calls (sends the PDF and returns the text to reply).
 require('./varreduraWa').registerVarreduraRoutes(app, {
@@ -1774,6 +1776,9 @@ app.get('/admin/mensagens', requireAdminAuth, (req, res) => {
     remindersSent: db.remindersSent || {},
     campaigns: campaigns.map((c) => ({ ...c, sendAtLocal: formatDatetimeLocalBrasilia(c.sendAt) })),
     waResumo: waFila.resumo(db),
+    emailResumo: emailCampanha.resumo(db),
+    emailOk: req.query.emailOk || null,
+    emailErro: req.query.emailErro || null,
     fmtDisplay: (iso) => (iso ? formatDatetimeBrasiliaDisplay(iso) : ''),
     musicaAbandonoHoras: Number(process.env.MUSICA_ABANDONO_HORAS || 2),
     musicaRecompraDias: Number(process.env.MUSICA_RECOMPRA_DIAS || 7),

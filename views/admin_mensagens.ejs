@@ -110,6 +110,58 @@
       </form>
     </main>
 
+    <main class="card" id="email">
+      <% const er = emailResumo, ep = er.padroes; %>
+      <h3 style="margin-top:0">Campanha por e-mail (com o flyer)</h3>
+      <p class="hint" style="margin-top:0">Um e-mail bonito, com o flyer do evento, data, local e botão de compra, para <strong>todos os <%= er.total %> contatos</strong> com e-mail do site: compradores e acompanhantes, inscrições gratuitas, música, sorteio, pesquisa, convites e afiliados. Repetidos contam uma vez só<%= er.optout ? `, e ${er.optout} pessoa(s) que pediram para sair ficam de fora` : '' %>. Sai um e-mail a cada ~<%= er.config.intervaloSeg %> s, até <%= er.config.limiteDiario %> por dia, e cada e-mail tem o link "Não quero mais receber".</p>
+      <% if (emailOk) { %><div class="alert" style="background:rgba(34,197,94,0.15);border-color:#22c55e;color:#86efac"><%= emailOk %></div><% } %>
+      <% if (emailErro) { %><div class="alert"><%= emailErro %></div><% } %>
+
+      <% er.envios.forEach(function(e) { %>
+        <div class="template-box" style="background:#1a1a1a;border:1px solid var(--card-border);border-radius:6px;padding:12px 14px">
+          <strong><%= e.conteudo.assunto %></strong> — <%= e.status %> · <%= e.enviados %> de <%= e.total %> enviados<%= e.falhas ? ' · ' + e.falhas + ' falhas' : '' %><%= e.pendentes ? ' · ' + e.pendentes + ' na fila' : '' %>
+          <div class="hint">Criada em <%= fmtDisplay(e.criadoEm) %></div>
+          <% if (e.aviso) { %><div class="hint" style="color:#fca5a5"><%= e.aviso %></div><% } %>
+          <% e.ultimasFalhas.forEach(function(f) { %><div class="hint" style="color:#fca5a5"><%= f.email %>: <%= f.erro %></div><% }) %>
+          <div class="btn-row">
+            <% if (e.status === 'enviando') { %><form action="/api/admin/email-campanha/<%= e.id %>/pausar" method="POST"><button class="btn-secondary" style="width:auto;padding:6px 12px;font-size:12px">Pausar</button></form><% } %>
+            <% if (e.status === 'pausado') { %><form action="/api/admin/email-campanha/<%= e.id %>/retomar" method="POST"><button style="width:auto;padding:6px 12px;font-size:12px">Retomar</button></form><% } %>
+            <% if (['enviando', 'pausado'].includes(e.status)) { %><form action="/api/admin/email-campanha/<%= e.id %>/cancelar" method="POST" onsubmit="return confirm('Cancelar o restante desta campanha?')"><button class="btn-danger" style="width:auto;padding:6px 12px;font-size:12px">Cancelar</button></form><% } %>
+          </div>
+        </div>
+      <% }) %>
+
+      <form method="POST" action="/api/admin/email-campanha" class="form" id="email-form">
+        <label>Assunto<input name="assunto" value="<%= ep.assunto %>" maxlength="150" /></label>
+        <label>Título (aparece grande, embaixo do flyer)<input name="titulo" value="<%= ep.titulo %>" maxlength="100" /></label>
+        <label>Texto (use {{nome}} para o primeiro nome; deixe uma linha em branco entre parágrafos)
+          <textarea name="texto" rows="7" style="background:#1a1a1a;border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:12px 14px;color:var(--text);font-size:14px;font-family:inherit"><%= ep.texto %></textarea>
+        </label>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px">
+          <label>Link da imagem do flyer<input name="flyerUrl" value="<%= ep.flyerUrl %>" /></label>
+          <label>Texto do botão<input name="botaoTexto" value="<%= ep.botaoTexto %>" maxlength="40" /></label>
+          <label>Link do botão<input name="botaoUrl" value="<%= ep.botaoUrl %>" /></label>
+        </div>
+        <div class="btn-row" style="flex-wrap:wrap">
+          <button type="submit" formaction="/admin/email-campanha/previa" formtarget="_blank" class="btn-secondary">Ver como fica</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+          <label style="flex:1 1 220px">Enviar um teste para<input type="email" name="emailTeste" placeholder="seu@email.com" /></label>
+          <button type="submit" formaction="/api/admin/email-campanha/teste" class="btn-secondary" style="width:auto;margin:0">Enviar teste</button>
+        </div>
+        <button type="submit" onclick="return confirm('Enviar este e-mail para todos os <%= er.total %> contatos?')">Enviar para todos (<%= er.total %>)</button>
+      </form>
+
+      <form method="POST" action="/api/admin/email-campanha/config" class="form" style="margin-top:16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+          <label>Intervalo entre e-mails (segundos)<input type="number" name="intervaloSeg" min="3" max="600" value="<%= er.config.intervaloSeg %>" /></label>
+          <label>Limite de e-mails por dia<input type="number" name="limiteDiario" min="1" max="5000" value="<%= er.config.limiteDiario %>" /></label>
+        </div>
+        <p class="hint" style="margin:0">Gmail comum: até ~500 por dia. Google Workspace: até ~2.000.</p>
+        <button type="submit" class="btn-secondary">Salvar ajustes do e-mail</button>
+      </form>
+    </main>
+
     <main class="card" id="protecao">
       <% const w = waResumo, c = w.cfg; %>
       <h3 style="margin-top:0">Proteção do WhatsApp (envios em massa)</h3>
