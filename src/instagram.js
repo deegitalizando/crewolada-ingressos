@@ -28,17 +28,30 @@ function client(token) {
     host: hostFor(token),
 
     // { id, username } of the Instagram professional account behind the token.
+    // Only the festa's own account is accepted (INSTAGRAM_USERNAME, default
+    // festacrewolada): a token that also manages other Instagram accounts must
+    // never connect to one of those and answer its comments with the party info.
     async conta() {
+      const esperado = String(process.env.INSTAGRAM_USERNAME || 'festacrewolada').replace(/^@/, '').toLowerCase();
+      const confere = (u) => String(u || '').toLowerCase() === esperado;
       if (!String(token || '').startsWith('EAA')) {
         const me = await get('/me', { fields: 'user_id,username' });
+        if (!confere(me.username)) throw new Error(`Este token é do Instagram @${me.username}, não do @${esperado}. Gere o token logado no @${esperado}.`);
         return { id: String(me.user_id || me.id), username: me.username };
       }
-      const pages = await get('/me/accounts', { fields: 'name,access_token,instagram_business_account{id,username}', limit: 50 });
-      const pg = (pages.data || []).find((p) => p.instagram_business_account);
+      const pages = await get('/me/accounts', { fields: 'name,access_token,instagram_business_account{id,username}', limit: 100 });
+      const comIg = (pages.data || []).filter((p) => p.instagram_business_account);
+      const pg = comIg.find((p) => confere(p.instagram_business_account.username));
+      if (!pg && comIg.length) {
+        throw new Error(`Este token não dá acesso ao @${esperado} (só a: ${comIg.map((p) => '@' + p.instagram_business_account.username).join(', ')}). Gere de novo e marque a página e o Instagram da Crewolada.`);
+      }
       // Messages and replies go out with the page token (user tokens cannot send them).
       if (pg) return { id: pg.instagram_business_account.id, username: pg.instagram_business_account.username, tokenEnvio: pg.access_token };
       // Page token: /me is the page itself.
       const me = await get('/me', { fields: 'instagram_business_account{id,username}' });
+      if (me.instagram_business_account && !confere(me.instagram_business_account.username)) {
+        throw new Error(`Este token é do Instagram @${me.instagram_business_account.username}, não do @${esperado}.`);
+      }
       if (me.instagram_business_account) return { id: me.instagram_business_account.id, username: me.instagram_business_account.username };
       throw new Error('O token não tem acesso a nenhuma conta comercial do Instagram.');
     },

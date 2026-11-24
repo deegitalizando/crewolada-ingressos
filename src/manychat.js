@@ -319,6 +319,14 @@ async function varrer(deps, { posts = 3, reavaliar = false } = {}) {
     if (!token) return { ok: false, erro: 'Instagram não conectado.' };
     if (!mc.ativo) return { ok: false, erro: 'Automação desligada.' };
     let ig = mc.ig || {};
+    // A connection saved for another account (e.g. a token that also manages other
+    // Instagrams) is never used: it is dropped and the token must be generated again.
+    const esperado = String(process.env.INSTAGRAM_USERNAME || 'festacrewolada').replace(/^@/, '').toLowerCase();
+    if (ig.username && String(ig.username).toLowerCase() !== esperado) {
+      const erro = `Conectado ao @${ig.username}, que não é o @${esperado}. Gere um token com acesso ao @${esperado} e conecte de novo.`;
+      await store.withDb((db) => { const m = getMC(db); m.ig = { erro }; db.manychat = m; });
+      return { ok: false, erro };
+    }
     if (!ig.id) {
       const conta = await conectar(token);
       ig = { ...ig, ...conta };
