@@ -40,7 +40,8 @@ function buildWhatsappTicketLink() {
 const { approveOrder } = require('./fulfillment');
 const { registerCortesiaRoutes } = require('./cortesia');
 const { registerBotRoutes } = require('./bot');
-const { registerAutomacoesRoutes, startAutomacoesScheduler } = require('./automacoes');
+const automacoes = require('./automacoes');
+const { registerAutomacoesRoutes, startAutomacoesScheduler } = automacoes;
 const waFila = require('./waFila');
 const { registerManychatRoutes } = require('./manychat');
 const { registerContabilidadeRoutes } = require('./contabilidade');
@@ -1502,7 +1503,12 @@ app.post('/api/n8n/ingresso-por-telefone', async (req, res) => {
     return res.status(401).json({ found: false, error: 'unauthorized' });
   }
 
-  const phone = String(req.body.telefone || '').replace(/\D/g, '');
+  let phone = String(req.body.telefone || '').replace(/\D/g, '');
+  // New WhatsApp addressing: n8n may send the chat's @lid code instead of the phone.
+  // Use the real number when it comes along (remoteJidAlt) or look it up in Evolution.
+  const alt = String(req.body.remoteJidAlt || req.body.telefoneAlt || '').replace(/@.*/, '').replace(/\D/g, '');
+  if (alt && !automacoes.pareceLid(alt)) phone = alt;
+  else if (phone && automacoes.pareceLid(phone)) phone = (await automacoes.telefoneDoLid(phone)) || phone;
   const cpf = String(req.body.cpf || '').replace(/\D/g, '');
   const email = String(req.body.email || '').trim().toLowerCase();
   const texto = String(req.body.mensagem || '');
