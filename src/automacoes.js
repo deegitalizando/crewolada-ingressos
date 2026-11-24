@@ -48,9 +48,9 @@ function getState(db) {
     config: {
       whatsapp: {
         ativo: wa.ativo === true,
-        evolutionUrl: (wa.evolutionUrl || process.env.EVOLUTION_API_URL || '').replace(/\/$/, ''),
+        evolutionUrl: (wa.evolutionUrl || process.env.EVOLUTION_API_URL || 'https://n8n-evolution-api.wmbyj1.easypanel.host').replace(/\/$/, ''),
         apiKey: wa.apiKey || process.env.EVOLUTION_API_KEY || '',
-        instancia: wa.instancia || process.env.EVOLUTION_INSTANCE || '',
+        instancia: wa.instancia || process.env.EVOLUTION_INSTANCE || 'Crewolada',
         webhookToken: wa.webhookToken || '',
         encaminharUrl: wa.encaminharUrl || '',
         encaminharModo: ['sempre', 'sem_regra'].includes(wa.encaminharModo) ? wa.encaminharModo : 'sempre',
@@ -196,6 +196,39 @@ const wa = {
 async function waSend(c, number, text, mediaUrl) {
   if (mediaUrl) return wa.sendMedia(c, number, mediaUrl, text);
   return wa.sendText(c, number, text);
+}
+
+// WhatsApp's new addressing (@lid) hides the phone: a chat can arrive as
+// "147661177016489@lid" instead of "5521...@s.whatsapp.net". Evolution keeps the
+// real number in key.remoteJidAlt; this finds it from the chat's messages.
+// Returns '' when it can't (Evolution not configured, unknown chat).
+const lidCache = new Map();
+function pareceLid(digits) {
+  const d = String(digits || '').replace(/\D/g, '');
+  return d.length >= 14 || (d.length >= 12 && !d.startsWith(process.env.DEFAULT_COUNTRY_CODE || '55'));
+}
+async function telefoneDoLid(lid) {
+  const id = String(lid || '').replace(/@.*/, '').replace(/\D/g, '');
+  if (!id) return '';
+  if (lidCache.has(id)) return lidCache.get(id);
+  const cfg = getState(store.load()).config.whatsapp;
+  if (!cfg.evolutionUrl || !cfg.apiKey || !cfg.instancia) return '';
+  try {
+    const r = await waRequest(cfg, 'post', 'chat/findMessages', { where: { key: { remoteJid: `${id}@lid` } }, page: 1, offset: 10 });
+    const recs = Array.isArray(r) ? r : (r && r.messages && (r.messages.records || r.messages)) || [];
+    for (const m of recs) {
+      const k = (m && m.key) || {};
+      const alt = [k.remoteJidAlt, k.senderPn, k.participantAlt].find((x) => String(x || '').endsWith('@s.whatsapp.net'));
+      if (alt) {
+        const tel = alt.split('@')[0];
+        lidCache.set(id, tel);
+        return tel;
+      }
+    }
+  } catch (err) {
+    console.error('[automacoes] nao consegui achar o telefone do @lid:', apiError(err));
+  }
+  return '';
 }
 
 // ---------------------------------------------------------------------------
@@ -714,7 +747,7 @@ module.exports = {
   registerAutomacoesRoutes,
   startAutomacoesScheduler,
   // shared with the WhatsApp sweep (src/varreduraWa.js)
-  getState, waRequest, waText, apiError, renderText, firstName,
+  getState, waRequest, waText, apiError, renderText, firstName, telefoneDoLid, pareceLid,
   // exported for tests
   _internals: { matchesRule, findRule, parseLista, renderText, dentroDaJanela, norm },
 };
