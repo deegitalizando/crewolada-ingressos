@@ -1,6 +1,7 @@
 const store = require('./store');
 const { getTemplates } = require('./templates');
 const { enfileirar } = require('./waFila');
+const { montarPublico } = require('./publico');
 const { currentEvent, inEvent, eventTemplateVars, EVENTS, getEventById } = require('./event');
 
 const MILESTONES = ['dias5', 'dia1', 'diaEvento', 'hora1'];
@@ -137,6 +138,17 @@ async function checkAndSendReminders() {
       if (c) c.sent = true;
     });
 
+    if (campaign.filtros) {
+      const pessoas = montarPublico(store.load(), campaign.filtros);
+      await enfileirar({
+        origem: 'campanha',
+        titulo: `Campanha · ${pessoas.length} pessoas`,
+        template: campaign.mensagem,
+        varsBase: { ...eventTemplateVars(currentEvent), link: `${process.env.BASE_URL || 'https://crewolada.com'}` },
+        destinatarios: pessoas.map((p) => ({ nome: p.nome, whatsapp: p.whatsapp, email: p.email })),
+      });
+      continue;
+    }
     if (campaign.audiencia === 'musica' || campaign.audiencia === 'todos') {
       await sendToAllMusicaBuyers(db, campaign.mensagem);
     }
