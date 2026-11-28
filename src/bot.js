@@ -152,76 +152,82 @@ function registerBotRoutes(app, { requireAdminAuth, eventInfo, deps }) {
   const baseUrl = () => (process.env.BASE_URL || 'https://crewolada.com').replace(/\/$/, '');
   const fullDeps = () => ({ ...deps, baseUrl: baseUrl() });
 
-  app.get('/bot', requireAdminAuth, (req, res) => {
-    const db = store.load();
-    const bot = getBot(db);
-    const ctx = contexto(db, fullDeps());
-    res.render('admin_bot', {
-      eventInfo, bot, ctx, ctxLen: ctx.length, maxContext: MAX_CONTEXT, maxFileMb: MAX_FILE_BYTES / 1024 / 1024,
-      msg: req.query.msg || null,
-    });
-  });
-
-  app.post('/bot/geral', requireAdminAuth, async (req, res) => {
-    await store.withDb((db) => {
-      db.bot = { ...getBot(db), agenteAtivo: req.body.agenteAtivo === 'on', instrucoes: clean(req.body.instrucoes, MAX_ITEM) };
-    });
-    res.redirect('/bot?msg=salvo');
-  });
-
-  app.post('/bot/itens', requireAdminAuth, async (req, res) => {
-    const titulo = clean(req.body.titulo, 120);
-    const texto = clean(req.body.texto, MAX_ITEM);
-    if (!titulo || !texto) return res.redirect('/bot?msg=item_vazio');
-    const id = clean(req.body.id, 40);
-    await store.withDb((db) => {
+  // The panel answers at /bot and at /admin/bot: on crewolada.com the /bot path can
+  // be routed by the proxy to another app (the WhatsApp attendance panel), so
+  // /admin/bot is the address that always reaches this one.
+  for (const base of ['/bot', '/admin/bot']) {
+    app.get(base, requireAdminAuth, (req, res) => {
+      const db = store.load();
       const bot = getBot(db);
-      const agora = new Date().toISOString();
-      const i = bot.itens.findIndex((x) => x.id === id);
-      if (id && i !== -1) bot.itens[i] = { ...bot.itens[i], titulo, texto, atualizadoEm: agora };
-      else bot.itens.push({ id: crypto.randomUUID(), titulo, texto, criadoEm: agora });
-      db.bot = bot;
+      const ctx = contexto(db, fullDeps());
+      res.render('admin_bot', {
+        base,
+        eventInfo, bot, ctx, ctxLen: ctx.length, maxContext: MAX_CONTEXT, maxFileMb: MAX_FILE_BYTES / 1024 / 1024,
+        msg: req.query.msg || null,
+      });
     });
-    res.redirect('/bot?msg=salvo#itens');
-  });
 
-  app.post('/bot/itens/:id/excluir', requireAdminAuth, async (req, res) => {
-    await store.withDb((db) => {
-      const bot = getBot(db);
-      bot.itens = bot.itens.filter((x) => x.id !== req.params.id);
-      db.bot = bot;
+    app.post(`${base}/geral`, requireAdminAuth, async (req, res) => {
+      await store.withDb((db) => {
+        db.bot = { ...getBot(db), agenteAtivo: req.body.agenteAtivo === 'on', instrucoes: clean(req.body.instrucoes, MAX_ITEM) };
+      });
+      res.redirect(`${base}?msg=salvo`);
     });
-    res.redirect('/bot?msg=excluido#itens');
-  });
 
-  // The page sends the file as base64 JSON (no multipart parser in this app).
-  app.post('/bot/arquivos', requireAdminAuth, async (req, res) => {
-    try {
-      const nome = clean(req.body.nome, 140);
-      const buffer = Buffer.from(String(req.body.base64 || ''), 'base64');
-      if (!nome || !buffer.length) return res.status(400).json({ error: 'Arquivo vazio.' });
-      if (buffer.length > MAX_FILE_BYTES) return res.status(400).json({ error: `Arquivo maior que ${MAX_FILE_BYTES / 1024 / 1024} MB.` });
-      const texto = clean(await extractText(nome, buffer), MAX_FILE_TEXT).replace(/\n{3,}/g, '\n\n');
-      if (texto.length < 20) return res.status(400).json({ error: 'Não encontrei texto nesse arquivo. Se for um PDF de imagem (escaneado), envie a versão em texto.' });
+    app.post(`${base}/itens`, requireAdminAuth, async (req, res) => {
+      const titulo = clean(req.body.titulo, 120);
+      const texto = clean(req.body.texto, MAX_ITEM);
+      if (!titulo || !texto) return res.redirect(`${base}?msg=item_vazio`);
+      const id = clean(req.body.id, 40);
       await store.withDb((db) => {
         const bot = getBot(db);
-        bot.arquivos.push({ id: crypto.randomUUID(), nome, tamanho: buffer.length, texto, criadoEm: new Date().toISOString() });
+        const agora = new Date().toISOString();
+        const i = bot.itens.findIndex((x) => x.id === id);
+        if (id && i !== -1) bot.itens[i] = { ...bot.itens[i], titulo, texto, atualizadoEm: agora };
+        else bot.itens.push({ id: crypto.randomUUID(), titulo, texto, criadoEm: agora });
         db.bot = bot;
       });
-      return res.json({ ok: true, caracteres: texto.length, cortado: texto.length >= MAX_FILE_TEXT });
-    } catch (err) {
-      return res.status(400).json({ error: err.message || 'Não foi possível ler o arquivo.' });
-    }
-  });
-
-  app.post('/bot/arquivos/:id/excluir', requireAdminAuth, async (req, res) => {
-    await store.withDb((db) => {
-      const bot = getBot(db);
-      bot.arquivos = bot.arquivos.filter((x) => x.id !== req.params.id);
-      db.bot = bot;
+      res.redirect(`${base}?msg=salvo#itens`);
     });
-    res.redirect('/bot?msg=excluido#arquivos');
-  });
+
+    app.post(`${base}/itens/:id/excluir`, requireAdminAuth, async (req, res) => {
+      await store.withDb((db) => {
+        const bot = getBot(db);
+        bot.itens = bot.itens.filter((x) => x.id !== req.params.id);
+        db.bot = bot;
+      });
+      res.redirect(`${base}?msg=excluido#itens`);
+    });
+
+    // The page sends the file as base64 JSON (no multipart parser in this app).
+    app.post(`${base}/arquivos`, requireAdminAuth, async (req, res) => {
+      try {
+        const nome = clean(req.body.nome, 140);
+        const buffer = Buffer.from(String(req.body.base64 || ''), 'base64');
+        if (!nome || !buffer.length) return res.status(400).json({ error: 'Arquivo vazio.' });
+        if (buffer.length > MAX_FILE_BYTES) return res.status(400).json({ error: `Arquivo maior que ${MAX_FILE_BYTES / 1024 / 1024} MB.` });
+        const texto = clean(await extractText(nome, buffer), MAX_FILE_TEXT).replace(/\n{3,}/g, '\n\n');
+        if (texto.length < 20) return res.status(400).json({ error: 'Não encontrei texto nesse arquivo. Se for um PDF de imagem (escaneado), envie a versão em texto.' });
+        await store.withDb((db) => {
+          const bot = getBot(db);
+          bot.arquivos.push({ id: crypto.randomUUID(), nome, tamanho: buffer.length, texto, criadoEm: new Date().toISOString() });
+          db.bot = bot;
+        });
+        return res.json({ ok: true, caracteres: texto.length, cortado: texto.length >= MAX_FILE_TEXT });
+      } catch (err) {
+        return res.status(400).json({ error: err.message || 'Não foi possível ler o arquivo.' });
+      }
+    });
+
+    app.post(`${base}/arquivos/:id/excluir`, requireAdminAuth, async (req, res) => {
+      await store.withDb((db) => {
+        const bot = getBot(db);
+        bot.arquivos = bot.arquivos.filter((x) => x.id !== req.params.id);
+        db.bot = bot;
+      });
+      res.redirect(`${base}?msg=excluido#arquivos`);
+    });
+  }
 
   // Read by the n8n agent on every message (same shared secret as the other n8n callbacks).
   app.get('/api/bot/conhecimento', (req, res) => {

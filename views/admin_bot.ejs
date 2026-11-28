@@ -50,7 +50,7 @@
     <section class="bt-card">
       <h3>Agente</h3>
       <p class="hint">Responde o Direct do @festacrewolada sobre eventos, ingressos e como recebê-los. Datas, preços e ingressos restantes vêm do site automaticamente. Respostas automáticas por palavra-chave (comentários, stories e Direct) ficam no <a href="/manychat" style="color:var(--accent)">ManyChat</a>.</p>
-      <form action="/bot/geral" method="POST">
+      <form action="<%= base %>/geral" method="POST">
         <label class="bt-switch"><input type="checkbox" name="agenteAtivo" <%= bot.agenteAtivo ? 'checked' : '' %> /> Agente ligado</label>
         <label>Instruções extras <span class="bt-meta">(tom de voz, o que evitar, quando chamar a equipe)</span>
           <textarea name="instrucoes" maxlength="6000" placeholder="Ex.: Sempre convide a pessoa para entrar na comunidade do WhatsApp. Não prometa desconto."><%= bot.instrucoes %></textarea>
@@ -68,17 +68,17 @@
           <p class="tx"><%= i.texto %></p>
           <details>
             <summary>Editar</summary>
-            <form action="/bot/itens" method="POST">
+            <form action="<%= base %>/itens" method="POST">
               <input type="hidden" name="id" value="<%= i.id %>" />
               <label>Título<input type="text" name="titulo" maxlength="120" value="<%= i.titulo %>" /></label>
               <label>Texto<textarea name="texto" maxlength="6000"><%= i.texto %></textarea></label>
               <div class="bt-row"><button type="submit">Salvar</button></div>
             </form>
           </details>
-          <form action="/bot/itens/<%= i.id %>/excluir" method="POST" class="bt-row" onsubmit="return confirm('Remover esta informação?')"><button type="submit" class="secondary">Remover</button></form>
+          <form action="<%= base %>/itens/<%= i.id %>/excluir" method="POST" class="bt-row" onsubmit="return confirm('Remover esta informação?')"><button type="submit" class="secondary">Remover</button></form>
         </div>
       <% }) %>
-      <form action="/bot/itens" method="POST">
+      <form action="<%= base %>/itens" method="POST">
         <label>Novo título<input type="text" name="titulo" maxlength="120" placeholder="Ex.: Pode levar criança?" /></label>
         <label>Texto<textarea name="texto" maxlength="6000" placeholder="Ex.: Pode sim! Crianças até 2 anos não pagam..."></textarea></label>
         <div class="bt-row"><button type="submit">Adicionar</button></div>
@@ -93,7 +93,7 @@
           <h4><%= a.nome %></h4>
           <p class="bt-meta"><%= Math.round(a.tamanho / 1024) %> KB · <%= a.texto.length.toLocaleString('pt-BR') %> caracteres lidos</p>
           <details><summary>Ver texto lido</summary><p class="tx" style="max-height:none"><%= a.texto %></p></details>
-          <form action="/bot/arquivos/<%= a.id %>/excluir" method="POST" class="bt-row" onsubmit="return confirm('Remover este arquivo do conhecimento do agente?')"><button type="submit" class="secondary">Remover</button></form>
+          <form action="<%= base %>/arquivos/<%= a.id %>/excluir" method="POST" class="bt-row" onsubmit="return confirm('Remover este arquivo do conhecimento do agente?')"><button type="submit" class="secondary">Remover</button></form>
         </div>
       <% }) %>
       <label class="bt-drop" id="drop">
@@ -134,13 +134,13 @@
           say('Lendo ' + f.name + '...');
           try {
             var b64 = await toBase64(f);
-            var r = await fetch('/bot/arquivos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.name, base64: b64 }) });
+            var r = await fetch('<%= base %>/arquivos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome: f.name, base64: b64 }) });
             var d = await r.json().catch(function () { return {}; });
             if (!r.ok) throw new Error(d.error || 'Falha ao enviar.');
             enviados++;
           } catch (e) { say(f.name + ': ' + e.message, 'err'); return; }
         }
-        if (enviados) { say(enviados === 1 ? 'Arquivo adicionado.' : enviados + ' arquivos adicionados.', 'ok'); setTimeout(function () { location.replace('/bot?msg=salvo&t=' + Date.now() + '#arquivos'); }, 600); }
+        if (enviados) { say(enviados === 1 ? 'Arquivo adicionado.' : enviados + ' arquivos adicionados.', 'ok'); setTimeout(function () { location.replace('<%= base %>?msg=salvo&t=' + Date.now() + '#arquivos'); }, 600); }
       }
       input.addEventListener('change', function () { enviar(input.files); });
       ['dragenter', 'dragover'].forEach(function (ev) { drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); }); });

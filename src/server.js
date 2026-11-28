@@ -93,7 +93,7 @@ app.use((req, res, next) => {
 });
 app.use(express.static(path.join(__dirname, '..', 'public')));
 // Files uploaded to the AI agent panel arrive as base64 JSON (up to 8 MB raw).
-app.use('/bot/arquivos', express.json({ limit: '12mb' }));
+app.use(['/bot/arquivos', '/admin/bot/arquivos'], express.json({ limit: '12mb' }));
 // The WhatsApp webhook keeps the raw body so it can be forwarded byte-for-byte
 // to n8n (src/automacoes.js).
 app.use('/api/webhooks/whatsapp', express.json({
