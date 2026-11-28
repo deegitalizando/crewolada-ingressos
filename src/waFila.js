@@ -104,7 +104,9 @@ const TROCAS = [
   [/\bfaltam s[oó]\b/gi, 'faltam apenas'], [/\bamanh[aã] [eé] o grande dia\b/gi, 'amanhã é o dia'],
   [/\bhoje [eé] o dia\b/gi, 'chegou o dia'], [/\bpode vir chegando\b/gi, 'já pode vir'],
 ];
-const SAUDACAO_RE = /^\s*(oi+|ol[aá]|e a[ií]|fala|hey|opa)\b[^!?.\n]*[!?.,]?\s*/i;
+// No \b here: JS word boundaries are ASCII-only, so "Olá" never matched and a
+// second greeting was stacked in front of the admin's own ("Oi Ana! Olá Ana, ...").
+const SAUDACAO_RE = /^\s*(oi+|ol[aá]|e a[ií]|fala|hey|opa)(?=[\s,!.?]|$)[^!?.,\n]{0,30}[!?.,]?\s*/i;
 
 // Local rewording used when the AI is off or unavailable: swaps the greeting,
 // a few common phrases and the closing emoji, so versions still differ.
@@ -120,7 +122,7 @@ function versoesLocais(texto, n) {
       if ((i + sub.length) % 2 === 0) t = t.replace(re, (m) => (m[0] === m[0].toUpperCase() ? sub.charAt(0).toUpperCase() + sub.slice(1) : sub));
     });
     t = t.replace(/[\s🖤🎉🔥✨🙌]+$/u, '') + FECHOS[i % FECHOS.length];
-    if (temSaudacao || i % 2 === 0) t = `${SAUDACOES[i % SAUDACOES.length]} ${t.charAt(0).toUpperCase()}${t.slice(1)}`;
+    if (temSaudacao) t = `${SAUDACOES[i % SAUDACOES.length]} ${t.charAt(0).toUpperCase()}${t.slice(1)}`;
     out.add(t.trim());
   }
   return [...out].slice(0, n);
@@ -172,6 +174,14 @@ function optoutSet(db) {
 }
 
 // destinatarios: [{ nome, whatsapp, email, vars? }]. Returns { fila, emailSo, ignorados }.
+// "{nome}" (one brace, easy to type) works the same as "{{nome}}".
+const duplasChaves = (t) => String(t || '').replace(/(^|[^{]){\s*(\w+)\s*}(?!})/g, '$1{{$2}}');
+// "ISAAC ESTEVAM DA SILVA" -> "Isaac": a message reads as personal only with the first name.
+function primeiroNome(nome) {
+  const p = String(nome || '').trim().split(/\s+/)[0] || '';
+  return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : '';
+}
+
 async function enfileirar({ origem, titulo, template, destinatarios, varsBase = {} }) {
   const cfg = getConfig(store.load());
   const versoes = await gerarVersoes(template, cfg);
@@ -179,7 +189,10 @@ async function enfileirar({ origem, titulo, template, destinatarios, varsBase = 
   const loteId = crypto.randomUUID();
   const ordem = versoes.map((_, i) => i).sort(() => Math.random() - 0.5);
   let k = 0;
-  const render = (d) => renderTemplate(versoes[ordem[k++ % ordem.length]], { ...varsBase, ...(d.vars || {}), nome: d.nome || '' });
+  const render = (d) => renderTemplate(
+    duplasChaves(versoes[ordem[k++ % ordem.length]]),
+    { ...varsBase, ...(d.vars || {}), nome: primeiroNome(d.nome), nomeCompleto: d.nome || '' },
+  ).replace(/\s+([!?,.])/g, '$1').replace(/,([!?.])/g, '$1');
 
   const emailSo = [];
   const result = await store.withDb((db) => {
