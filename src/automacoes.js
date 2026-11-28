@@ -533,6 +533,7 @@ function registerAutomacoesRoutes(app, { requireAdminAuth, eventInfo, parseDatet
         contatosWa: contatosLista.filter((c) => c.canal === 'whatsapp').length,
       },
       editar,
+      central: require('./centralBot').resumo(db),
       varredura: require('./varreduraWa').getVarredura(db),
       filaCfg: require('./waFila').getConfig(db),
       contatosLista: contatosLista.slice(0, 300),

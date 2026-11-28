@@ -96,7 +96,7 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 app.use(['/bot/arquivos', '/admin/bot/arquivos'], express.json({ limit: '12mb' }));
 // The WhatsApp webhook keeps the raw body so it can be forwarded byte-for-byte
 // to n8n (src/automacoes.js).
-app.use('/api/webhooks/whatsapp', express.json({
+app.use(['/api/webhooks/whatsapp', '/api/central/mensagem'], express.json({
   limit: '5mb',
   verify: (req, res, buf) => { req.rawBody = Buffer.from(buf); },
 }));
@@ -1706,13 +1706,14 @@ registerBotRoutes(app, {
   },
 });
 // Instagram auto-replies (comment keyword -> Direct), crewolada.com/manychat.
+let manychatDeps;
 registerManychatRoutes(app, {
   eventInfo,
   // Not logged in: the login form shows right here and comes back to /manychat.
   requireAdminAuth: (req, res, next) => (isAdmin(req) ? next() : req.method === 'GET'
     ? res.render('admin_login', { eventInfo, error: null, next: '/manychat' })
     : res.redirect('/manychat')),
-  deps: {
+  deps: manychatDeps = {
     salesOpenNow: () => salesOpenNow(),
     opensLabel: (ts) => opensLabelBR(ts),
     // Price line and tickets left of the current event, as the sale page shows them.
@@ -1737,6 +1738,8 @@ registerManychatRoutes(app, {
     whatsappLabel: app.locals.contact.whatsappLabel,
   },
 });
+// Crewolada bot on the WhatsApp attendance central (official Meta API): tickets + party info.
+require('./centralBot').registerCentralRoutes(app, { requireAdminAuth, deps: manychatDeps });
 registerPaginaInicialRoutes(app, { requireAdminAuth, onChange: refreshEvents });
 registerTrocarParticipanteRoutes(app, { requireAdminAuth, eventInfo, eventInfoFor, notifyOrderApproved, buildTicketPdf });
 registerCancelamentoRoutes(app, { requireAdminAuth, eventInfo, onChange: refreshEvents, formatDatetimeBrasiliaDisplay });
