@@ -166,9 +166,11 @@ async function processar(ev) {
   const desde = Date.parse(ev.pendingSince || ev.timestamp || 0) || Date.now();
   const foraDaJanela = Date.now() - desde > JANELA_MS;
   const nomeParam = primeiroNome(ev.name) || 'tudo bem';
+  let pediuGenerica = true;
 
   try {
     if (pediu) {
+      pediuGenerica = true;
       const achados = acharIngressos(db, { phone: ev.from, cpf: cpf.length === 11 ? cpf : '', email });
       if (achados.length) {
         const nome = (achados[0].to && achados[0].to.nome) || achados[0].order.buyerName || ev.name;
@@ -202,6 +204,7 @@ async function processar(ev) {
       await registrar({ de: ev.from, nome: ev.name, texto, acao: 'sem resposta automática (para a equipe)' });
       return;
     }
+    pediuGenerica = false;
     await mutate((x) => { x.genericas[ev.from] = new Date().toISOString(); });
     if (foraDaJanela) await enviarModelo(c, to, MODELOS.retorno, [nomeParam]);
     else await enviar(c, to, textoFesta(ev.name, deps));
@@ -209,6 +212,9 @@ async function processar(ev) {
   } catch (err) {
     const msg = (err.response && err.response.data && (err.response.data.error || JSON.stringify(err.response.data))) || err.message;
     console.error('[central] falha ao responder:', msg);
+    // Free the message so a later "Responder pendentes" (e.g. after the template is approved) tries again.
+    const id = ev.messageId || `${ev.from}:${ev.timestamp}`;
+    await mutate((x) => { x.vistos = x.vistos.filter((v) => v !== id); if (!pediuGenerica) delete x.genericas[ev.from]; }).catch(() => {});
     await registrar({ de: ev.from, nome: ev.name, texto, acao: 'erro', erro: String(msg).slice(0, 300) });
   }
 }
