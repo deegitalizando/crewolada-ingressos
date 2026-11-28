@@ -373,6 +373,13 @@
             <label>Endereço da API da central<input name="apiUrl" value="<%= central.apiUrl %>" /></label>
             <button type="submit">Salvar robô</button>
           </form>
+          <p class="hint" style="margin-top:14px">3. Quem escreveu há mais de 24 h só pode receber <strong>modelos aprovados</strong> pela Meta. Crie os dois modelos da Crewolada (uma vez) e espere ficarem <strong>APPROVED</strong>:</p>
+          <form method="POST" action="/admin/automacoes/central/modelos"><button class="btn-secondary">Criar / ver modelos na Meta</button></form>
+          <p class="hint" style="margin-top:14px">4. Responder quem ficou esperando (a central reentrega ao robô as conversas cuja última mensagem é do cliente):</p>
+          <form method="POST" action="/admin/automacoes/central/pendentes" class="form" style="flex-direction:row;gap:8px;align-items:flex-end" onsubmit="return confirm('Responder agora todas as conversas sem resposta desse período?')">
+            <label style="flex:1">Conversas dos últimos (dias)<input type="number" name="dias" min="1" max="30" value="7" /></label>
+            <button class="small-btn" style="padding:12px 16px">Responder pendentes</button>
+          </form>
           <form method="POST" action="/admin/automacoes/central/testar" class="form" style="flex-direction:row;gap:8px;align-items:flex-end;margin-top:8px">
             <label style="flex:1">Testar: enviar mensagem para<input name="numero" placeholder="21999998888" /></label>
             <button class="small-btn btn-secondary" style="padding:12px 16px">Enviar teste</button>

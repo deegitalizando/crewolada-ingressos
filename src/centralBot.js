@@ -24,6 +24,24 @@ const PEDIU_INGRESSO = /(ingress|qr ?code|qrcode|bilhete|\bpdf\b|nao (recebi|che
 const EMAIL_RE = /[^\s@<>()]+@[^\s@<>()]+\.[a-z]{2,}/i;
 const GENERICA_CADA_MS = 12 * 3600 * 1000;
 const MAX_LOG = 300;
+const JANELA_MS = 23 * 3600 * 1000; // Meta: free text only up to 24 h after the customer's last message
+
+// Approved templates used outside the 24 h window. Parameters can't have line breaks.
+const MODELOS = {
+  ingresso: {
+    name: 'crewolada_ingresso',
+    category: 'UTILITY',
+    body: 'Olá, {{1}}! Desculpe a demora em responder. Aqui está o seu ingresso da Crewolada: {{2}} . Abra o link para ver o QR Code e baixar o PDF. Na entrada é só mostrar o QR Code.',
+    example: ['Maria', 'https://crewolada.com/ingresso/ABC123'],
+  },
+  retorno: {
+    name: 'crewolada_retorno',
+    category: 'UTILITY',
+    body: 'Olá, {{1}}! Desculpe a demora em responder a sua mensagem para a Crewolada. Se ainda precisar do seu ingresso ou de alguma informação sobre a festa, é só responder esta mensagem que atendemos por aqui.',
+    example: ['Maria'],
+  },
+};
+const apiBase = (c) => c.apiUrl.replace(/\/api\/v1\/messages$/, '');
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const digits = (s) => String(s || '').replace(/\D/g, '');
@@ -126,6 +144,12 @@ async function enviar(c, to, text) {
   await axios.post(c.apiUrl, { to, text }, { headers: { Authorization: `Bearer ${c.apiKey}` }, timeout: 20000 });
 }
 
+// Approved template (outside the 24 h window). `preview` is the filled text kept in the central's history.
+async function enviarModelo(c, to, modelo, params) {
+  const preview = params.reduce((t, p, i) => t.replace(`{{${i + 1}}}`, p), modelo.body);
+  await axios.post(c.apiUrl, { to, text: preview, template: { name: modelo.name, language: 'pt_BR', params } }, { headers: { Authorization: `Bearer ${c.apiKey}` }, timeout: 20000 });
+}
+
 let deps = {};
 
 async function processar(ev) {
@@ -138,17 +162,31 @@ async function processar(ev) {
   const cpf = (texto.match(/\d{3}\.?\d{3}\.?\d{3}-?\d{2}/) || [''])[0].replace(/\D/g, '');
   const email = ((texto.match(EMAIL_RE) || [''])[0] || '').toLowerCase();
   const pediu = PEDIU_INGRESSO.test(t) || cpf.length === 11 || Boolean(email);
+  // Waiting more than ~24 h (messages re-delivered by /api/v1/pendentes): only approved templates may go out.
+  const desde = Date.parse(ev.pendingSince || ev.timestamp || 0) || Date.now();
+  const foraDaJanela = Date.now() - desde > JANELA_MS;
+  const nomeParam = primeiroNome(ev.name) || 'tudo bem';
 
   try {
     if (pediu) {
       const achados = acharIngressos(db, { phone: ev.from, cpf: cpf.length === 11 ? cpf : '', email });
       if (achados.length) {
         const nome = (achados[0].to && achados[0].to.nome) || achados[0].order.buyerName || ev.name;
-        await enviar(c, to, textoIngressos(achados, nome));
+        if (foraDaJanela) {
+          const links = achados.flatMap((a) => a.tickets.map((tk) => `${baseUrl()}/ingresso/${tk.code}`)).join(' | ');
+          await enviarModelo(c, to, MODELOS.ingresso, [primeiroNome(nome) || nomeParam, links]);
+        } else {
+          await enviar(c, to, textoIngressos(achados, nome));
+        }
         // The PDF also goes by e-mail (the n8n flow; e-mail only).
         achados.forEach((a) => notifyOrderApproved(a.order, a.tickets, { origin: 'reenvio', channel: 'email', to: a.to || null })
           .catch((err) => console.error('[central] reenvio por e-mail falhou:', err.message)));
         await registrar({ de: ev.from, nome: ev.name, texto, acao: 'ingresso enviado', ingressos: achados.reduce((n, a) => n + a.tickets.length, 0) });
+        return;
+      }
+      if (foraDaJanela) {
+        await enviarModelo(c, to, MODELOS.retorno, [nomeParam]);
+        await registrar({ de: ev.from, nome: ev.name, texto, acao: 'ingresso não encontrado (modelo de retorno)' });
         return;
       }
       const resp = cpf.length === 11 || email
@@ -165,7 +203,8 @@ async function processar(ev) {
       return;
     }
     await mutate((x) => { x.genericas[ev.from] = new Date().toISOString(); });
-    await enviar(c, to, textoFesta(ev.name, deps));
+    if (foraDaJanela) await enviarModelo(c, to, MODELOS.retorno, [nomeParam]);
+    else await enviar(c, to, textoFesta(ev.name, deps));
     await registrar({ de: ev.from, nome: ev.name, texto, acao: 'informações da festa' });
   } catch (err) {
     const msg = (err.response && err.response.data && (err.response.data.error || JSON.stringify(err.response.data))) || err.message;
@@ -216,6 +255,43 @@ function registerCentralRoutes(app, { requireAdminAuth, deps: d = {} }) {
       if (/^deeg_\w{10,}$/.test(key)) raw.apiKey = key;
     });
     res.redirect('/admin/automacoes?aba=config&msg=' + encodeURIComponent('Robô da central salvo.') + '#central');
+  });
+
+  const erroDe = (err) => (err.response && err.response.data && err.response.data.error) || err.message;
+  const voltar = (res, tipo, txt) => res.redirect(`/admin/automacoes?aba=config&${tipo}=${encodeURIComponent(txt)}#central`);
+
+  // Creates the two Crewolada templates in the Meta account (through the central) and shows their status.
+  app.post('/admin/automacoes/central/modelos', requireAdminAuth, async (req, res) => {
+    const c = getCentral(store.load());
+    if (!c.apiKey) return voltar(res, 'erro', 'Salve a chave da central primeiro.');
+    const h = { headers: { Authorization: `Bearer ${c.apiKey}` }, timeout: 30000 };
+    try {
+      const { data } = await axios.get(`${apiBase(c)}/api/v1/templates`, h);
+      const existentes = new Map((data.templates || []).map((tp) => [tp.name, tp.status]));
+      const status = [];
+      for (const m of Object.values(MODELOS)) {
+        if (!existentes.has(m.name)) {
+          await axios.post(`${apiBase(c)}/api/v1/templates`, { name: m.name, category: m.category, language: 'pt_BR', body: m.body, example: m.example }, h);
+          status.push(`${m.name}: enviado para aprovação`);
+        } else status.push(`${m.name}: ${existentes.get(m.name)}`);
+      }
+      return voltar(res, 'msg', `Modelos: ${status.join(' · ')}. A aprovação da Meta costuma levar de minutos a algumas horas (APPROVED = aprovado).`);
+    } catch (err) {
+      return voltar(res, 'erro', `Não consegui criar/ver os modelos: ${erroDe(err)}. A central precisa estar atualizada.`);
+    }
+  });
+
+  // Asks the central to re-deliver every unanswered conversation of the last N days to this bot.
+  app.post('/admin/automacoes/central/pendentes', requireAdminAuth, async (req, res) => {
+    const c = getCentral(store.load());
+    if (!c.apiKey || !c.ativo) return voltar(res, 'erro', 'Ligue o robô e salve a chave da central primeiro.');
+    const dias = Math.min(30, Math.max(1, parseInt(req.body.dias, 10) || 7));
+    try {
+      const { data } = await axios.post(`${apiBase(c)}/api/v1/pendentes`, { dias }, { headers: { Authorization: `Bearer ${c.apiKey}` }, timeout: 120000 });
+      return voltar(res, 'msg', `${data.conversas} conversa(s) sem resposta entregues ao robô. As respostas aparecem em "Últimas mensagens atendidas" e no crewolada.com/bot.`);
+    } catch (err) {
+      return voltar(res, 'erro', `A central não aceitou: ${erroDe(err)}. A central precisa estar atualizada.`);
+    }
   });
 
   app.post('/admin/automacoes/central/testar', requireAdminAuth, async (req, res) => {
